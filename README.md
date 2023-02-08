@@ -20,7 +20,7 @@ Tools Repository is dedicated to hosts tools for OpenRadioss:
 The user library is generated using the userlib_sdk. The userlib_sdk is a collection of different platforms and compilers to create libraries.
 Each platform/compiler set has a `build_script`, a static library and Fortran Module files. Those will permit to generate the user library.
 
-(Userlib_sdk)[https://github.com/OpenRadioss/tools/tree/main/userlib_sdk]
+https://github.com/OpenRadioss/tools/tree/main/userlib_sdk
 
 # How to contribrute in Tools 
 
