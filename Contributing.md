@@ -1,12 +1,12 @@
-# How to contribute in the userlib_sdk
+# How to contribute in the Tools repository
 
-Welcome! You can report issues [here](https://github.com/OpenRadioss/OpenRadioss_userlib_sdk/issues) or ask questions [there](https://github.com/OpenRadioss/OpenRadioss_userlib_sdk/discussions).
+Welcome! You can report issues [here](https://github.com/OpenRadioss/Tools/issues) for questions, you can use OpenRadioss Git Forum [there](https://github.com/OpenRadioss/OpenRadioss/discussions).
 
 * [Contributing code to OpenRadioss userlib sdk](#contributing-code-to-openRadioss-userlib-sdk)
 * [Guidelines and coding style](#Guidelines-and-coding-style)
 
 
-## Contributing code to OpenRadioss userlib sdk
+## Contributing code to OpenRadioss Tools
 
 You must be aware of the [license](./Copyright.md).
 
@@ -14,7 +14,8 @@ You must be aware of the [license](./Copyright.md).
 
 #### On GitHub Website
 
-* Check the  [How to Build OpenRadioss userlib_sdk](./Howto.md) for build instructions, and git installation.
+* Check Howto.md files in different directories for build instructions and git installation.
+    * Userlib_sdk : [How to Build OpenRadioss userlib_sdk](./userlib_sdk/Howto.md).
 * Create your github account
     * Review your account setting, in particular: [email](https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-user-account/managing-email-preferences/setting-your-commit-email-address), [2FA](https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa/configuring-two-factor-authentication)
     * Setup your git user name and [email](https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-user-account/managing-email-preferences/setting-your-commit-email-address). 
@@ -22,7 +23,7 @@ You must be aware of the [license](./Copyright.md).
       Check Email Settings boxes `Keep my email addresses private` and  `Block command line pushes that expose my email` [here](https://github.com/settings/emails)
     * Add your ssh key [SSH key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent). 
 
-* [fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) the OpenRadioss_userlib_sdk repository        
+* [fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) the OpenRadioss/Tools repository        
 
 #### On your computer
 
@@ -31,13 +32,13 @@ You must be aware of the [license](./Copyright.md).
 
         git config --global user.email "<ID+username>@users.noreply.github.com"
     
-* [clone](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) your fork and go into the newly created `openRadioss_userlib_sdk` directory. 
+* [clone](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) your fork and go into the newly created `openRadioss/Tools` directory. 
 
-       git clone git@github.com:OpenRadioss/OpenRadioss_userlib_sdk
+       git clone git@github.com:OpenRadioss/Tools
        
 * Add the official repository as a remote: 
 
-       git remote add upstream git@github.com:OpenRadioss/OpenRadioss.git
+       git remote add upstream git@github.com:OpenRadioss/Tools.git
 
   Now `origin` points to your fork, and `upstream` points to the official OpenRadioss repository
 
