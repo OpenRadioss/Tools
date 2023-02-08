@@ -1,0 +1,462 @@
+Copyright>
+Copyright> Copyright (C) 1986-2023 Altair Engineering Inc.
+Copyright>    
+Copyright> Permission is hereby granted, free of charge, to any person obtaining 
+Copyright> a copy of this software and associated documentation files (the "Software"), 
+Copyright> to deal in the Software without restriction, including without limitation 
+Copyright> the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or 
+Copyright> sell copies of the Software, and to permit persons to whom the Software is 
+Copyright> furnished to do so, subject to the following conditions:
+Copyright> 
+Copyright> The above copyright notice and this permission notice shall be included in all 
+Copyright> copies or substantial portions of the Software.
+Copyright> 
+Copyright> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+Copyright> IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+Copyright> FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+Copyright> AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
+Copyright> WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR 
+Copyright> IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+Copyright>
+
+
+Chd|====================================================================
+Chd|  ST_GET_ULAWCVAR_ARRAY(ITASK)_VAR                        src/user1/lecm99.F            
+Chd|-- called by -----------
+Chd|        LECMUSER                      src/mater1/lecmuser.F         
+Chd|-- calls ---------------
+Chd|====================================================================
+      SUBROUTINE ENG_GET_LAWC_USER_VAR( NCYCLE, IMAT, ILAYER, NPTA, IFLAG,
+     *                                  R11,    R12,  R13,    R21,  R22,
+     *                                  R23,    R31,  R32,    R33,  SIGOXX,
+     *                                  SIGOYY, SIGOXY, SIGOYZ, SIGOZX, EPSPXX,
+     *                                  EPSPYY, EPSPXY, EPSPYZ, EPSPZX, EPSXX,
+     *                                  EPSYY,  EPSXY,  EPSYZ,  EPSZX,  DEPSXX,
+     *                                  DEPSYY, DEPSXY, DEPSYZ, DEPSZX, THKLYL,	  
+     *                                  THKN,   SIGNXX, SIGNYY, SIGNXY, SIGNYZ,
+     *                                  SIGNZX, SIGVXX, SIGVYY, SIGVXY, SIGVYZ,
+     *                                  SIGVZX, DPLA )
+
+#ifdef _WIN64
+!DEC$ ATTRIBUTES DLLEXPORT, DECORATE, ALIAS : "ENG_GET_LAWC_USER_VAR" :: ENG_GET_LAWC_USER_VAR
+!DEC$ ATTRIBUTES REFERENCE :: NCYCLE, IMAT, ILAYER, NPTA, IFLAG,
+     *                                  R11,    R12,  R13,    R21,  R22,
+     *                                  R23,    R31,  R32,    R33,  SIGOXX,
+     *                                  SIGOYY, SIGOXY, SIGOYZ, SIGOZX, EPSPXX,
+     *                                  EPSPYY, EPSPXY, EPSPYZ, EPSPZX, EPSXX,
+     *                                  EPSYY,  EPSXY,  EPSYZ,  EPSZX,  DEPSXX,
+     *                                  DEPSYY, DEPSXY, DEPSYZ, DEPSZX, THKLYL,	  
+     *                                  THKN,   SIGNXX, SIGNYY, SIGNXY, SIGNYZ,
+     *                                  SIGNZX, SIGVXX, SIGVYY, SIGVXY, SIGVYZ,
+     *                                  SIGVZX, DPLA 
+
+#endif
+      USE LAW_USERSH_VAR
+C-----------------------------------------------
+C   I m p l i c i t   T y p e s
+C-----------------------------------------------
+#include "implicit_f.inc"
+C-----------------------------------------------
+C   D u m m y   A r g u m e n t s
+C-----------------------------------------------
+        INTEGER  NCYCLE,IMAT,ILAYER,NPTA,IFLAG
+
+        my_real R11(MVSIZ),    R12(MVSIZ),  R13(MVSIZ),    R21(MVSIZ),  R22(MVSIZ),
+     *                                  R23(MVSIZ),    R31(MVSIZ),  R32(MVSIZ),    R33(MVSIZ),  SIGOXX(MVSIZ),
+     *                                  SIGOYY(MVSIZ), SIGOXY(MVSIZ), SIGOYZ(MVSIZ), SIGOZX(MVSIZ), EPSPXX(MVSIZ),
+     *                                  EPSPYY(MVSIZ), EPSPXY(MVSIZ), EPSPYZ(MVSIZ), EPSPZX(MVSIZ), EPSXX(MVSIZ),
+     *                                  EPSYY(MVSIZ),  EPSXY(MVSIZ),  EPSYZ(MVSIZ),  EPSZX(MVSIZ),  DEPSXX(MVSIZ),
+     *                                  DEPSYY(MVSIZ), DEPSXY(MVSIZ), DEPSYZ(MVSIZ), DEPSZX(MVSIZ), THKLYL(MVSIZ),	  
+     *                                  THKN(MVSIZ),   SIGNXX(MVSIZ), SIGNYY(MVSIZ), SIGNXY(MVSIZ), SIGNYZ(MVSIZ),
+     *                                  SIGNZX(MVSIZ), SIGVXX(MVSIZ), SIGVYY(MVSIZ), SIGVXY(MVSIZ), SIGVYZ(MVSIZ),
+     *                                  SIGVZX(MVSIZ), DPLA (MVSIZ)
+C-----------------------------------------------
+C   L o c a l   V a r i a b l e s
+C-----------------------------------------------
+      INTEGER GET_U_TASK,ITASK
+      EXTERNAL GET_U_TASK
+C-----------------------------------------------
+         ITASK=MAX(get_u_task(),1)
+
+C chrgt de la structure 
+C
+           ULAWCVAR_ARRAY(ITASK)%NCYCLE = NCYCLE
+           ULAWCVAR_ARRAY(ITASK)%ID     = IMAT
+           ULAWCVAR_ARRAY(ITASK)%ILAYER = ILAYER
+           ULAWCVAR_ARRAY(ITASK)%NPTA   = NPTA
+           ULAWCVAR_ARRAY(ITASK)%IFLAG  = IFLAG
+C
+           ULAWCVAR_ARRAY(ITASK)%R11    = R11
+           ULAWCVAR_ARRAY(ITASK)%R12    = R12
+           ULAWCVAR_ARRAY(ITASK)%R13    = R13 
+C
+           ULAWCVAR_ARRAY(ITASK)%R21    = R21
+           ULAWCVAR_ARRAY(ITASK)%R22    = R22
+           ULAWCVAR_ARRAY(ITASK)%R23    = R23 
+C
+           ULAWCVAR_ARRAY(ITASK)%R31    = R31
+           ULAWCVAR_ARRAY(ITASK)%R32    = R32
+           ULAWCVAR_ARRAY(ITASK)%R33    = R33 
+C
+!            ULAWCVAR_ARRAY(ITASK)%DIR_A  = DIR_A
+!            ULAWCVAR_ARRAY(ITASK)%DIR_B  = DIR_B
+C
+           ULAWCVAR_ARRAY(ITASK)%SIGOXX = SIGOXX
+           ULAWCVAR_ARRAY(ITASK)%SIGOYY = SIGOYY
+           ULAWCVAR_ARRAY(ITASK)%SIGOXY = SIGOXY
+           ULAWCVAR_ARRAY(ITASK)%SIGOYZ = SIGOYZ
+           ULAWCVAR_ARRAY(ITASK)%SIGOZX = SIGOZX
+C
+           ULAWCVAR_ARRAY(ITASK)%EPSPXX = EPSPXX
+           ULAWCVAR_ARRAY(ITASK)%EPSPYY = EPSPYY
+           ULAWCVAR_ARRAY(ITASK)%EPSPXY = EPSPXY
+           ULAWCVAR_ARRAY(ITASK)%EPSPYZ = EPSPYZ
+           ULAWCVAR_ARRAY(ITASK)%EPSPZX = EPSPZX
+C                
+           ULAWCVAR_ARRAY(ITASK)%EPSXX = EPSXX
+           ULAWCVAR_ARRAY(ITASK)%EPSYY = EPSYY
+           ULAWCVAR_ARRAY(ITASK)%EPSXY = EPSXY
+           ULAWCVAR_ARRAY(ITASK)%EPSYZ = EPSYZ
+           ULAWCVAR_ARRAY(ITASK)%EPSZX = EPSZX          
+C                
+           ULAWCVAR_ARRAY(ITASK)%DEPSXX = DEPSXX
+           ULAWCVAR_ARRAY(ITASK)%DEPSYY = DEPSYY
+           ULAWCVAR_ARRAY(ITASK)%DEPSXY = DEPSXY
+           ULAWCVAR_ARRAY(ITASK)%DEPSYZ = DEPSYZ           
+           ULAWCVAR_ARRAY(ITASK)%DEPSZX = DEPSZX                     
+C
+           ULAWCVAR_ARRAY(ITASK)%THKLYL = THKLYL          
+           ULAWCVAR_ARRAY(ITASK)%THKN = THKN
+c
+           ULAWCVAR_ARRAY(ITASK)%SIGNXX = SIGNXX
+           ULAWCVAR_ARRAY(ITASK)%SIGNYY = SIGNYY
+           ULAWCVAR_ARRAY(ITASK)%SIGNXY = SIGNXY
+           ULAWCVAR_ARRAY(ITASK)%SIGNYZ = SIGNYZ
+           ULAWCVAR_ARRAY(ITASK)%SIGNZX = SIGNZX
+c
+           ULAWCVAR_ARRAY(ITASK)%SIGVXX = SIGVXX
+           ULAWCVAR_ARRAY(ITASK)%SIGVYY = SIGVYY
+           ULAWCVAR_ARRAY(ITASK)%SIGVXY = SIGVXY
+           ULAWCVAR_ARRAY(ITASK)%SIGVYZ = SIGVYZ
+           ULAWCVAR_ARRAY(ITASK)%SIGVZX = SIGVZX
+           
+           ULAWCVAR_ARRAY(ITASK)%DPLA = DPLA                  
+
+
+
+      END
+Chd|====================================================================
+Chd|  ST_GET_ULAWCVAR_ARRAY(ITASK)_VAR                        src/user1/lecm99.F            
+Chd|-- called by -----------
+Chd|        LECMUSER                      src/mater1/lecmuser.F         
+Chd|-- calls ---------------
+Chd|====================================================================
+      SUBROUTINE ENG_GET_LAWC_USER_VAR_2(FPSXX,SIZVAR01,FPSYY,SIZVAR02,
+     *    FPSZZ,SIZVAR03,FPSXY,SIZVAR04,FPSYX,SIZVAR05,TEMP ,SIZTEMP ,
+     *    VAR07,IPG     ,VAR08,SIZVAR08,VAR09,SIZVAR09,VAR10,SIZVAR10,
+     *    VAR11,SIZVAR11,VAR12,SIZVAR12,VAR13,SIZVAR13,VAR14,SIZVAR14,
+     *    VAR15,SIZVAR15,VAR16,SIZVAR16,VAR17,SIZVAR17,VAR18,SIZVAR18,    
+     *    VAR19,SIZVAR19,VAR20,SIZVAR20,VAR21,SIZVAR21,VAR22,SIZVAR22,
+     *    VAR23,SIZVAR23,VAR24,SIZVAR24,VAR25,SIZVAR25,VAR26,SIZVAR26,    
+     *    VAR27,SIZVAR27,VAR28,SIZVAR28,VAR29,SIZVAR29,VAR30,SIZVAR30,
+     *    VAR31,SIZVAR31,VAR32,SIZVAR32,VAR33,SIZVAR33,VAR34,SIZVAR34,    
+     *    VAR35,SIZVAR35,VAR36,SIZVAR36,VAR37,SIZVAR37,VAR38,SIZVAR38,
+     *    VAR39,SIZVAR39,VAR40,SIZVAR40,VAR41,SIZVAR41,VAR42,SIZVAR42,    
+     *    VAR43,SIZVAR43,VAR44,SIZVAR44,VAR45,SIZVAR45,VAR46,SIZVAR46,
+     *    VAR47,SIZVAR47,VAR48,SIZVAR48,VAR49,SIZVAR49,VAR50,SIZVAR50,    
+     *    VAR51,SIZVAR51,VAR52,SIZVAR52,VAR53,SIZVAR53,VAR54,SIZVAR54,
+     *    VAR55,SIZVAR55,VAR56,SIZVAR56,VAR57,SIZVAR57,VAR58,SIZVAR58,    
+     *    VAR59,SIZVAR59,VAR60,SIZVAR60,VAR61,SIZVAR61,VAR62,SIZVAR62,
+     *    VAR63,SIZVAR63,VAR64,SIZVAR64,VAR65,SIZVAR65,VAR66,SIZVAR66,    
+     *    VAR67,SIZVAR67,VAR68,SIZVAR68,VAR69,SIZVAR69,VAR70,SIZVAR70,
+     *    VAR71,SIZVAR72,VAR73,SIZVAR73,VAR74,SIZVAR74,VAR75,SIZVAR75,
+     *    VAR76,SIZVAR76,VAR77,SIZVAR77,VAR78,SIZVAR78,VAR79,SIZVAR79,
+     *    VAR80,SIZVAR80,VAR81,SIZVAR81,VAR82,SIZVAR82,VAR83,SIZVAR83,    
+     *    VAR84,SIZVAR84,VAR85,SIZVAR85,VAR86,SIZVAR86,VAR87,SIZVAR87,
+     *    VAR88,SIZVAR88,VAR89,SIZVAR89,VAR90,SIZVAR90,VAR91,SIZVAR91,    
+     *    VAR92,SIZVAR92,VAR93,SIZVAR93,VAR94,SIZVAR94,VAR95,SIZVAR95,
+     *    VAR96,SIZVAR96,VAR97,SIZVAR97,VAR98,SIZVAR98,VAR99,SIZVAR99)
+
+#ifdef _WIN64
+!DEC$ ATTRIBUTES DLLEXPORT, DECORATE, ALIAS : "ENG_GET_LAWC_USER_VAR_2" :: ENG_GET_LAWC_USER_VAR_2
+!DEC$ ATTRIBUTES REFERENCE ::   FPSXX,SIZVAR01,FPSYY,SIZVAR02,
+     *    FPSZZ,SIZVAR03,FPSXY,SIZVAR04,FPSYX,SIZVAR05,TEMP ,SIZTEMP ,
+     *    VAR07,SIZVAR07,VAR08,SIZVAR08,VAR09,SIZVAR09,VAR10,SIZVAR10,
+     *    VAR11,SIZVAR11,VAR12,SIZVAR12,VAR13,SIZVAR13,VAR14,SIZVAR14,
+     *    VAR15,SIZVAR15,VAR16,SIZVAR16,VAR17,SIZVAR17,VAR18,SIZVAR18,    
+     *    VAR19,SIZVAR19,VAR20,SIZVAR20,VAR21,SIZVAR21,VAR22,SIZVAR22,
+     *    VAR23,SIZVAR23,VAR24,SIZVAR24,VAR25,SIZVAR25,VAR26,SIZVAR26,    
+     *    VAR27,SIZVAR27,VAR28,SIZVAR28,VAR29,SIZVAR29,VAR30,SIZVAR30,
+     *    VAR31,SIZVAR31,VAR32,SIZVAR32,VAR33,SIZVAR33,VAR34,SIZVAR34,    
+     *    VAR35,SIZVAR35,VAR36,SIZVAR36,VAR37,SIZVAR37,VAR38,SIZVAR38,
+     *    VAR39,SIZVAR39,VAR40,SIZVAR40,VAR41,SIZVAR41,VAR42,SIZVAR42,    
+     *    VAR43,SIZVAR43,VAR44,SIZVAR44,VAR45,SIZVAR45,VAR46,SIZVAR46,
+     *    VAR47,SIZVAR47,VAR48,SIZVAR48,VAR49,SIZVAR49,VAR50,SIZVAR50,    
+     *    VAR51,SIZVAR51,VAR52,SIZVAR52,VAR53,SIZVAR53,VAR54,SIZVAR54,
+     *    VAR55,SIZVAR55,VAR56,SIZVAR56,VAR57,SIZVAR57,VAR58,SIZVAR58,    
+     *    VAR59,SIZVAR59,VAR60,SIZVAR60,VAR61,SIZVAR61,VAR62,SIZVAR62,
+     *    VAR63,SIZVAR63,VAR64,SIZVAR64,VAR65,SIZVAR65,VAR66,SIZVAR66,    
+     *    VAR67,SIZVAR67,VAR68,SIZVAR68,VAR69,SIZVAR69,VAR70,SIZVAR70,
+     *    VAR71,SIZVAR72,VAR73,SIZVAR73,VAR74,SIZVAR74,VAR75,SIZVAR75,
+     *    VAR76,SIZVAR76,VAR77,SIZVAR77,VAR78,SIZVAR78,VAR79,SIZVAR79,
+     *    VAR80,SIZVAR80,VAR81,SIZVAR81,VAR82,SIZVAR82,VAR83,SIZVAR83,    
+     *    VAR84,SIZVAR84,VAR85,SIZVAR85,VAR86,SIZVAR86,VAR87,SIZVAR87,
+     *    VAR88,SIZVAR88,VAR89,SIZVAR89,VAR90,SIZVAR90,VAR91,SIZVAR91,    
+     *    VAR92,SIZVAR92,VAR93,SIZVAR93,VAR94,SIZVAR94,VAR95,SIZVAR95,
+     *    VAR96,SIZVAR96,VAR97,SIZVAR97,VAR98,SIZVAR98,VAR99,SIZVAR99
+#endif 
+      USE LAW_USERSH_VAR
+C-----------------------------------------------
+C   I m p l i c i t   T y p e s
+C-----------------------------------------------
+#include "implicit_f.inc"
+C-----------------------------------------------
+C   D u m m y   A r g u m e n t s
+C-----------------------------------------------
+        INTEGER    SIZVAR01,SIZVAR02,SIZVAR03,
+     *    SIZVAR04,SIZVAR05,SIZTEMP ,IPG,
+     *    SIZVAR08,SIZVAR09,SIZVAR10,SIZVAR11,
+     *    SIZVAR12,SIZVAR13,SIZVAR14,SIZVAR15,
+     *    SIZVAR16,SIZVAR17,SIZVAR18,SIZVAR19,
+     *    SIZVAR20,SIZVAR21,SIZVAR22,SIZVAR23,
+     *    SIZVAR24,SIZVAR25,SIZVAR26,SIZVAR27,
+     *    SIZVAR28,SIZVAR29,SIZVAR30,SIZVAR31,
+     *    SIZVAR32,SIZVAR33,SIZVAR34,SIZVAR35,
+     *    SIZVAR36,SIZVAR37,SIZVAR38,SIZVAR39,
+     *    SIZVAR40,SIZVAR41,SIZVAR42,SIZVAR43,
+     *    SIZVAR44,SIZVAR45,SIZVAR46,SIZVAR47,
+     *    SIZVAR48,SIZVAR49,SIZVAR50,SIZVAR51,
+     *    SIZVAR52,SIZVAR53,SIZVAR54,SIZVAR55,
+     *    SIZVAR56,SIZVAR57,SIZVAR58,SIZVAR59,
+     *    SIZVAR60,SIZVAR61,SIZVAR62,SIZVAR63,
+     *    SIZVAR64,SIZVAR65,SIZVAR66,SIZVAR67,
+     *    SIZVAR68,SIZVAR69,SIZVAR70,SIZVAR71,
+     *    SIZVAR72,SIZVAR73,SIZVAR74,SIZVAR75,
+     *    SIZVAR76,SIZVAR77,SIZVAR78,SIZVAR79,
+     *    SIZVAR80,SIZVAR81,SIZVAR82,SIZVAR83,    
+     *    SIZVAR84,SIZVAR85,SIZVAR86,SIZVAR87,
+     *    SIZVAR88,SIZVAR89,SIZVAR90,SIZVAR91,    
+     *    SIZVAR92,SIZVAR93,SIZVAR94,SIZVAR95,
+     *    SIZVAR96,SIZVAR97,SIZVAR98,SIZVAR99
+
+        my_real    FPSXX(*),FPSYY(*),
+     *    FPSZZ(*),FPSXY(*),FPSYX(*),TEMP(SIZTEMP),
+     *    VAR07(*),VAR08(*),VAR09(*),VAR10(*),
+     *    VAR11(*),VAR12(*),VAR13(*),VAR14(*),
+     *    VAR15(*),VAR16(*),VAR17(*),VAR18(*),    
+     *    VAR19(*),VAR20(*),VAR21(*),VAR22(*),
+     *    VAR23(*),VAR24(*),VAR25(*),VAR26(*),    
+     *    VAR27(*),VAR28(*),VAR29(*),VAR30(*),
+     *    VAR31(*),VAR32(*),VAR33(*),VAR34(*),    
+     *    VAR35(*),VAR36(*),VAR37(*),VAR38(*),
+     *    VAR39(*),VAR40(*),VAR41(*),VAR42(*),    
+     *    VAR43(*),VAR44(*),VAR45(*),VAR46(*),
+     *    VAR47(*),VAR48(*),VAR49(*),VAR50(*),    
+     *    VAR51(*),VAR52(*),VAR53(*),VAR54(*),
+     *    VAR55(*),VAR56(*),VAR57(*),VAR58(*),    
+     *    VAR59(*),VAR60(*),VAR61(*),VAR62(*),
+     *    VAR63(*),VAR64(*),VAR65(*),VAR66(*),    
+     *    VAR67(*),VAR68(*),VAR69(*),VAR70(*),
+     *    VAR71(*),VAR73(*),VAR74(*),VAR75(*),
+     *    VAR76(*),VAR77(*),VAR78(*),VAR79(*),
+     *    VAR80(*),VAR81(*),VAR82(*),VAR83(*),    
+     *    VAR84(*),VAR85(*),VAR86(*),VAR87(*),
+     *    VAR88(*),VAR89(*),VAR90(*),VAR91(*),    
+     *    VAR92(*),VAR93(*),VAR94(*),VAR95(*),
+     *    VAR96(*),VAR97(*),VAR98(*),VAR99(*)
+C-----------------------------------------------
+C   L o c a l   V a r i a b l e s
+C-----------------------------------------------
+      INTEGER GET_U_TASK,ITASK
+      EXTERNAL GET_U_TASK
+C-----------------------------------------------
+         ITASK=MAX(get_u_task(),1)
+ 
+          
+          IF (SIZVAR01 > 0) ULAWCVAR_ARRAY(ITASK)%FPSXX(1:SIZVAR01) = FPSXX(1:SIZVAR01)
+          IF (SIZVAR02 > 0) ULAWCVAR_ARRAY(ITASK)%FPSYY(1:SIZVAR02) = FPSYY(1:SIZVAR02)
+          IF (SIZVAR03 > 0) ULAWCVAR_ARRAY(ITASK)%FPSZZ(1:SIZVAR03) = FPSZZ(1:SIZVAR03)
+          IF (SIZVAR04 > 0) ULAWCVAR_ARRAY(ITASK)%FPSXY(1:SIZVAR04) = FPSXY(1:SIZVAR04)
+          IF (SIZVAR05 > 0) ULAWCVAR_ARRAY(ITASK)%FPSYX(1:SIZVAR05) = FPSYX(1:SIZVAR05)
+          IF (SIZTEMP  > 0) ULAWCVAR_ARRAY(ITASK)%TEMP (1:SIZTEMP)  = TEMP (1:SIZTEMP)
+          ULAWCVAR_ARRAY(ITASK)%IPG=IPG
+      END
+      
+Chd|====================================================================
+Chd|  ST_GET_ULAWCVAR_VAR                        src/user1/lecm99.F            
+Chd|-- called by -----------
+Chd|        LECMUSER                      src/mater1/lecmuser.F         
+Chd|-- calls ---------------
+Chd|====================================================================
+      SUBROUTINE ENG_SET_LAWC_USER_VAR( SIGNXX, SIGNYY, SIGNXY, SIGNYZ,  SIGNZX,
+     *                                  SIGVXX, SIGVYY, SIGVXY, SIGVYZ,  SIGVZX,
+     *                                  DPLA,   ETSE,   THKN ) 
+#ifdef _WIN64
+!DEC$ ATTRIBUTES DLLEXPORT, DECORATE, ALIAS : "ENG_SET_LAWC_USER_VAR" :: ENG_SET_LAWC_USER_VAR
+!DEC$ ATTRIBUTES REFERENCE :: SIGNXX, SIGNYY, SIGNXY, SIGNYZ,  SIGNZX,
+     *                                  SIGVXX, SIGVYY, SIGVXY, SIGVYZ,  SIGVZX,
+     *                                  DPLA,   ETSE,   THKN 
+#endif
+      USE LAW_USERSH_VAR
+C-----------------------------------------------
+C   I m p l i c i t   T y p e s
+C-----------------------------------------------
+#include "implicit_f.inc"
+C-----------------------------------------------
+C   D u m m y   A r g u m e n t s
+C-----------------------------------------------
+       my_real SIGNXX(MVSIZ), SIGNYY(MVSIZ), SIGNXY(MVSIZ), SIGNYZ(MVSIZ),  SIGNZX(MVSIZ),
+     *         SIGVXX(MVSIZ), SIGVYY(MVSIZ), SIGVXY(MVSIZ), SIGVYZ(MVSIZ),  SIGVZX(MVSIZ),
+     *         DPLA(MVSIZ),   ETSE(MVSIZ),   THKN (MVSIZ)
+C-----------------------------------------------
+C   L o c a l   V a r i a b l e s
+C-----------------------------------------------
+      INTEGER GET_U_TASK,ITASK
+      EXTERNAL GET_U_TASK
+C-----------------------------------------------
+         ITASK=MAX(get_u_task(),1)
+
+C send back results to main program
+          SIGNXX = ULAWCVAR_ARRAY(ITASK)%SIGNXX
+          SIGNYY = ULAWCVAR_ARRAY(ITASK)%SIGNYY
+          SIGNXY = ULAWCVAR_ARRAY(ITASK)%SIGNXY
+          SIGNYZ = ULAWCVAR_ARRAY(ITASK)%SIGNYZ 
+          SIGNZX = ULAWCVAR_ARRAY(ITASK)%SIGNZX
+C           
+          SIGVXX = ULAWCVAR_ARRAY(ITASK)%SIGVXX
+          SIGVYY = ULAWCVAR_ARRAY(ITASK)%SIGVYY
+          SIGVXY = ULAWCVAR_ARRAY(ITASK)%SIGVXY
+          SIGVYZ = ULAWCVAR_ARRAY(ITASK)%SIGVYZ 
+          SIGVZX = ULAWCVAR_ARRAY(ITASK)%SIGVZX 
+          DPLA   = ULAWCVAR_ARRAY(ITASK)%DPLA
+          ETSE   = ULAWCVAR_ARRAY(ITASK)%ETSE
+          THKN    = ULAWCVAR_ARRAY(ITASK)%THKN
+       END
+Chd|====================================================================
+Chd|  ST_GET_ULAWCVAR_VAR                        src/user1/lecm99.F            
+Chd|-- called by -----------
+Chd|        LECMUSER                      src/mater1/lecmuser.F         
+Chd|-- calls ---------------
+Chd|====================================================================
+      SUBROUTINE ENG_SET_LAWC_USER_VAR_2(TEMPEL,SIZVAR01,VAR02,SIZVAR02,
+     *    VAR03,SIZVAR03,VAR04,SIZVAR04,VAR05,SIZVAR05,VAR06,SIZVAR06,
+     *    VAR07,SIZVAR07,VAR08,SIZVAR08,VAR09,SIZVAR09,VAR10,SIZVAR10,
+     *    VAR11,SIZVAR11,VAR12,SIZVAR12,VAR13,SIZVAR13,VAR14,SIZVAR14,
+     *    VAR15,SIZVAR15,VAR16,SIZVAR16,VAR17,SIZVAR17,VAR18,SIZVAR18,    
+     *    VAR19,SIZVAR19,VAR20,SIZVAR20,VAR21,SIZVAR21,VAR22,SIZVAR22,
+     *    VAR23,SIZVAR23,VAR24,SIZVAR24,VAR25,SIZVAR25,VAR26,SIZVAR26,    
+     *    VAR27,SIZVAR27,VAR28,SIZVAR28,VAR29,SIZVAR29,VAR30,SIZVAR30,
+     *    VAR31,SIZVAR31,VAR32,SIZVAR32,VAR33,SIZVAR33,VAR34,SIZVAR34,    
+     *    VAR35,SIZVAR35,VAR36,SIZVAR36,VAR37,SIZVAR37,VAR38,SIZVAR38,
+     *    VAR39,SIZVAR39,VAR40,SIZVAR40,VAR41,SIZVAR41,VAR42,SIZVAR42,    
+     *    VAR43,SIZVAR43,VAR44,SIZVAR44,VAR45,SIZVAR45,VAR46,SIZVAR46,
+     *    VAR47,SIZVAR47,VAR48,SIZVAR48,VAR49,SIZVAR49,VAR50,SIZVAR50,    
+     *    VAR51,SIZVAR51,VAR52,SIZVAR52,VAR53,SIZVAR53,VAR54,SIZVAR54,
+     *    VAR55,SIZVAR55,VAR56,SIZVAR56,VAR57,SIZVAR57,VAR58,SIZVAR58,    
+     *    VAR59,SIZVAR59,VAR60,SIZVAR60,VAR61,SIZVAR61,VAR62,SIZVAR62,
+     *    VAR63,SIZVAR63,VAR64,SIZVAR64,VAR65,SIZVAR65,VAR66,SIZVAR66,    
+     *    VAR67,SIZVAR67,VAR68,SIZVAR68,VAR69,SIZVAR69,VAR70,SIZVAR70,
+     *    VAR71,SIZVAR72,VAR73,SIZVAR73,VAR74,SIZVAR74,VAR75,SIZVAR75,
+     *    VAR76,SIZVAR76,VAR77,SIZVAR77,VAR78,SIZVAR78,VAR79,SIZVAR79,
+     *    VAR80,SIZVAR80,VAR81,SIZVAR81,VAR82,SIZVAR82,VAR83,SIZVAR83,    
+     *    VAR84,SIZVAR84,VAR85,SIZVAR85,VAR86,SIZVAR86,VAR87,SIZVAR87,
+     *    VAR88,SIZVAR88,VAR89,SIZVAR89,VAR90,SIZVAR90,VAR91,SIZVAR91,    
+     *    VAR92,SIZVAR92,VAR93,SIZVAR93,VAR94,SIZVAR94,VAR95,SIZVAR95,
+     *    VAR96,SIZVAR96,VAR97,SIZVAR97,VAR98,SIZVAR98,VAR99,SIZVAR99)
+
+#ifdef _WIN64
+!DEC$ ATTRIBUTES DLLEXPORT, DECORATE, ALIAS : "ENG_SET_LAWC_USER_VAR_2" :: ENG_SET_LAWC_USER_VAR_2
+!DEC$ ATTRIBUTES REFERENCE ::   TEMPEL,SIZVAR01,VAR02,SIZVAR02,
+     *    VAR03,SIZVAR03,VAR04,SIZVAR04,VAR05,SIZVAR05,VAR06,SIZVAR06,
+     *    VAR07,SIZVAR07,VAR08,SIZVAR08,VAR09,SIZVAR09,VAR10,SIZVAR10,
+     *    VAR11,SIZVAR11,VAR12,SIZVAR12,VAR13,SIZVAR13,VAR14,SIZVAR14,
+     *    VAR15,SIZVAR15,VAR16,SIZVAR16,VAR17,SIZVAR17,VAR18,SIZVAR18,    
+     *    VAR19,SIZVAR19,VAR20,SIZVAR20,VAR21,SIZVAR21,VAR22,SIZVAR22,
+     *    VAR23,SIZVAR23,VAR24,SIZVAR24,VAR25,SIZVAR25,VAR26,SIZVAR26,    
+     *    VAR27,SIZVAR27,VAR28,SIZVAR28,VAR29,SIZVAR29,VAR30,SIZVAR30,
+     *    VAR31,SIZVAR31,VAR32,SIZVAR32,VAR33,SIZVAR33,VAR34,SIZVAR34,    
+     *    VAR35,SIZVAR35,VAR36,SIZVAR36,VAR37,SIZVAR37,VAR38,SIZVAR38,
+     *    VAR39,SIZVAR39,VAR40,SIZVAR40,VAR41,SIZVAR41,VAR42,SIZVAR42,    
+     *    VAR43,SIZVAR43,VAR44,SIZVAR44,VAR45,SIZVAR45,VAR46,SIZVAR46,
+     *    VAR47,SIZVAR47,VAR48,SIZVAR48,VAR49,SIZVAR49,VAR50,SIZVAR50,    
+     *    VAR51,SIZVAR51,VAR52,SIZVAR52,VAR53,SIZVAR53,VAR54,SIZVAR54,
+     *    VAR55,SIZVAR55,VAR56,SIZVAR56,VAR57,SIZVAR57,VAR58,SIZVAR58,    
+     *    VAR59,SIZVAR59,VAR60,SIZVAR60,VAR61,SIZVAR61,VAR62,SIZVAR62,
+     *    VAR63,SIZVAR63,VAR64,SIZVAR64,VAR65,SIZVAR65,VAR66,SIZVAR66,    
+     *    VAR67,SIZVAR67,VAR68,SIZVAR68,VAR69,SIZVAR69,VAR70,SIZVAR70,
+     *    VAR71,SIZVAR72,VAR73,SIZVAR73,VAR74,SIZVAR74,VAR75,SIZVAR75,
+     *    VAR76,SIZVAR76,VAR77,SIZVAR77,VAR78,SIZVAR78,VAR79,SIZVAR79,
+     *    VAR80,SIZVAR80,VAR81,SIZVAR81,VAR82,SIZVAR82,VAR83,SIZVAR83,    
+     *    VAR84,SIZVAR84,VAR85,SIZVAR85,VAR86,SIZVAR86,VAR87,SIZVAR87,
+     *    VAR88,SIZVAR88,VAR89,SIZVAR89,VAR90,SIZVAR90,VAR91,SIZVAR91,    
+     *    VAR92,SIZVAR92,VAR93,SIZVAR93,VAR94,SIZVAR94,VAR95,SIZVAR95,
+     *    VAR96,SIZVAR96,VAR97,SIZVAR97,VAR98,SIZVAR98,VAR99,SIZVAR99
+#endif 
+      USE LAW_USERSH_VAR
+C-----------------------------------------------
+C   I m p l i c i t   T y p e s
+C-----------------------------------------------
+#include "implicit_f.inc"
+C-----------------------------------------------
+C   D u m m y   A r g u m e n t s
+C-----------------------------------------------
+        INTEGER    SIZVAR01,SIZVAR02,SIZVAR03,
+     *    SIZVAR04,SIZVAR05,SIZVAR06,SIZVAR07,
+     *    SIZVAR08,SIZVAR09,SIZVAR10,SIZVAR11,
+     *    SIZVAR12,SIZVAR13,SIZVAR14,SIZVAR15,
+     *    SIZVAR16,SIZVAR17,SIZVAR18,SIZVAR19,
+     *    SIZVAR20,SIZVAR21,SIZVAR22,SIZVAR23,
+     *    SIZVAR24,SIZVAR25,SIZVAR26,SIZVAR27,
+     *    SIZVAR28,SIZVAR29,SIZVAR30,SIZVAR31,
+     *    SIZVAR32,SIZVAR33,SIZVAR34,SIZVAR35,
+     *    SIZVAR36,SIZVAR37,SIZVAR38,SIZVAR39,
+     *    SIZVAR40,SIZVAR41,SIZVAR42,SIZVAR43,
+     *    SIZVAR44,SIZVAR45,SIZVAR46,SIZVAR47,
+     *    SIZVAR48,SIZVAR49,SIZVAR50,SIZVAR51,
+     *    SIZVAR52,SIZVAR53,SIZVAR54,SIZVAR55,
+     *    SIZVAR56,SIZVAR57,SIZVAR58,SIZVAR59,
+     *    SIZVAR60,SIZVAR61,SIZVAR62,SIZVAR63,
+     *    SIZVAR64,SIZVAR65,SIZVAR66,SIZVAR67,
+     *    SIZVAR68,SIZVAR69,SIZVAR70,SIZVAR71,
+     *    SIZVAR72,SIZVAR73,SIZVAR74,SIZVAR75,
+     *    SIZVAR76,SIZVAR77,SIZVAR78,SIZVAR79,
+     *    SIZVAR80,SIZVAR81,SIZVAR82,SIZVAR83,    
+     *    SIZVAR84,SIZVAR85,SIZVAR86,SIZVAR87,
+     *    SIZVAR88,SIZVAR89,SIZVAR90,SIZVAR91,    
+     *    SIZVAR92,SIZVAR93,SIZVAR94,SIZVAR95,
+     *    SIZVAR96,SIZVAR97,SIZVAR98,SIZVAR99
+
+        my_real    TEMPEL(*),VAR02(*),
+     *    VAR03(*),VAR04(*),VAR05(*),VAR06(*),
+     *    VAR07(*),VAR08(*),VAR09(*),VAR10(*),
+     *    VAR11(*),VAR12(*),VAR13(*),VAR14(*),
+     *    VAR15(*),VAR16(*),VAR17(*),VAR18(*),    
+     *    VAR19(*),VAR20(*),VAR21(*),VAR22(*),
+     *    VAR23(*),VAR24(*),VAR25(*),VAR26(*),    
+     *    VAR27(*),VAR28(*),VAR29(*),VAR30(*),
+     *    VAR31(*),VAR32(*),VAR33(*),VAR34(*),    
+     *    VAR35(*),VAR36(*),VAR37(*),VAR38(*),
+     *    VAR39(*),VAR40(*),VAR41(*),VAR42(*),    
+     *    VAR43(*),VAR44(*),VAR45(*),VAR46(*),
+     *    VAR47(*),VAR48(*),VAR49(*),VAR50(*),    
+     *    VAR51(*),VAR52(*),VAR53(*),VAR54(*),
+     *    VAR55(*),VAR56(*),VAR57(*),VAR58(*),    
+     *    VAR59(*),VAR60(*),VAR61(*),VAR62(*),
+     *    VAR63(*),VAR64(*),VAR65(*),VAR66(*),    
+     *    VAR67(*),VAR68(*),VAR69(*),VAR70(*),
+     *    VAR71(*),VAR73(*),VAR74(*),VAR75(*),
+     *    VAR76(*),VAR77(*),VAR78(*),VAR79(*),
+     *    VAR80(*),VAR81(*),VAR82(*),VAR83(*),    
+     *    VAR84(*),VAR85(*),VAR86(*),VAR87(*),
+     *    VAR88(*),VAR89(*),VAR90(*),VAR91(*),    
+     *    VAR92(*),VAR93(*),VAR94(*),VAR95(*),
+     *    VAR96(*),VAR97(*),VAR98(*),VAR99(*)
+C
+      INTEGER GET_U_TASK,ITASK
+      EXTERNAL GET_U_TASK
+C-----------------------------------------------
+        ITASK=MAX(get_u_task(),1)
+c           
+        IF (SIZVAR01 > 0) TEMPEL(1:SIZVAR01) = ULAWCVAR_ARRAY(ITASK)%TEMP(1:SIZVAR01)
+c--------
+      END

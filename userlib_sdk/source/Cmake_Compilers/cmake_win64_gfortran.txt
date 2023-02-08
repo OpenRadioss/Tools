@@ -1,0 +1,20 @@
+# Win64 specific compilation flags
+##################################
+set ( CMAKE_Fortran_COMPILER "gfortran" )
+set ( CMAKE_C_COMPILER "gcc" )
+
+if (precision STREQUAL "sp")
+    set ( lib_prec "_sp" )
+    set (build_prec "-DMYREAL4")
+else()
+    set ( lib_prec "" )
+    set (build_prec "-DMYREAL8")
+endif()
+
+set (lib_suffix "")
+
+set ( Fortran_Compiler_flags "-s -fpic -fno-underscoring -ffixed-line-length-132  -O2  -fopenmp -DGCC_COMP ${build_prec}")
+set ( C_Compiler_flags " -s  -fpic  -O2 -fopenmp -DGCC_COMP ${build_prec}")
+
+
+
