@@ -16,13 +16,13 @@ Tools Repository is dedicated to hosts tools for OpenRadioss:
 
 ## userlib_sdk : Radioss user library SDK 
 
-**Altair® Radioss®** and **OpenRadioss** have a user interface to create subroutines and use them in Radioss. 
+**Altair® Radioss®** and **OpenRadioss** have a user interface to create libraries containing user routines and use them in Radioss. 
 The user library is generated using the userlib_sdk. The userlib_sdk is a collection of different platforms and compilers to create libraries.
 Each platform/compiler set has a `build_script`, a static library and Fortran Module files. Those will permit to generate the user library.
 
 https://github.com/OpenRadioss/tools/tree/main/userlib_sdk
 
-# How to contribrute in Tools 
+# How to contribute in Tools 
 
 [How to contribute in Tools](Contributing.md)
 
