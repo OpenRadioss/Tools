@@ -847,6 +847,17 @@ void  _FCALL GET_TABLE_VALUE_DYDX(int *ITABLE, double *XX, double *XXDIM, double
     get_table_value_dydx_p(ITABLE, XX, XXDIM, YY, DYDX);
 }
 
+void (*set_user_window_nodes_p)(int *USERNODS, int * NUMBER_NODES);
+void  _FCALL SET_USER_WINDOW_NODES(int *USERNODS, int *NUMBER_USERNODS){
+         set_user_window_nodes_p(USERNODS, NUMBER_USERNODS);
+}
+
+void (*get_user_window_nodes_p)(int *INTERNAL_ID,int *USER_ID);
+void  _FCALL GET_USER_WINDOW_NODES(int *INTERNAL_ID,int *USER_ID){
+         get_user_window_nodes_p(INTERNAL_ID,USER_ID);
+}
+
+
 __declspec(dllexport) void set_callback ( void ** callback_array)
 {
   finter_p              = callback_array[ 0];
@@ -921,6 +932,8 @@ __declspec(dllexport) void set_callback ( void ** callback_array)
   rad_umat_close_input_p = callback_array[69];
   set_u_sens_spmd_node_list_p = callback_array[70];
   get_table_value_dydx_p  = callback_array[71];
+  set_user_window_nodes_p = callback_array[72];
+  get_user_window_nodes_p = callback_array[73];
 }
 
 #elif 1
