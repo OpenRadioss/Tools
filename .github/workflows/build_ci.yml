@@ -1,0 +1,59 @@
+name: PR Merge CI MAIN
+
+on:
+
+  push:
+    branches:
+      - main
+
+env:
+  JENKINS_SERVER_IP: ${{ secrets.JENKINS_SERVER_IP }}
+  JENKINS_SERVER_NAME: ${{ secrets.JENKINS_SERVER_NAME }}
+  JENKINS_URL: ${{ secrets.JENKINS_URL }}
+
+jobs:
+
+  build_linux:      
+    runs-on: ["linux64"]
+    container: 
+      image: fr-qafactorydev.europe.altair.com/trigger-jenkins
+      credentials: 
+        username: ${{secrets.DOCKER_REGISTRY_USER}}
+        password: ${{secrets.DOCKER_REGISTRY_PASSWD}}
+      volumes: 
+        - /etc/localtime:/etc/localtime:ro  
+
+    strategy:
+      # If one job fails others are canceled
+      fail-fast: true
+      matrix:
+        include:
+          - os: linux64
+            compiler: intel
+            precision: dp
+          - os: linux64
+            compiler: intel
+            precision: sp
+          - os: linuxa64
+            compiler: armflang
+            precision: dp
+          - os: linuxa64
+            compiler: armflang
+            precision: sp
+          - os: win64
+            compiler: intel
+            precision: dp
+          - os: win64
+            compiler: intel
+            precision: sp            
+    steps:
+      - name: Trigger jenkins
+        run: |
+          echo "$JENKINS_SERVER_IP $JENKINS_SERVER_NAME" >> /etc/hosts
+          cat /etc/hosts
+          USERLIB_SDK_JOB_NAME="from_github_build_sdk_${{ matrix.os }}"
+          curl --capath "/root/altair_certs" --cacert "/root/altair_certs/wildcard_europe_altair_com.crt" -i \
+            -X POST "$JENKINS_URL/job/$USERLIB_SDK_JOB_NAME/buildWithParameters?commit_id=$GITHUB_SHA&branch=$GITHUB_REF_NAME&precision=${{ matrix.precision }}&compiler=${{ matrix.compiler}}"
+
+
+
