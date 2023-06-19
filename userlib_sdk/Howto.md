@@ -153,7 +153,7 @@ Load the compiler variables :
 
 #### Compiler Environment
 
-OpenRadioss was tested with oneAPI 2022.3.1 + Visual Studio 2019. Cygwin is used to build OpenRadioss. 
+OpenRadioss was tested with oneAPI 2023.0 + Visual Studio 2019. Cygwin is used to build OpenRadioss. 
 Issues have been found with earlier oneAPI releases. It is not recommended to use previous versions.
 
 This chapter explains how to setup 
