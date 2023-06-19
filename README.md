@@ -14,6 +14,14 @@ If you have any questions about OpenRadioss, please feel free to contact <webmas
 
 Tools Repository is dedicated to hosts tools for OpenRadioss:
 
+## output_converters : Output converter
+
+* anim_to_csv : converts OpenRadioss animation files to csv format.
+* th_to_nms   : converts OpenRadioss time history files to nms format.
+
+https://github.com/OpenRadioss/tools/tree/main/output_converters
+
+
 ## userlib_sdk : Radioss user library SDK 
 
 **Altair® Radioss®** and **OpenRadioss** have a user interface to create libraries containing user routines and use them in Radioss. 
@@ -21,6 +29,7 @@ The user library is generated using the userlib_sdk. The userlib_sdk is a collec
 Each platform/compiler set has a `build_script`, a static library and Fortran Module files. Those will permit to generate the user library.
 
 https://github.com/OpenRadioss/tools/tree/main/userlib_sdk
+
 
 # How to contribute in Tools 
 
