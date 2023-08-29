@@ -828,16 +828,19 @@ C           2ND RECORD : FAC_MASS,FAC_LENGTH,FAC_TIME */
                     strcat(ThPartNames[cptThPartNames],"RKE");
                     break;
                     case 25:
-                    strcat(ThPartNames[cptThPartNames],"HEAT");
-                    break;
-                    case 26:
-                    strcat(ThPartNames[cptThPartNames],"ZZMOM");
-                    break;
-                    case 27:
-                    strcat(ThPartNames[cptThPartNames],"ZZMOM");
+                    strcat(ThPartNames[cptThPartNames],"ERODED");
                     break;
                     case 28:
                     strcat(ThPartNames[cptThPartNames],"HEAT");
+                    break;
+                    case 29:
+                    strcat(ThPartNames[cptThPartNames],"VX");
+                    break;
+                    case 30:
+                    strcat(ThPartNames[cptThPartNames],"VY");
+                    break;
+                    case 31:
+                    strcat(ThPartNames[cptThPartNames],"VZ");
                     break;
                     default :
                     strcat(ThPartNames[cptThPartNames],"empty");
@@ -998,16 +1001,19 @@ C           2ND RECORD : FAC_MASS,FAC_LENGTH,FAC_TIME */
                         strcat(ThSubsNames[cptThSubsNames],"RKE");
                         break;
                         case 25:
-                        strcat(ThSubsNames[cptThSubsNames],"HEAT");
-                        break;
-                        case 26:
-                        strcat(ThSubsNames[cptThSubsNames],"ZZMOM");
-                        break;
-                        case 27:
-                        strcat(ThSubsNames[cptThSubsNames],"ZZMOM");
+                        strcat(ThSubsNames[cptThSubsNames],"ERODED");
                         break;
                         case 28:
                         strcat(ThSubsNames[cptThSubsNames],"HEAT");
+                        break;
+                        case 29:
+                        strcat(ThSubsNames[cptThSubsNames],"VX");
+                        break;
+                        case 30:
+                        strcat(ThSubsNames[cptThSubsNames],"VY");
+                        break;
+                        case 31:
+                        strcat(ThSubsNames[cptThSubsNames],"VZ");
                         break;
                         default :
                         strcat(ThSubsNames[cptThSubsNames],"empty");
