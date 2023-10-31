@@ -1,0 +1,6 @@
+cbuild_*
+vs_build*
+*.mod
+*.lib
+*.a
+
