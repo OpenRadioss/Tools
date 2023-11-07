@@ -1,4 +1,4 @@
-name: PR Merge CI MAIN
+name: Tools build CI 
 
 on:
 
@@ -10,11 +10,12 @@ env:
   JENKINS_SERVER_IP: ${{ secrets.JENKINS_SERVER_IP }}
   JENKINS_SERVER_NAME: ${{ secrets.JENKINS_SERVER_NAME }}
   JENKINS_URL: ${{ secrets.JENKINS_URL }}
+  CERTS_SERVER_NAME: ${{ secrets.CERTS_SERVER_NAME }}
 
 jobs:
 
   build_linux:      
-    runs-on: ["linux64"]
+    runs-on: ["linux64","prod"]
     container: 
       image: fr-qafactorydev.europe.altair.com/trigger-jenkins
       credentials: 
@@ -22,6 +23,7 @@ jobs:
         password: ${{secrets.DOCKER_REGISTRY_PASSWD}}
       volumes: 
         - /etc/localtime:/etc/localtime:ro  
+        - /etc/docker/certs.d:/etc/docker/certs.d:ro
 
     strategy:
       # If one job fails others are canceled
@@ -52,7 +54,7 @@ jobs:
           echo "$JENKINS_SERVER_IP $JENKINS_SERVER_NAME" >> /etc/hosts
           cat /etc/hosts
           USERLIB_SDK_JOB_NAME="from_github_build_sdk_${{ matrix.os }}"
-          curl --capath "/root/altair_certs" --cacert "/root/altair_certs/wildcard_europe_altair_com.crt" -i \
+          curl --capath "/etc/docker/certs.d/$CERTS_SERVER_NAME" --cacert "/etc/docker/certs.d/$CERTS_SERVER_NAME/wildcard_europe_altair_com.crt" -i \
             -X POST "$JENKINS_URL/job/$USERLIB_SDK_JOB_NAME/buildWithParameters?commit_id=$GITHUB_SHA&branch=$GITHUB_REF_NAME&precision=${{ matrix.precision }}&compiler=${{ matrix.compiler}}"
 
 
