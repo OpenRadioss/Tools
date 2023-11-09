@@ -15,6 +15,7 @@ env:
 jobs:
 
   build_linux:      
+    if: ${{ github.repository_owner == 'OpenRadioss' }}
     runs-on: ["linux64","prod"]
     container: 
       image: fr-qafactorydev.europe.altair.com/trigger-jenkins
