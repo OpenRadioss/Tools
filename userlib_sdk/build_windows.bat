@@ -100,7 +100,7 @@ if exist %build_directory% (
 
 call ..\source\Cmake_Compilers\cmake_%compiler%_compilers.bat
 
-cmake -G Ninja -Darch=%arch% -Dcompiler=%compiler% -Dprecision=%prec% -DCMAKE_Fortran_COMPILER=%fcomp% -DCMAKE_C_COMPILER=%ccomp% ..\source
+cmake -G Ninja -Darch=%arch% -Dcompiler=%compiler% -Dprecision=%prec% -DCMAKE_Fortran_COMPILER=%fcomp% -DCMAKE_C_COMPILER=%ccomp%  -DCMAKE_CXX_COMPILER=%ccomp% ..\source
 ninja %verbose% 
 
 copy *.lib ..\userlib_sdk\%sdk_directory% >nul 2>nul
@@ -118,7 +118,7 @@ goto END_SCRIPT
   echo.
   echo  Use with arguments : 
   echo  -arch=[linux64, linuxa64, win64]
-  echo  -compiler=[armflang, gfortran, intel]
+  echo  -compiler=[armflang, gfortran, oneapi, intel]
   echo             Defaults :
   echo               linux64  : gfortran
   echo               win64    : oneapi

@@ -27,7 +27,7 @@ function my_help()
   echo " " 
   echo " Use with arguments : "
   echo " -arch=[linux64|linuxa64|win64]"
-  echo " -compiler=[armflang|gfortran|intel]"
+  echo " -compiler=[armflang|gfortran|oneapi|intel]"
   echo "            Defaults :"
   echo "              linux64  : gfortran"
   echo "              win64    : oneapi"
