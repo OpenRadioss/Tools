@@ -169,7 +169,7 @@ Load the compiler variables:
 
 #### Windows x64 Intel oneAPI: Compiler Environment
 
-OpenRadioss was tested with oneAPI 2023.2 + Visual Studio 2019. Cygwin is used to build OpenRadioss. 
+OpenRadioss was tested with oneAPI 2023.2 + Visual Studio 2019.
 Issues have been found with earlier oneAPI releases. It is not recommended to use previous versions.
 
 This chapter explains how to setup
@@ -236,7 +236,7 @@ This chapter explains how to setup
 
 #### Windows x64 mingw gfortran: Compiler Environment
 
-MinGW is a native GNU gcc/gfortran port for Windows. Cygwin will be used to build the SDK
+MinGW is a native GNU gcc/gfortran port for Windows.
 
 For more information, please visit [https://www.mingw-w64.org](https://www.mingw-w64.org)
 
@@ -273,7 +273,6 @@ For more information, please visit [https://www.mingw-w64.org](https://www.mingw
 6. Setup git
 
    This paragraph permits to to setup Git and use it with GitHub.
-   Launch cygwin build environment and apply the git configuration :
 
    * Add in Git global environment the autocrlf flag
 
