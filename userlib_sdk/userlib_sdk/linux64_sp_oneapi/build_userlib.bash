@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright>  Copyright 1986-2023 Altair Engineering Inc.  
+# Copyright>  Copyright 1986-2024 Altair Engineering Inc.  
 # Copyright> 
 # Copyright>  Permission is hereby granted, free of charge, to any person obtaining 
 # Copyright>  a copy of this software and associated documentation files (the "Software"), 
