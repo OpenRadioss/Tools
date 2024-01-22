@@ -354,7 +354,7 @@ C           2ND RECORD : FAC_MASS,FAC_LENGTH,FAC_TIME */
 /*        printf("*********************************\n");
         printf("GEO DESCRIPTION _%d_\n",NUMGEO);
         printf("*********************************\n");*/
-    if(NUMMAT > 0)
+    if(NUMGEO > 0)
     {
         for(i=0;i<NUMGEO;i++){
             eor_c_read(length);
@@ -868,7 +868,7 @@ C           2ND RECORD : FAC_MASS,FAC_LENGTH,FAC_TIME */
 /*        printf("*********************************\n");
         printf("GEO DESCRIPTION _%d_\n",NUMGEO);
         printf("*********************************\n");*/
-    if(NUMMAT > 0)
+    if(NUMGEO > 0)
     {
         for(i=0;i<NUMGEO;i++){
             eor_c_read(length);
