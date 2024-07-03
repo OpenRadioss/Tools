@@ -152,9 +152,8 @@ echo Compiling: %starter%
 echo ----------
 echo.
 FOR  %%f IN (%starter%) DO (
-  set obj_fn=%%~nf".obj"
   echo %%f
-  gfortran -fintrinsic-modules-path %RAD_USERLIB_SDK_PATH%/%RAD_USERLIB_ARCH%  -s -fpic -fno-underscoring -ffixed-line-length-132  -O2  -fopenmp  -DMYREAL8  %addflag% -c ..\%%f -o %obj_fn%
+  gfortran -fintrinsic-modules-path %RAD_USERLIB_SDK_PATH%/%RAD_USERLIB_ARCH%  -s -fpic -fno-underscoring -ffixed-line-length-132  -O2  -fopenmp  -DMYREAL8  %addflag% -c ..\%%f -o %%~nf.obj
   echo.
 )
 
@@ -166,9 +165,8 @@ echo Compiling: %engine%
 echo ----------
 echo.
 FOR  %%f IN (%engine%) DO (
-   set obj_fn=%%~nf".obj"
    echo %%f
-   gfortran -fintrinsic-modules-path %RAD_USERLIB_SDK_PATH%/%RAD_USERLIB_ARCH% -s -fpic -fno-underscoring -ffixed-line-length-132 -O3 -fopenmp -DMYREAL8 -DR8 %addflag% -c  ..\%%f -o %obj_fn%
+   gfortran -fintrinsic-modules-path %RAD_USERLIB_SDK_PATH%/%RAD_USERLIB_ARCH% -s -fpic -fno-underscoring -ffixed-line-length-132 -O3 -fopenmp -DMYREAL8 -DR8 %addflag% -c  ..\%%f -o %%~nf.obj
    echo.
 )
 
@@ -204,6 +202,14 @@ echo /ADDFLAG "Additional compiler Flags" : Additional compiler flags to set
 echo /LINK_FLAGS "Additional link flags"  : add link Flags like library files to link with.
 echo.
 :END
+set starter=
+set engine=
+set library=
+set outfile=
+set addflag=
+set link_flags=
+set free=
+set freeflag=
 echo.
 echo Done
 echo ----
