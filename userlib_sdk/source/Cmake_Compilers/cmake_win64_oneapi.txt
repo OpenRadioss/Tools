@@ -32,7 +32,7 @@ endif()
 
 set (lib_suffix "lib")
 
-set ( Fortran_Compiler_flags "/nologo /Qaxsse3  /O2 /fp:precise /Qftz /extend-source /Qopenmp ${build_prec}")
+set ( Fortran_Compiler_flags "/nofpp /nologo /Qaxsse3  /O2 /fp:precise /Qftz /extend-source /Qopenmp ${build_prec}")
 set ( C_Compiler_flags "/nologo /Qaxsse3  /O2 /fp:precise /Qftz /Qopenmp ${build_prec}")
 
 
