@@ -100,12 +100,19 @@ Install as sudo or root
 
 #### Linux x64 gfortran: How to build userlib_sdk
 
-* clone the source code from the OpenRadioss_userlib_sdk repository or your fork
+* clone the source code from the OpenRadioss/Tools or your fork [GitHubUser]/Tools
 
-         git clone git@github.com:OpenRadioss/OpenRadioss_userlib_sdk.git
+  * From OpenRadioss/Tools respository
 
-* run `./build_script.bash` :
+         git clone git@github.com:OpenRadioss/OpenRadioss/Tools
 
+  * From your Fork
+
+         git clone git@github.com:OpenRadioss/[GitHub User]/Tools
+
+* Enter **userlib_sdk** directory and run `./build_script.bash` :
+
+         cd [YourCloneDirectory]/Tools/userlib_sdk
          ./build_script.bash -arch=linux64 -compiler=gfortran
 
 * Libraries and modules are copied in:
@@ -151,12 +158,19 @@ Load the compiler variables:
 
 #### Linux x64 Intel oneAPI: How to build userlib_sdk
 
-* clone the source code from the OpenRadioss_userlib_sdk repository or your fork
+* clone the source code from the OpenRadioss/Tools or your fork [GitHubUser]/Tools
 
-         git clone git@github.com:OpenRadioss/OpenRadioss_userlib_sdk.git
+  * From OpenRadioss respository
 
-* apply `./build_script.bash`:
+         git clone git@github.com:OpenRadioss/OpenRadioss/Tools
 
+  * From your Fork
+
+         git clone git@github.com:OpenRadioss/[GitHub User]/Tools
+
+* Enter **userlib_sdk** directory and run `./build_script.bash` :
+
+         cd [YourCloneDirectory]/Tools/userlib_sdk
          ./build_script.bash -arch=linux64 -compiler=oneapi
 
   * Libraries and modules are copied in:
@@ -176,6 +190,8 @@ This chapter explains how to setup
 
 1. Intel OneAPI requires Visual Studio Community, Enterprise or Professional Edition installed.
    For all prerequisites, see [here](https://www.intel.com/content/www/us/en/developer/articles/system-requirements/intel-oneapi-base-toolkit-system-requirements.html)
+
+   You need to add Developments tools for C/C++ including CMake during Visual Studio installation.
 
 2. Download one API Base Toolkit and one API HPC Toolkit
 
@@ -214,9 +230,15 @@ This chapter explains how to setup
 
 #### Windows x64 Intel oneAPI: How to build userlib_sdk
 
-* clone the source code from the OpenRadioss_userlib_sdk repository or your fork
+* clone the source code from the OpenRadioss/Tools or your fork [GitHubUser]/Tools
 
-         git clone git@github.com:OpenRadioss/OpenRadioss_userlib_sdk.git
+  * From OpenRadioss respository
+
+         git clone git@github.com:OpenRadioss/OpenRadioss/Tools
+
+  * From your Fork
+
+         git clone git@github.com:OpenRadioss/[GitHub User]/Tools
 
 * In a cmd.exe shell :
 
@@ -224,8 +246,9 @@ This chapter explains how to setup
 
         call "c:\Program Files (x86)\Intel\oneAPI\setvars.bat"
 
-  * Invoke build_windows.bat script
+  * Enter userlib_sdk directory and invoke `build_windows.bat` script
 
+         cd [YourCloneDirectory]/Tools/userlib_sdk
          build_windows.bat -arch=win64 -compiler=oneapi
 
 * Libraries and modules are copied in :
@@ -288,12 +311,19 @@ For more information, please visit [https://www.mingw-w64.org](https://www.mingw
 
 #### Windows x64 mingw gfortran: How to build userlib_sdk
 
-* clone the source code from the OpenRadioss_userlib_sdk repository or your fork
+* clone the source code from the OpenRadioss/Tools or your fork [GitHubUser]/Tools
 
-         git clone git@github.com:OpenRadioss/OpenRadioss_userlib_sdk.git
+  * From OpenRadioss respository
 
-* apply `build_windows.bat`:
+         git clone git@github.com:OpenRadioss/OpenRadioss/Tools
 
+  * From your Fork
+
+         git clone git@github.com:OpenRadioss/[GitHub User]/Tools
+
+* Enter userlib_sdk directory and apply `build_windows.bat`:
+
+         cd [YourCloneDirectory]/Tools/userlib_sdk
          build_windows.bat -arch=win64 -compiler=gfortran
 
 * Libraries and modules are copied in:
@@ -333,12 +363,19 @@ Linux system with glibc version 2.17 or higher:
 
 #### Linux arm64 arm compilers: How to build userlib_sdk
 
-* clone the source code from the OpenRadioss_userlib_sdk repository or your fork
+* clone the source code from the OpenRadioss/Tools or your fork [GitHubUser]/Tools
 
-         git clone git@github.com:OpenRadioss/OpenRadioss_userlib_sdk.git
+  * From OpenRadioss respository
 
-* apply `./build_script.bash`:
+         git clone git@github.com:OpenRadioss/OpenRadioss/Tools
 
+  * From your Fork
+
+         git clone git@github.com:OpenRadioss/[GitHub User]/Tools
+
+* Enter userlib_sdk directory and apply `./build_script.bash`:
+
+         cd [YourCloneDirectory]/Tools/userlib_sdk
          ./build_script.bash -arch=linuxa64 -compiler=armflang
 
 * Libraries and modules are copied in :
@@ -386,13 +423,20 @@ Install as sudo or root
 
 #### Linux arm64 gfortran: How to build userlib_sdk
 
-* clone the source code from the OpenRadioss_userlib_sdk repository or your fork
+* clone the source code from the OpenRadioss/Tools or your fork [GitHubUser]/Tools
 
-         git clone git@github.com:OpenRadioss/OpenRadioss_userlib_sdk.git
+  * From OpenRadioss respository
 
-* apply `./build_script.bash`:
+         git clone git@github.com:OpenRadioss/OpenRadioss/Tools
 
-         ./build_script.bash -arch=linuxa64 -compiler=gfortran
+  * From your Fork
+
+         git clone git@github.com:OpenRadioss/[GitHub User]/Tools
+
+* Enter userlib_sdk directory and apply `./build_script.bash`:
+
+         cd [YourCloneDirectory]/Tools/userlib_sdk
+         ./build_script.bash -arch=linuxa64 -compiler=armflang
 
 * Libraries and modules are copied in:
   
