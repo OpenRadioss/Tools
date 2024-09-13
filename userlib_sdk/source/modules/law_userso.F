@@ -170,41 +170,41 @@ C DPLA    | NEL     | F |R/W| INCREMENTAL PLASTIC STRAIN
 C---------+---------+---+---+--------------------------------------------
 C
       TYPE ULAWINTBUF
-      
-C integer
+   
+        ! integer
         INTEGER  NCYCLE
         INTEGER  ID
         INTEGER  IPTR
         INTEGER  IPTS
         INTEGER  IPTT
-C floating
+        ! float array
         my_real R11(MVSIZ)
         my_real R12(MVSIZ)
         my_real R13(MVSIZ)
-C
+        ! 
         my_real R21(MVSIZ)
         my_real R22(MVSIZ)
         my_real R23(MVSIZ)
-C
+
         my_real R31(MVSIZ)
         my_real R32(MVSIZ)
         my_real R33(MVSIZ)
-C
-C
+
         my_real EPSPXX(MVSIZ)
         my_real EPSPYY(MVSIZ)
         my_real EPSPZZ(MVSIZ)
         my_real EPSPXY(MVSIZ)
         my_real EPSPYZ(MVSIZ)
         my_real EPSPZX(MVSIZ)
-c
+
         my_real EPSXX(MVSIZ)
         my_real EPSYY(MVSIZ)
         my_real EPSZZ(MVSIZ)
         my_real EPSXY(MVSIZ)
         my_real EPSYZ(MVSIZ)
         my_real EPSZX(MVSIZ)
-C------- when Ismstr=10 we input [F]
+
+        ! when Ismstr=10 we input [F]
         my_real FPSXX(MVSIZ)
         my_real FPSYY(MVSIZ)
         my_real FPSZZ(MVSIZ)
@@ -238,6 +238,7 @@ C
         
         my_real RHO0(MVSIZ)
         my_real TEMP(MVSIZ)      ! temperature
+        my_real DVOL(MVSIZ)
 C-----------------------------------------------
 C   O U T P U T   A r g u m e n t s
 C----------------------------------------------- 
