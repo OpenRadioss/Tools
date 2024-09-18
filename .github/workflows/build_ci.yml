@@ -7,9 +7,8 @@ on:
       - main
 
 env:
-  JENKINS_SERVER_IP: ${{ secrets.JENKINS_SERVER_IP }}
-  JENKINS_SERVER_NAME: ${{ secrets.JENKINS_SERVER_NAME }}
-  JENKINS_URL: ${{ secrets.JENKINS_URL }}
+  JENKINS_SERVER_TOKEN: ${{ secrets.JENKINS_SERVER_TOKEN }}
+  JENKINS_SERVER_URL: ${{ secrets.JENKINS_SERVER_URL }}
   CERTS_SERVER_NAME: ${{ secrets.CERTS_SERVER_NAME }}
 
 jobs:
@@ -26,37 +25,13 @@ jobs:
         - /etc/localtime:/etc/localtime:ro  
         - /etc/docker/certs.d:/etc/docker/certs.d:ro
 
-    strategy:
-      # If one job fails others are canceled
-      fail-fast: true
-      matrix:
-        include:
-          - os: linux64
-            compiler: intel
-            precision: dp
-          - os: linux64
-            compiler: intel
-            precision: sp
-          - os: linuxa64
-            compiler: armflang
-            precision: dp
-          - os: linuxa64
-            compiler: armflang
-            precision: sp
-          - os: win64
-            compiler: intel
-            precision: dp
-          - os: win64
-            compiler: intel
-            precision: sp            
+    env:
+      USERLIB_SDK_JOB_NAME: "github_build_userlib_sdk_linux64"
+  
     steps:
       - name: Trigger jenkins
         run: |
-          echo "$JENKINS_SERVER_IP $JENKINS_SERVER_NAME" >> /etc/hosts
-          cat /etc/hosts
-          USERLIB_SDK_JOB_NAME="from_github_build_sdk_${{ matrix.os }}"
-          curl --capath "/etc/docker/certs.d/$CERTS_SERVER_NAME" --cacert "/etc/docker/certs.d/$CERTS_SERVER_NAME/wildcard_europe_altair_com.crt" -i \
-            -X POST "$JENKINS_URL/job/$USERLIB_SDK_JOB_NAME/buildWithParameters?commit_id=$GITHUB_SHA&branch=$GITHUB_REF_NAME&precision=${{ matrix.precision }}&compiler=${{ matrix.compiler}}"
-
-
+          # We use ceritificate to connect to jenkins and a crumb (new wayt to do)
+          crumb=$(curl -u adminqa:${JENKINS_SERVER_TOKEN} --capath "/etc/docker/certs.d/${CERTS_SERVER_NAME}" --cacert "/etc/docker/certs.d/${CERTS_SERVER_NAME}/wildcard_europe_altair_com.crt" -s "${JENKINS_SERVER_URL}/crumbIssuer/api/json" | grep -oP '"crumb":"\K[^"]+')
+          curl -u adminqa:${JENKINS_SERVER_TOKEN} --capath "/etc/docker/certs.d/${CERTS_SERVER_NAME}" --cacert "/etc/docker/certs.d/${CERTS_SERVER_NAME}/wildcard_europe_altair_com.crt" -H "Jenkins-Crumb:$crumb" -X POST "${JENKINS_SERVER_URL}/job/${USERLIB_SDK_JOB_NAME}/buildWithParameters?commit_id=${GITHUB_SHA}"
 
