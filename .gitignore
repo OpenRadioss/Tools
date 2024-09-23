@@ -3,4 +3,5 @@ vs_build*
 *.mod
 *.lib
 *.a
+*.pyc
 
