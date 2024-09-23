@@ -15,6 +15,12 @@ If you have any questions about OpenRadioss, please feel free to contact <webmas
 
 Tools Repository is dedicated to hosts tools for OpenRadioss:
 
+## OpenRadioss GUI
+
+OpenRadioss GUI is a graphical launcher for OpenRadioss
+
+[https://github.com/OpenRadioss/tools/tree/main/openradioss_gui](https://github.com/OpenRadioss/tools/tree/main/openradioss_gui)
+
 ## output_converters : Output converter
 
 * anim_to_csv : converts OpenRadioss animation files to csv format.

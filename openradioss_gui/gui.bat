@@ -1,0 +1,1 @@
+python ./openradioss_run_script_gui.py
