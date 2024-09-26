@@ -86,7 +86,7 @@ def about_dialog():
 def latestv_dialog():
     webbrowser.open("https://github.com/OpenRadioss/OpenRadioss/releases")
 def latestgui_dialog():
-    webbrowser.open("https://github.com/OpenRadioss/OpenRadioss/tree/main/tools/OpenRadioss_gui")
+    webbrowser.open("https://github.com/OpenRadioss/Tools/tree/main/openradioss_gui")
 def latestvrad_dialog():
     webbrowser.open("https://github.com/Vortex-CAE/Vortex-Radioss")
 def orweb_dialog():
