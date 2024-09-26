@@ -4,7 +4,7 @@ OpenRadioss GUI is a graphical launcher for OpenRadioss on Linux and Windows.
 
 It is a simple Python/tk based tool to execute OpenRadioss, queue jobs and convert OpenRadioss output files to csv, vtk, d3plot at the end of the run
 
-The D3plot converter can ve found at: [Vortex-CAE GitHub repository](https://github.com/Vortex-CAE/Vortex-Radioss)
+The D3plot converter can be found at: [Vortex-CAE GitHub repository](https://github.com/Vortex-CAE/Vortex-Radioss)
 
 ## Installation
 
