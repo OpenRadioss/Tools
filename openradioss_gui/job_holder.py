@@ -35,10 +35,11 @@ class State(Enum):
 
 class JobHolder():
   
-    def __init__(self):
+    def __init__(self,debug):
         self.state = State.WAITING
         self.deque = deque()
         self.is_showing_queue = False
+        self.debug = debug
     
     def submit_next_job(self):
         if not self.deque:
@@ -47,7 +48,7 @@ class JobHolder():
 # Get the next job from the queue
         command = self.deque.popleft()
 # Open a new instance of JobWindow with the next job
-        job_window_instance = JobWindow(command)
+        job_window_instance = JobWindow(command,self.debug)
 # Show the updated queue if it's open
         if self.is_showing_queue:
             self.print_queue()
@@ -82,7 +83,7 @@ class JobHolder():
         if self.state == State.RUNNING: return
         if not self.deque: return
         self.state = State.RUNNING
-        self.running_job = JobWindow(self.deque.popleft())
+        self.running_job = JobWindow(self.deque.popleft(),self.debug)
         if self.is_showing_queue: self.print_queue()
 
     def clear_queue(self):
@@ -96,14 +97,14 @@ class JobHolder():
     def print_queue(self):
         self.queue_list.delete(*self.queue_list.get_children())
         for command in self.deque:
-            dir = os.path.dirname(command[1])
-            job = os.path.basename(command[1])
-            nt = command[2]
-            np = command[3]
-            sp = command[4]
-            vtk = command[5]
-            csv = command[6]
-            d3plot = command[8]
+            dir = os.path.dirname(command[0])
+            job = os.path.basename(command[0])
+            nt = command[1]
+            np = command[2]
+            sp = command[3]
+            vtk = command[4]
+            csv = command[5]
+            d3plot = command[7]
             self.queue_list.insert(parent='', index='end', values=(dir, job, nt, np, sp, vtk, d3plot, csv))
     
     def cancel_next_job(self):
