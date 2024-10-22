@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 
 # Copyright 1986-2024 Altair Engineering Inc.
 #
@@ -20,7 +20,18 @@
 # IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 # Path to the Python script
-script_path="openradioss_run_script_gui.py"
+script_path="OpenRadioss_gui.py"
+if [ ! -d  $HOME/.OpenRadioss_GUI ]
+then 
+     mkdir $HOME/.OpenRadioss_GUI
+fi
+if [ ! -d  $HOME/.OpenRadioss_GUI/__pycache__ ]
+then
+     mkdir $HOME/.OpenRadioss_GUI/__pycache__
+fi
 
 # Call the Python script using Python 3
+echo $HOME/.OpenRadioss_GUI/__pycache__
+export PYTHONPYCACHEPREFIX=$HOME/.OpenRadioss_GUI/__pycache__
+
 python3 "$script_path"
