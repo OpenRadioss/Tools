@@ -124,6 +124,7 @@ class JobHolder():
         self.is_showing_queue = True
         self.queue_window = tk.Toplevel()
         self.queue_window.title('Job Queue')
+        self.queue_window.resizable(True, True)      
         if platform.system() == 'Windows':
             # Windows specific code
             self.queue_window.iconbitmap('./icon/ross.ico')
@@ -132,6 +133,8 @@ class JobHolder():
             icon_image = tk.PhotoImage(file='./icon/ross.png')
             self.queue_window.iconphoto(True, icon_image)
         self.queue_window.protocol('WM_DELETE_WINDOW', self.close_queue)
+        self.queue_window.grid_rowconfigure(0, weight=1)
+        self.queue_window.grid_columnconfigure(0, weight=1)
         self.queue_list = ttk.Treeview(self.queue_window, columns=('directory', 'job name', '-nt', '-np', 'sp', 'vtk', 'd3plot', 'csv'))
         self.queue_list.column('#0', width=0, stretch=False)
         self.queue_list.column('directory', anchor='w', width=600, stretch=True)
@@ -150,10 +153,13 @@ class JobHolder():
         self.queue_list.heading('vtk', text='vtk', anchor='center')
         self.queue_list.heading('d3plot', text='d3plot', anchor='center')
         self.queue_list.heading('csv', text='csv', anchor='center')
-        self.queue_list.pack(expand=True, fill='x', padx=(10, 10))
+        self.queue_list.grid(row=0, column=0, sticky='nsew', padx=(10, 10), pady=(10, 10))  # Add padding and stretch
 
         self.frame_control = tk.Frame(self.queue_window, padx=10, pady=10)
-        self.frame_control.pack(side=tk.RIGHT)
+        self.frame_control.grid(row=1, column=0, sticky='ew')  # Ensure it sticks to horizontal edges when resizing
+    
+        self.queue_window.grid_rowconfigure(1, weight=0)  # Make sure control frame doesn't expand
+        self.queue_window.grid_columnconfigure(0, weight=1)
         
         self.cancel_next_button = ButtonWithHighlight(self.frame_control, text='Cancel Next Job', command=self.cancel_next_job, padx=50)
         self.cancel_next_button.pack(side=tk.LEFT, padx=10)
