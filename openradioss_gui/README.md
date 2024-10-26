@@ -10,16 +10,21 @@ The D3plot converter can be found at: [Vortex-CAE GitHub repository](https://git
 
 * Python3 must be installed on the system.
 
+  Recommended Python3 version is 3.8 or higher.
+  OpenRadioss_GUI was tested with Python 3.6.8, some features may not work.
+
   * On ***Windows***, install Python from [https://www.python.org/downloads/](https://www.python.org/downloads/)
   * On ***Linux***, install python from your OS Repository.
 
     * On RedHat, CentOS, Rocky Linux
 
           dnf install python3
+          dnf install python3-tkinter
 
     * On Debian, Ubuntu
 
           apt-get install python3
+          apt install python3-tk
 
 * Get latest [OpenRadioss Release](https://github.com/OpenRadioss/OpenRadioss/releases)
 
@@ -28,7 +33,7 @@ The D3plot converter can be found at: [Vortex-CAE GitHub repository](https://git
 ## Execution
 
 * Launch the **OpenRadioss_gui.vbs** on Windows
-* Launch the **OpenRadioss_gui.sh** on Linux
+* Launch the **OpenRadioss_gui.bash** on Linux
 
 ![image](./icon/OpenRadioss_gui.png)
 
