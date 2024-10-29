@@ -22,13 +22,6 @@ import glob
 import subprocess
 import re
 
-try:
-    from vortex_radioss.animtod3plot.Anim_to_D3plot import readAndConvert
-    vd3penabled = True
-except ImportError:
-    # If VortexRadioss Module not present disable d3plot options
-    vd3penabled = False
-
 # Global variables
 # --------------------------------------------------------------
 # Determine the platform (Windows or Linux)

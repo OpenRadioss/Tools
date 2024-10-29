@@ -177,7 +177,7 @@ class JobWindow():
                 if anim_files:
                    # If anim files exist, ask the user if they want to convert them
                    if messagebox.askokcancel('d3plot', 'Create d3plots of existing anim files?'):
-                    file_stem = os.path.join(self.running_directory, jobname)
+                    file_stem = os.path.join(self.job_dir, self.job_name)
                     # Use the file stem to call readAndConvert
                     try:
                        readAndConvert(file_stem,silent=True)
@@ -323,9 +323,9 @@ class JobWindow():
             else:
                 self.print("") 
                 self.print("")  
-                self.print(" ----------------------------------------------------------------")
+                self.print(" -------------------------------------------------------------")
                 self.print(" NB: TH-csv option selected, but no TH files found to convert")
-                self.print(" ----------------------------------------------------------------")
+                self.print(" -------------------------------------------------------------")
 
           anim_to_d3plot=self.command[7]
           if anim_to_d3plot=='yes':
@@ -335,11 +335,11 @@ class JobWindow():
             if len(animation_file_list)>0:
                 self.print("") 
                 self.print("")  
-                self.print(" ------------------------------------------------------")
+                self.print(" -------------------------------------------------------------")
                 self.print(" Anim-d3plot option selected, Converting Anim Files to d3plot")
-                self.print(" ------------------------------------------------------")
+                self.print(" -------------------------------------------------------------")
                 self.print("")
-                file_stem = os.path.join(self.running_directory, jobname)
+                file_stem = os.path.join(exec_dir, jobname)
                 try:
                        readAndConvert(file_stem,silent=True)
                 except Exception as e:
@@ -347,15 +347,15 @@ class JobWindow():
 
 
                 self.print("")  
-                self.print(" ------------------------------------")
+                self.print(" ----------------------------------------")
                 self.print(" Anim file conversion to d3plot complete")
-                self.print(" ------------------------------------")
+                self.print(" ----------------------------------------")
             else:
                 self.print("") 
                 self.print("")  
-                self.print(" -------------------------------------------------------------------")
+                self.print(" --------------------------------------------------------------------")
                 self.print(" NB: Anim-d3plot option selected, but no Anim files found to convert")
-                self.print(" -------------------------------------------------------------------")
+                self.print(" --------------------------------------------------------------------")
 
         # Job Finished
         # ------------
