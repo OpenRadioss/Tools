@@ -38,7 +38,7 @@ except ImportError:
     vd3penabled = False
 import gui_def
 
-# Global Variables
+# Global Variables  
 current_platform=platform.system() 
 debug=0
 job_holder = JobHolder(debug)

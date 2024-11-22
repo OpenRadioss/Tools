@@ -178,7 +178,7 @@ class RunOpenRadioss():
     # Get jobname,runid,job,directory from the input file
     # --------------------------------------------------------------
     def get_engine_input_file_list(self):
-        engine_input_files = [ file for file in os.listdir(self.running_directory) if file.endswith(".rad") ]
+        engine_input_files = [ file for file in os.listdir(self.running_directory) if file.startswith(self.jobname) and  file.endswith(".rad") and len(file) == len(self.jobname) + 9 ]
         engine_input_files.sort()
 
         first_item = engine_input_files[0]

@@ -46,6 +46,12 @@ class JobWindow():
         self.job_dir = os.path.dirname(command[0])
         self.stop_after_starter=False
         jnm1 = command[0]
+        
+        # Create an instance of RunOpenRadioss
+        self.runOpenRadioss = RunOpenRadioss(self.command,self.debug)
+        self.jobname,self.run_id,self.exec_dir=self.runOpenRadioss.get_jobname_runid_rundirectory()
+        # Gather the jobname, run_id, job directory from the command
+
 
         if jnm1.endswith('.rad'):
             self.job_name = os.path.basename(jnm1)[0:-9]
@@ -166,7 +172,7 @@ class JobWindow():
     # -----------------------------------------------------
     def d3p_job(self):
         if vd3penabled == False:
-            messagebox.showinfo('D3Plot Not avaialble', 'D3Plot Converter is not avaialble')
+            messagebox.showinfo('D3Plot Not available', 'D3Plot Converter is not available')
         else:
             if (self.run_number == 0):
                messagebox.showinfo('Starter Phase', 'Job is still in starter phase.\nCannot convert Anim files to d3plot')
@@ -214,17 +220,12 @@ class JobWindow():
     def run_single_job(self):
         #Initialise variables
 
-        # Create an instance of RunOpenRadioss
-        runOpenRadioss = RunOpenRadioss(self.command,self.debug)
-
         # Set the job environment variables
-        custom_env = runOpenRadioss.environment()
+        custom_env = self.runOpenRadioss.environment()
 
-        # Gather the jobname, run_id, job directory from the command
-        jobname,run_id,exec_dir=runOpenRadioss.get_jobname_runid_rundirectory()
         self.print("")
         self.print("")
-        self.print(" JobName: "+jobname)
+        self.print(" JobName: "+self.jobname)
         self.print(" ----------------------------")
         self.print(" Number of MPI processes : "+self.command[2])
         self.print(" Number of OpenMP threads: "+self.command[1])
@@ -232,18 +233,18 @@ class JobWindow():
 
         # Starter Deck - execute Starter
         # -------------------------------
-        self.run_number = run_id
-        if run_id==0:
+        self.run_number = self.run_id
+        if self.run_id==0:
            
            # First Delete previous result in the directory"
-           runOpenRadioss.delete_previous_results()
+           self.runOpenRadioss.delete_previous_results()
 
            # Set Run Number to 0 (Starter)
-           starter_command_line=runOpenRadioss.get_starter_command()
+           starter_command_line=self.runOpenRadioss.get_starter_command()
            if self.debug==1:print("StarterCommand: ",starter_command_line)
-           if self.debug==1:print("ExecDir: ",exec_dir)
+           if self.debug==1:print("ExecDir: ",self.exec_dir)
            # Run Starter Command
-           self.job_process(starter_command_line,custom_env,exec_dir)
+           self.job_process(starter_command_line,custom_env,self.exec_dir)
            self.run_number = self.run_number + 1
 
         
@@ -255,8 +256,8 @@ class JobWindow():
           # ------------------
 
           # Get Engine Input File List
-          if run_id==0:
-             engine_file_list = runOpenRadioss.get_engine_input_file_list()
+          if self.run_id==0:
+             engine_file_list = self.runOpenRadioss.get_engine_input_file_list()
           else:
               engine_file_list=[self.command[0]]
           if self.debug==1:print("Engine_file_list:",engine_file_list)
@@ -264,9 +265,9 @@ class JobWindow():
           for engine_file in engine_file_list:
                if self.stop_after_engine == True:
                     break
-               engine_command_line = runOpenRadioss.get_engine_command(engine_file)
+               engine_command_line = self.runOpenRadioss.get_engine_command(engine_file)
                if self.debug==1:print("EngineCommand: ",engine_command_line)
-               self.job_process(engine_command_line,custom_env,exec_dir)
+               self.job_process(engine_command_line,custom_env,self.exec_dir)
                self.run_number = self.run_number + 1
 
           
@@ -274,7 +275,7 @@ class JobWindow():
           if anim_to_vtk=='yes':
             # Execute Anim to VTK
             # --------------------
-            animation_file_list = runOpenRadioss.get_animation_list()
+            animation_file_list = self.runOpenRadioss.get_animation_list()
             if self.debug==1:print("Animation_file_list:",animation_file_list)
             if len(animation_file_list)>0:
                 self.print("") 
@@ -286,7 +287,7 @@ class JobWindow():
 
                 for anim_file in animation_file_list:
                     self.print(" Anim File Being Converted is "+anim_file)
-                    runOpenRadioss.convert_anim_to_vtk(anim_file)
+                    self.runOpenRadioss.convert_anim_to_vtk(anim_file)
 
                 self.print("")  
                 self.print(" ------------------------------------")
@@ -303,7 +304,7 @@ class JobWindow():
           if th_to_csh=='yes':
             # Execute Anim to VTK
             # --------------------
-            th_list=runOpenRadioss.get_th_list()
+            th_list=self.runOpenRadioss.get_th_list()
             if self.debug==1:print("TH List: ",th_list)
             if len(th_list)>0:
                 self.print("") 
@@ -315,7 +316,7 @@ class JobWindow():
     
                 for th_file in th_list:
                   self.print(" Time History File Being Converted is "+th_file)
-                  runOpenRadioss.convert_th_to_csv(th_file)
+                  self.runOpenRadioss.convert_th_to_csv(th_file)
                 self.print("")  
                 self.print(" ------------------------------------")
                 self.print(" TH file conversion to csv complete")
@@ -331,7 +332,7 @@ class JobWindow():
           if anim_to_d3plot=='yes':
             # Execute Anim to D3Plot
             # ----------------------
-            animation_file_list = runOpenRadioss.get_animation_list()
+            animation_file_list = self.runOpenRadioss.get_animation_list()
             if len(animation_file_list)>0:
                 self.print("") 
                 self.print("")  
@@ -339,7 +340,7 @@ class JobWindow():
                 self.print(" Anim-d3plot option selected, Converting Anim Files to d3plot")
                 self.print(" -------------------------------------------------------------")
                 self.print("")
-                file_stem = os.path.join(exec_dir, jobname)
+                file_stem = os.path.join(self.exec_dir, self.jobname)
                 try:
                        readAndConvert(file_stem,silent=True)
                 except Exception as e:
