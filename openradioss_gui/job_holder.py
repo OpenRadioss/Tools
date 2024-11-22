@@ -60,7 +60,7 @@ class JobHolder():
 # Get the next job from the queue
         command = self.deque.pop()
 # Open a new instance of JobWindow with the next job
-        job_window_instance = JobWindow(command)
+        job_window_instance = JobWindow(command,self.debug)
 # Show the updated queue if it's open
         if self.is_showing_queue:
             self.print_queue()
