@@ -1027,21 +1027,11 @@ void readRadiossAnim(char *fileName)
             }
             for (int icon = 0; icon < nbFacets; icon++)
             {
-                if(is2DTriangle[icon])
-                {
-                cout << 3 << " "
-                     << connectA[(icon * 4)] << " "
-                     << connectA[(icon * 4) + 1] << " "
-                     << connectA[(icon * 4) + 2] << "\n";
-                }
-                else
-                {
-                cout << 4 << " "
-                     << connectA[(icon * 4)] << " "
-                     << connectA[(icon * 4) + 1] << " "
-                     << connectA[(icon * 4) + 2] << " "
-                     << connectA[(icon * 4) + 3] << "\n";
-                }
+            cout << 4 << " "
+                << connectA[(icon * 4)] << " "
+                << connectA[(icon * 4) + 1] << " "
+                << connectA[(icon * 4) + 2] << " "
+                << connectA[(icon * 4) + 3] << "\n";
 
             }
             for (int icon = 0; icon < nbElts3D; icon++)
