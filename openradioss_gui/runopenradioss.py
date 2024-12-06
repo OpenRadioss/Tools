@@ -50,6 +50,10 @@ class RunOpenRadioss():
           jobsuffix = jobname[-4:]  # Equivalent to %jobName:~-4%
           jobname = jobname[:-5]   # Equivalent to %jobName:~0,-5%
           run_id = int(jobsuffix)
+       elif extension == ".inp":
+           jobname, extension = os.path.splitext(os.path.basename(command[0]))
+           file = os.path.join(os.path.dirname(file), jobname + "_0000.rad")
+           run_id = 0
        else:
           run_id = 0
     
@@ -177,7 +181,7 @@ class RunOpenRadioss():
     # --------------------------------------------------------------
     # Get jobname,runid,job,directory from the input file
     # --------------------------------------------------------------
-    def get_engine_input_file_list(self):
+    def get_engine_input_file_list(self): 
         engine_input_files = [ file for file in os.listdir(self.running_directory) if file.startswith(self.jobname) and  file.endswith(".rad") and len(file) == len(self.jobname) + 9 ]
         engine_input_files.sort()
 
