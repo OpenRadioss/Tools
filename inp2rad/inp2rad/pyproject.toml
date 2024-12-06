@@ -1,0 +1,10 @@
+[project]
+name = "inp2rad"
+version = "1.0"
+description = "inp to Rad converter"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["setuptools>=42", "wheel","pyinstaller"]
+build-backend = "setuptools.build_meta"
+
