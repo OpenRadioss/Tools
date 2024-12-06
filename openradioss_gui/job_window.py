@@ -34,6 +34,11 @@ try:
 except ImportError:
     # If VortexRadioss Module not present disable d3plot options
     vd3penabled = False
+try: 
+   import inp2rad
+   inp2rad_enabled=True
+except ImportError:
+   inp2rad_enabled=False
 
 current_platform = platform.system()
     
@@ -55,12 +60,16 @@ class JobWindow():
 
         if jnm1.endswith('.rad'):
             self.job_name = os.path.basename(jnm1)[0:-9]
+            self.decktype = 'rad'
         elif jnm1.endswith('.k'):
             self.job_name = os.path.basename(jnm1)[0:-2]
+            self.decktype = 'k'
         elif jnm1.endswith('.key'):
             self.job_name = os.path.basename(jnm1)[0:-4]
+            self.decktype = 'k'
         elif jnm1.endswith('.inp'):
             self.job_name = os.path.basename(jnm1)[0:-4]
+            self.decktype = 'inp'
  
         self.is_finished = False
         
@@ -230,6 +239,23 @@ class JobWindow():
         self.print(" Number of MPI processes : "+self.command[2])
         self.print(" Number of OpenMP threads: "+self.command[1])
         self.print("")
+
+        if self.decktype == 'inp':
+            if inp2rad_enabled:
+                self.print(" ------------------------------------------------------")
+                self.print(" Input file is an .inp file, Converting to Radioss format")
+                self.print(" ------------------------------------------------------")
+                self.print("")
+                inp2rad.execute_gui(self.command[0],True)
+                self.command[0] = self.command[0][:-4] + '.rad'
+                self.print(" ------------------------------------------------------")
+                self.print(" Conversion to Radioss format complete")
+                self.print(" ------------------------------------------------------")
+            else:
+                self.print(" ------------------------------------------------------")
+                self.print(" Input file is an .inp file, Conversion to Radioss format not possible ")
+                self.print(" Check presence of inp2rad.py in the same directory              ")
+                self.print(" ----------------------------------------------------------------------")
 
         # Starter Deck - execute Starter
         # -------------------------------
