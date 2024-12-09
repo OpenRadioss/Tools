@@ -994,6 +994,28 @@ void readRadiossAnim(char *fileName)
             }
         }
 
+        // elements connectivity
+        std::vector<bool> is2DTriangle;
+        int triangleCount = 0;
+        for (int icon = 0; icon < nbFacets; icon++)
+        {
+            std::set<int> nodes;
+            for(i=0;i<4;i++)
+            {
+                nodes.insert(connectA[(icon * 4) + i]);
+            }
+            if(nodes.size() == 3)
+            {
+                is2DTriangle.push_back(true);
+                triangleCount++;
+            }
+            else
+            {
+                is2DTriangle.push_back(false);
+            }
+        }
+        
+
         if (nbElts1D + nbFacets + nbElts3D + nbEltsSPH)
         {
             cout << "CELLS " << nbElts1D + nbFacets + nbElts3D + nbEltsSPH << " " << nbElts1D * 3 + nbFacets * 5 + tetrahedronCount * 5 + (nbElts3D - tetrahedronCount) * 9 + nbEltsSPH * 2 << "\n";
@@ -1005,11 +1027,12 @@ void readRadiossAnim(char *fileName)
             }
             for (int icon = 0; icon < nbFacets; icon++)
             {
-                cout << 4 << " "
-                     << connectA[(icon * 4)] << " "
-                     << connectA[(icon * 4) + 1] << " "
-                     << connectA[(icon * 4) + 2] << " "
-                     << connectA[(icon * 4) + 3] << "\n";
+            cout << 4 << " "
+                << connectA[(icon * 4)] << " "
+                << connectA[(icon * 4) + 1] << " "
+                << connectA[(icon * 4) + 2] << " "
+                << connectA[(icon * 4) + 3] << "\n";
+
             }
             for (int icon = 0; icon < nbElts3D; icon++)
             {
@@ -1058,7 +1081,15 @@ void readRadiossAnim(char *fileName)
             }
             for (int icon = 0; icon < nbFacets; icon++)
             {
+                if(is2DTriangle[icon])
+                {
+                cout << 5 << "\n";
+                }
+                else
+                {
                 cout << 9 << "\n";
+                }
+                
             }
             for (int icon = 0; icon < nbElts3D; icon++)
             {
