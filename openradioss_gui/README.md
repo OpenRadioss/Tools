@@ -39,7 +39,7 @@ The D3plot converter can be found at: [Vortex-CAE GitHub repository](https://git
 
 ### Launch a job
 
-* **Select the Starter input Deck** in .rad or .k format
+* **Select the Starter input Deck** in .rad, .k or .inp format
 
   * Click the folder Icon, a browser will appear
   * Browse to the Input deck Directory
