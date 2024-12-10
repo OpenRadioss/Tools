@@ -10,10 +10,17 @@ env:
   JENKINS_SERVER_TOKEN: ${{ secrets.JENKINS_SERVER_TOKEN }}
   JENKINS_SERVER_URL: ${{ secrets.JENKINS_SERVER_URL }}
   CERTS_SERVER_NAME: ${{ secrets.CERTS_SERVER_NAME }}
+  FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+  TO_EMAIL: "${{ secrets.TO_EMAIL }}"
+  # DEV ONLY #
+  # TO_EMAIL: "mquinzin@altair.com"
+  MAIL_RELAY: ${{ secrets.MAIL_RELAY }}
+  MAIL_CONFIG_FILE: "/etc/mail.rc"
+  MAIL_COMMAND: "Mail"
 
 jobs:
 
-  build_linux:      
+  build_userlib_sdk_linux:      
     if: ${{ github.repository_owner == 'OpenRadioss' }}
     runs-on: ["linux64","prod"]
     container: 
@@ -34,4 +41,225 @@ jobs:
           # We use ceritificate to connect to jenkins and a crumb (new wayt to do)
           crumb=$(curl -u adminqa:${JENKINS_SERVER_TOKEN} --capath "/etc/docker/certs.d/${CERTS_SERVER_NAME}" --cacert "/etc/docker/certs.d/${CERTS_SERVER_NAME}/wildcard_europe_altair_com.crt" -s "${JENKINS_SERVER_URL}/crumbIssuer/api/json" | grep -oP '"crumb":"\K[^"]+')
           curl -u adminqa:${JENKINS_SERVER_TOKEN} --capath "/etc/docker/certs.d/${CERTS_SERVER_NAME}" --cacert "/etc/docker/certs.d/${CERTS_SERVER_NAME}/wildcard_europe_altair_com.crt" -H "Jenkins-Crumb:$crumb" -X POST "${JENKINS_SERVER_URL}/job/${USERLIB_SDK_JOB_NAME}/buildWithParameters?commit_id=${GITHUB_SHA}"
+
+  build_output_converters_linux:
+    if: ${{ github.repository_owner == 'OpenRadioss' }}
+    # DEV ONLY # runs-on: ["linux64","dev"] 
+    runs-on: ["linux64","prod"]
+    container: 
+      image: fr-qafactorydev.europe.altair.com/build-linux64_gf:cos8-ompi411-devts11
+      credentials: 
+        username: ${{secrets.DOCKER_REGISTRY_USER}}
+        password: ${{secrets.DOCKER_REGISTRY_PASSWD}}
+      volumes: 
+        - /etc/localtime:/etc/localtime:ro
+  
+    env:
+      STATUS_BUILD: 0
+      os: linux64
+      ANIM_TO_VTK_DIR: output_converters/anim_to_vtk
+      TH_TO_CSV: output_converters/th_to_csv
+
+    steps:
+
+      - name: Clean local exe dir
+        run: |
+          rm -rf exec
+          md5sum exec/* || echo "Nothing in exec/" 
+
+      # Get sources
+      - name: Checkout git sources
+        uses: actions/checkout@v4
+        with:
+          lfs: 'true'
+
+      - name: Running builds
+        run: |
+          mkdir exec
+          source /home/adminqa/.bashrc
+
+          cmd="./build.bash"
+          echo "========================================="
+          echo "--  BUILD tools for anim_to_vtk (${{ env.os }}) --"   
+          echo "--  $cmd --"   
+          echo "========================================="
+
+          cd ${{ env.ANIM_TO_VTK_DIR }}/${{ env.os }}
+          eval $cmd
+
+          cmd="./build.bash"
+          echo "========================================="
+          echo "--  BUILD tools for th_to_csv (${{ env.os }}) --"   
+          echo "--  $cmd --"   
+          echo "========================================="
+
+          cd -
+          cd ${{ env.TH_TO_CSV }}/${{ env.os }}
+          eval $cmd
+
+          # Set correct end of step status (if not an email will be sent)
+          echo "STATUS_BUILD=1" >> $GITHUB_ENV
+
+      - name: Managing step execution
+        if: ${{ always() }}
+        run: |
+
+          MAILMSG="Some error(s) has(ve) been raised during workflow execution:\n\n"
+          echo -e "\n#### STATUS_STEP_BUILD ${{ env.os }} ###"
+          if [ "$STATUS_BUILD" = 0 ]
+          then
+            echo -e "Status\t[ \033[31;2;1mFAILED\033[0m ]" 
+            MAILMSG="The build of output converter tools ${{ env.os }} has failed \n"
+
+            # Send email 
+
+            # Setting SMTP server (docker host)
+            DOCKER_HOST=`/sbin/ip route|awk '/default/ { print $3 }'`
+            echo "set smtp=smtp://${DOCKER_HOST}:25" >> ${{ env.MAIL_CONFIG_FILE }} 
+
+            # Print message in log 
+            echo -e $MAILMSG
+
+            # Send email
+            echo -e "$MAILMSG" | ${{ env.MAIL_COMMAND }} -r $FROM_EMAIL -s "Error in Github CI repo ${{ github.repository }} (${{ github.sha }})" $TO_EMAIL
+            exit 1;
+
+          else
+            echo -e "Status\t[ \033[32;2;1mOK\033[0m ]"
+          fi
+
+      # Upload artifact
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: output-converters-${{ env.os }}
+          path: exec
+
+  build_output_converters_windows_no_container:
+    if: ${{ github.repository_owner == 'OpenRadioss' }}
+    # DEV ONLY # runs-on: ["win64","dev_pmci"]
+    runs-on: ["win64","build","prmerge_ci"]
+
+    env:
+      STATUS_BUILD: 0
+      os: win64
+      ANIM_TO_VTK_DIR: output_converters/anim_to_vtk
+      TH_TO_CSV: output_converters/th_to_csv
+
+    steps:
+
+      - name: Clean local exe dir
+        shell: cmd
+        run: >
+          call C:\cygwin64\bin\bash --login -c "
+          cd %cd:\=/%;
+          rm -rf exec;
+          "
+
+      # Get last git modifications, don't clean before (way to keep persistent obj files)
+      - name: Checkout git sources
+        uses: actions/checkout@v4
+        with:
+          lfs: 'true'
+
+      - name: Running builds
+        shell: cmd
+        run: >
+          call "C:\Program Files (x86)\Intel\oneAPI\setvars.bat" intel64 vs2019 && C:\cygwin64\bin\bash --login -c "
+          cd %cd:\=/%;
+          mkdir exec;
+          cmd=\"./build.bat\";
+          echo \"=========================================\";
+          echo \"--  BUILD tools for anim_to_vtk (${{ env.os }}) --\";
+          echo \"--  $cmd --\";
+          echo \"=========================================\";
+          cd ${{ env.ANIM_TO_VTK_DIR }}/${{ env.os }};
+          eval $cmd || exit 1;
+          cmd=\"./build.bat\";
+          echo \"=========================================\";
+          echo \"--  BUILD tools for th_to_csv (${{ env.os }}) --\";
+          echo \"--  $cmd --\";
+          echo \"=========================================\";
+          pwd;
+          cd -;
+          cd ${{ env.TH_TO_CSV }}/${{ env.os }};
+          eval $cmd || exit 1;
+          echo \"STATUS_BUILD=1\" >> $GITHUB_ENV;
+          "
+
+      - name: Managing step execution
+        if: ${{ always() }}
+        # Running cygwin from powershell or cmd => neither identation nor comment !
+        shell: cmd
+        run: >
+          call C:\cygwin64\bin\bash --login -c "
+          MAILMSG=\"Some error(s) has(ve) been raised during workflow execution:\n\n\";
+          echo -e \"\n#### STATUS_STEP_BUILD ${{ env.os }} ###\";
+          if [ ${{ env.STATUS_BUILD }} = 0 ];
+          then
+          echo -e \"Status\t[ \033[31;2;1mFAILED\033[0m ]\";
+          MAILMSG+=\"The build of output converter tools ${{ env.os }} has failed \n\";
+          echo -e $MAILMSG;
+          echo -e \"$MAILMSG\" | Email -f $FROM_EMAIL -s \"Error in Github CI repo ${{ github.repository }} (${{ github.sha }})\" -r $MAIL_RELAY $TO_EMAIL;
+          exit 1;
+          else
+          echo -e \"Status\t[ \033[32;2;1mOK\033[0m ]\";
+          fi;   
+          "
+
+      # Upload artifact
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: output-converters-${{ env.os }}
+          path: exec
+
+  deliver_output_converters:
+    needs: [build_output_converters_linux,build_output_converters_windows_no_container]
+    if: ${{ github.repository_owner == 'OpenRadioss' }}
+    # DEV ONLY # runs-on: ["dev_delivery","dev"] 
+    runs-on: ["delivery","prod"]
+    container: 
+      image: fr-qafactorydev.europe.altair.com/common-linux64
+      credentials: 
+        username: ${{secrets.DOCKER_REGISTRY_USER}}
+        password: ${{secrets.DOCKER_REGISTRY_PASSWD}}
+      volumes: 
+        - /etc/localtime:/etc/localtime:ro
+  
+    env:
+      CI: 'true'  # if true, disables interactive prompts and progress bar  
+      JFROG_CLI_LOG_LEVEL: "ERROR"
+      JFROG_CLI_AVOID_NEW_VERSION_WARNING: "true"
+      JF_OPTIONS: "--url=${{ secrets.JFROG_DELIVERY_URL }} --user=${{ secrets.JFROG_DELIVERY_USER }} --password=${{ secrets.JFROG_DELIVERY_TOKEN }}"
+      OUTPUT_TOOLS: "${{ secrets.JFROG_DELIVERY_RADIOSS_REPO }}/OpenRadioss_Tools"
+      OUTPUT_CONVERTER_PREFIX: "${OUTPUT_TOOLS}/output_converters"
+      INP2RAD: 'input_converters/inp2rad/inp2rad/inp2rad.py'
+
+    steps:
+
+      - name: Clean previous exec
+        run: |
+          rm -rf exec
+
+      # Download ALL artifacts
+      - name: Download ALL artifacts for Jfrog delivery
+        uses: actions/download-artifact@v4
+        with:
+          path: exec
+
+      - name: Check files in exec
+        run: |
+          ls -l exec/          
+
+      - name: Deliver files on Jfrog
+        run: |
+          # Upload artifacts
+          for os in linux64 win64
+          do
+            jf rt upload ${JF_OPTIONS} "exec/output-converters-${os}/*" ${{ env.OUTPUT_CONVERTER_PREFIX }}/${os}/ --flat=true
+          done
+
+          # Upload inp2rad python file
+          jf rt upload ${JF_OPTIONS} ${{ env.INP2RAD }} ${{ env.OUTPUT_TOOLS }}/
 
