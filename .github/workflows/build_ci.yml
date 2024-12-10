@@ -72,14 +72,12 @@ jobs:
           rm -rf exec
           md5sum exec/* || echo "Nothing in exec/" 
 
-      # # Get last git modifications, don't clean before (way to keep persistent obj files)
-      # - name: Checkout git sources
-      #   uses: actions/checkout@v4
-      #   with:
-      #     path: ${{ env.WORKDIR }}
-      #     clean: 'false'
-      #     lfs: 'true'
-      #     ref: ${{ env.LAST_STABLE_TAG_NAME }}
+      # Get last git modifications, don't clean before (way to keep persistent obj files)
+      - name: Checkout git sources
+        uses: actions/checkout@v4
+        with:
+          clean: 'false'
+          lfs: 'true'
 
       - name: Running builds
         # working-directory: ${{ env.WORKDIR }}
