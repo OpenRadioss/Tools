@@ -246,11 +246,13 @@ jobs:
       - name: Download ALL artifacts for Jfrog delivery
         uses: actions/download-artifact@v4
         with:
-          path: exec
+          path: exec  
 
-      - name: Check files in exec
-        run: |
-          ls -l exec/          
+      # Get sources
+      - name: Checkout git sources
+        uses: actions/checkout@v4
+        with:
+          lfs: 'true'
 
       - name: Deliver files on Jfrog
         run: |
