@@ -242,17 +242,17 @@ jobs:
         run: |
           rm -rf exec
 
-      # Download ALL artifacts
-      - name: Download ALL artifacts for Jfrog delivery
-        uses: actions/download-artifact@v4
-        with:
-          path: exec  
-
       # Get sources
       - name: Checkout git sources
         uses: actions/checkout@v4
         with:
           lfs: 'true'
+
+      # Download ALL artifacts
+      - name: Download ALL artifacts for Jfrog delivery
+        uses: actions/download-artifact@v4
+        with:
+          path: exec  
 
       - name: Deliver files on Jfrog
         run: |
