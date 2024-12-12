@@ -234,7 +234,6 @@ jobs:
       JF_OPTIONS: "--url=${{ secrets.JFROG_DELIVERY_URL }} --user=${{ secrets.JFROG_DELIVERY_USER }} --password=${{ secrets.JFROG_DELIVERY_TOKEN }}"
       OUTPUT_TOOLS: "${{ secrets.JFROG_DELIVERY_RADIOSS_REPO }}/OpenRadioss_Tools"
       OUTPUT_CONVERTER_PREFIX: "${OUTPUT_TOOLS}/output_converters"
-      INP2RAD: 'input_converters/inp2rad/inp2rad/inp2rad.py'
 
     steps:
 
@@ -262,6 +261,4 @@ jobs:
             jf rt upload ${JF_OPTIONS} "exec/output-converters-${os}/*" ${{ env.OUTPUT_CONVERTER_PREFIX }}/${os}/ --flat=true
           done
 
-          # Upload inp2rad python file
-          jf rt upload ${JF_OPTIONS} ${{ env.INP2RAD }} ${{ env.OUTPUT_TOOLS }}/
 
