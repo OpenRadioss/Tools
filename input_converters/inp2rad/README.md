@@ -45,3 +45,128 @@ Apply the command:
         install.sh
 
 This will install the inp2rad.py into Python library collection and inp2rad[.exe] into execution directory
+
+
+## Supported .inp keywords and Syntax
+
+The convertor aims to support .inp format with a good degree of flexibility, case, spacing and most special characters should be ok, use of ELSET, NSET names inside other ELSET, NSET is supported
+
+Supported keywords: (not all sub-options necessarily supported):
+
+*AMPLITUDE (only TABULAR, default form)
+
+*BOUNDARY (default, SPC type and TYPE=DISPLACEMENT, TYPE=VELOCITY)
+
+*BOUNDARY condition mappings ENCASTR, PINNED, XSYMM, YSYMM, ZSYMM
+    
+*CLOAD
+
+*COHESIVE SECTION
+
+*CONTACT
+
+*CONTACT PAIR
+
+*CONTACT PROPERTY ASSIGNMENT
+
+*COUPLING, *DISTRIBUTING or *KINEMATIC
+
+*DENSITY
+
+*DISTRIBUTING
+
+*DISTRIBUTING COUPLING
+
+*DLOAD (only GRAV type)
+
+*ELEMENT, *TYPE= 
+  
+         DCOUP3D
+       
+         CONN3D2, (RIGID or HINGE)
+  
+         S3
+         
+         S3R
+         
+         M3D3
+  
+         R3D3
+  
+         S4
+         
+         S4R
+         
+         R3D4
+         
+         M3D4R
+         
+         C3D4
+         
+         C3D6
+         
+         COH3D6
+         
+         SC6R
+         
+         SC8R
+         
+         C3D8
+         
+         C3D8I
+  
+         COH3D8
+         
+         C3D8R
+         
+         C3D10
+         
+         C3D10M
+
+*ELSET, ELSET (GENERATE supported)
+
+*FRICTION
+
+*HYPERELASTIC (MOONEY-RIVLIN, OGDEN forms only)
+
+*HYPERFOAM
+
+*INITIAL CONDITIONS (VELOCITY only)
+
+*KINEMATIC
+
+*KINEMATIC COUPLING
+
+*MASS
+
+*MATERIAL
+
+*MEMBRANE SECTION
+
+*MPC (generates spring beams)
+
+*NODE
+
+*NSET, NSET (GENERATE supported)
+
+*PLASTIC
+
+*RIGID BODY
+
+*SHELL SECTION
+
+*SOLID SECTION
+
+*SURFACE, TYPE=ELEMENT or TYPE=NODE
+
+*TIE
+
+*SURFACE, TYPE=NODE
+
+*SURFACE INTERACTION
+
+*SURFACE INTERACTION, NAME=RADIOSS_GENERAL (special usecase to ease PrePoMax usage, existence of this will result in a global general contact)
+
+*SYSTEM
+
+*UNIAXIAL TEST DATA
