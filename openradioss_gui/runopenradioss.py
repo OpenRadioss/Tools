@@ -102,15 +102,15 @@ class RunOpenRadioss():
         RAD_H3D_PATH =  os.path.join(OPENRADIOSS_PATH, "extlib", "h3d", "lib", "win64")
         RAD_CFG_PATH = os.path.join(OPENRADIOSS_PATH, "hm_cfg_files")
 
-        # Add paths to PATH environment variable for linux
+        # Add environment
  
         KMP_STACKSIZE = "400m"
-        KMP_AFFINITY = "scatter"
         OMP_NUM_THREADS = nt
         I_MPI_PIN_DOMAIN = "auto"
 
         # Create a custom environment with all the variables you want to pass
         if current_platform == "Linux":
+             KMP_AFFINITY = "scatter"
              LD_LIBRARY_PATH = ":".join([
                     os.path.join(OPENRADIOSS_PATH, "extlib", "h3d", "lib", "linux64"),
                     os.path.join(OPENRADIOSS_PATH, "extlib", "hm_reader", "linux64"),
@@ -134,7 +134,7 @@ class RunOpenRadioss():
              custom_env["PATH"] = os.pathsep.join([custom_env["PATH"]] + additional_paths_linux)
 
         if current_platform == "Windows":
-                     
+             KMP_AFFINITY = "disabled"
         # Add paths to PATH environment variable for windows
              additional_paths_win = [
                    os.path.join(OPENRADIOSS_PATH, "extlib", "hm_reader", "win64"),
