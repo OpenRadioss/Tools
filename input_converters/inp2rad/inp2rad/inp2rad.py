@@ -1,6 +1,6 @@
 # Copyright 1986-2024 Altair Engineering Inc.
 #
-# Permission is hereby granted, free of charge, to any person obtaining 
+# Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the "Software"),
 # to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
@@ -623,6 +623,12 @@ def convert_materials(input_lines):
         rigid_line_pattern = r'^\s*\*ELEMENT\s*,?\s*TYPE\s*=\s*R3D[34]\b.*$'
         rigid_line_match = re.search(rigid_line_pattern, line, re.IGNORECASE)
 
+        superelastic_pattern = r'^\*\s*superelastic\b'
+        superelastic_line_match = re.search(superelastic_pattern, line, re.IGNORECASE)
+
+        neohooke_pattern = r'^\*\s*hyperelastic\b.*,\s*neo hooke'
+        neohooke_line_match = re.search(neohooke_pattern, line, re.IGNORECASE)
+
         ogden_pattern = r'^\*\s*hyperelastic\b.*,\s*ogden'
         ogden_line_match = re.search(ogden_pattern, line, re.IGNORECASE)
 
@@ -824,6 +830,14 @@ def convert_materials(input_lines):
             material_names[current_material_name]['ogden_alpha'] = ogden_alpha
             material_names[current_material_name]['ogden_D'] = ogden_D
 
+        # neo-hooke params
+        elif current_material_name and neohooke_line_match:
+            i += 1
+            neohooke_line = input_lines[i].strip()
+            neohooke_mu = float(neohooke_line.split(',')[0])
+            #neohooke_mu = map(float, neohooke_values)
+            material_names[current_material_name]['neohooke_mu'] = neohooke_mu
+
         # ogden test_data
         elif current_material_name and ogden_line_match and 'test data input' in line.lower():
             # Set default values
@@ -853,6 +867,37 @@ def convert_materials(input_lines):
             mr_mu1, mr_mu2 = map(float, mr_values)
             material_names[current_material_name]['mr_mu1'] = mr_mu1
             material_names[current_material_name]['mr_mu2'] = mr_mu2
+
+        # superelastic
+        elif current_material_name and superelastic_line_match:
+            i += 1
+            se_line = input_lines[i].strip()
+            se_values = [value.strip() for value in se_line.split(',')]
+
+            if len(se_values) != 8:
+                raise ValueError(f"Expected 8 values but got {len(se_values)} in line: {se_line}")
+
+            se_mm, se_mpr, se_uts, se_tbt, se_tet, se_trbt, se_tret, se_tbc = map(float, se_values)
+            material_names[current_material_name]['se_mm'] = se_mm
+            material_names[current_material_name]['se_mpr'] = se_mpr
+            material_names[current_material_name]['se_uts'] = se_uts
+            material_names[current_material_name]['se_tbt'] = se_tbt
+            material_names[current_material_name]['se_tet'] = se_tet
+            material_names[current_material_name]['se_trbt'] = se_trbt
+            material_names[current_material_name]['se_tret'] = se_tret
+            material_names[current_material_name]['se_tbc'] = se_tbc
+
+            i += 1
+            se_line = input_lines[i].strip()
+            se_values = [value.strip() for value in se_line.split(',')]
+
+            if len(se_values) != 3:
+                raise ValueError(f"Expected 3 values but got {len(se_values)} in line: {se_line}")
+
+            se_reftemp, se_slope_load, se_slope_unload = map(float, se_values)
+            material_names[current_material_name]['se_reftemp'] = se_reftemp + 273
+            material_names[current_material_name]['se_slope_load'] = se_slope_load
+            material_names[current_material_name]['se_slope_unload'] = se_slope_unload
 
 
         i += 1  # Move to the next line
@@ -888,6 +933,12 @@ def check_if_plast(properties):
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
+# checks variables for neo-hooke material and returns them to the material write section
+def check_if_neohooke(properties):
+    desired_mps = ['material_id', 'rho', 'neohooke_mu']
+    return all(
+        prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
+        )
 # checks variables for ogden material and returns them to the material write section
 def check_if_ogden(properties):
     desired_mps = ['material_id', 'rho', 'ogden_mu', 'ogden_alpha', 'ogden_D']
@@ -903,6 +954,15 @@ def check_if_ogden_c(properties):
 # checks variables for mooney-rivlin material and returns them to the material write section
 def check_if_mr(properties):
     desired_mps = ['material_id', 'rho', 'mr_mu1', 'mr_mu2']
+    return all(
+        prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
+        )
+# checks variables for superealstic material and returns them to the material write section
+def check_if_se(properties):
+    desired_mps = ['material_id', 'rho', 'emodulus', 'poissrat', 'se_mm', 'se_mpr', 'se_uts',
+        'se_tbt', 'se_tet', 'se_trbt', 'se_tret', 'se_tbc', 'se_reftemp', 'se_slope_load',
+        'se_slope_unload'
+        ]
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
@@ -985,6 +1045,28 @@ def write_plastic_material(
         output_file.write("#                  X                   Y\n")
         for x, y in xy_data:
             output_file.write(f"{x:>20.15g}{y:>20.15g}\n")
+
+# MAT LAW42
+# writes law42 neo-hooke material
+def write_neohooke_material(
+    material_id, material_name, rho, neohooke_mu, output_file
+    ):
+    output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
+    output_file.write(f"/MAT/LAW42/{material_id}\n")
+    output_file.write(material_name + "\n")
+    output_file.write("#              RHO_I\n")
+    output_file.write(f"{rho:>20.15g}                   0\n")
+    output_file.write("#                 Nu           sigma_cut           funIDbulk         Fscale_bulk         M    I_form\n")
+    output_file.write("               0.495                                                                                \n")
+    output_file.write("#               Mu_1                Mu_2                Mu_3                Mu_4                Mu_5\n")
+    neohooke_mu = neohooke_mu * 2
+    output_file.write(f"{neohooke_mu:>20.15g}                 0.0\n")
+    output_file.write("# blank card\n")
+    output_file.write("\n")
+    output_file.write("#            alpha_1             alpha_2             alpha_3             alpha_4             alpha_5\n")
+    output_file.write("                 2.0                 0.0\n")
+    output_file.write("# blank card\n")
+    output_file.write("\n")
 
 # MAT LAW42
 # writes law42 mooney-rivlin material
@@ -1090,6 +1172,33 @@ def write_hypf_material(
     for item in xy_data:
         x, y = item
         output_file.write(f"{x:>20.15g}{y:>20.15g}\n")
+
+# MAT LAW71
+# writes law71 superelastic material
+def write_supere_material(
+    material_id, material_name, rho, emodulus, poissrat, se_mm, se_mpr, se_uts, se_tbt, se_tet, se_trbt, se_tret, se_tbc,
+    se_reftemp, se_slope_load, se_slope_unload, output_file
+    ):
+    output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
+    output_file.write(f"/MAT/LAW71/{material_id}\n")
+    output_file.write(material_name + "\n")
+    output_file.write("#              RHO_I\n")
+    output_file.write(f"{rho:>20.15g}\n")
+    output_file.write("#                  E                  NU              E_mart\n")
+    output_file.write(f"{emodulus:>20.15g}{se_mpr:>20.15g}{se_mm:>20.15g}\n")
+
+    #calculate alpha from se_tbt (start stress in tension) and se_tbc (start stress in compression)
+    root_two_thirds = (2 / 3) ** 0.5 # root 2/3
+    top = se_tbc - se_tbt # comp - tens
+    bottom = se_tbc + se_tbt # comp + tens
+    alpha = root_two_thirds * (top / bottom)
+
+    output_file.write("#           sig_AS_s            sig_AS_f            sig_SA_s            sig_SA_f               alpha\n")
+    output_file.write(f"{se_tbt:>20.15g}{se_tet:>20.15g}{se_trbt:>20.15g}{se_tret:>20.15g}{alpha:>20.15g}\n")
+    output_file.write("#               EpsL                 CAS                 CSA               TS_AS               TF_AS\n")
+    output_file.write(f"{se_uts:>20.15g}{se_slope_load:>20.15g}{se_slope_unload:>20.15g}{se_reftemp:>20.15g}{se_reftemp:>20.15g}\n")
+    output_file.write("#              TS_SA               TF_SA                  CP                TINI\n")
+    output_file.write(f"{se_reftemp:>20.15g}{se_reftemp:>20.15g}               10e30{se_reftemp:>20.15g}\n")
 
 # MAT LAW82
 # writes law82 ogden material
@@ -4774,6 +4883,15 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         #MAT LAW42
         for material_name, properties in material_names.items():
+            if check_if_neohooke(properties):
+                material_id = properties['material_id']
+                rho = properties['rho']
+                neohooke_mu = properties['neohooke_mu']
+    # Write the card format for materials with mooney-rivlin properties
+                write_neohooke_material(material_id, material_name, rho, neohooke_mu, output_file)
+
+        #MAT LAW42
+        for material_name, properties in material_names.items():
             if check_if_mr(properties):
                 material_id = properties['material_id']
                 rho = properties['rho']
@@ -4817,6 +4935,31 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
     # Write the card format for materials with foam properties
                 write_hypf_material(material_id, material_name, rho, poissrat, uniaxial_data,
                     output_file
+                    )
+
+        #MAT LAW71
+        for material_name, properties in material_names.items():
+            if check_if_se(properties):
+                material_id = properties['material_id']
+                rho = properties['rho']
+                emodulus = properties['emodulus']
+                poissrat = properties['poissrat']
+                se_mm = properties['se_mm']
+                se_mpr = properties['se_mpr']
+                se_uts = properties['se_uts']
+                se_tbt = properties['se_tbt']
+                se_tet = properties['se_tet']
+                se_trbt = properties['se_trbt']
+                se_tret = properties['se_tret']
+                se_tbc = properties['se_tbc']
+                se_reftemp = properties['se_reftemp']
+                se_slope_load = properties['se_slope_load']
+                se_slope_unload = properties['se_slope_unload']
+
+    # Write the card format for materials with superelastic properties
+                write_supere_material(material_id, material_name, rho, emodulus, poissrat, se_mm, se_mpr,
+                    se_uts, se_tbt, se_tet, se_trbt, se_tret, se_tbc, se_reftemp, se_slope_load,
+                    se_slope_unload, output_file
                     )
 
         #MAT LAW82
@@ -5046,8 +5189,9 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
     if not or_gui:
         input("Press Enter to exit...")
 
-    return
-#   return output_done
+    output_done = True
+
+    return output_done
 
 
 ####################################################################################################
@@ -5957,12 +6101,13 @@ def replace_elsets_in_sections(input_lines, elset_references):
 # Get input file                                                                                   #
 ####################################################################################################
 def start(input_file_path):
-        (original_lines, input_file_name, simple_file_name, output_file_name, output_file_path,engine_file_name, engine_file_path) = input_read(input_file_path)
+    try:
+        (original_lines, input_file_name, simple_file_name, output_file_name, output_file_path,
+         engine_file_name, engine_file_path) = input_read(input_file_path)
 
 ####################################################################################################
 # Prepare input file (removes comments, special characters)                                        #
 ####################################################################################################
- 
         input_lines = preprocess_lines(original_lines)
         input_lines = expand_elset_ranges(input_lines)
         elset_references, non_numeric_references = find_referenced_elsets(input_lines)
@@ -5971,12 +6116,11 @@ def start(input_file_path):
         input_lines = create_rigid_elsets(input_lines)
         input_lines = ppm_rigids(input_lines)
         (input_lines, elsets_for_expansion_dict, relsets_for_expansion_dict
-            ) = replace_elsets_in_sections(input_lines, elset_references)
+         ) = replace_elsets_in_sections(input_lines, elset_references)
 
 ####################################################################################################
 # Call the main_conversion function to get the necessary data from the conversion blocks           #
 ####################################################################################################
-
         (transform_lines, transform_data, node_lines, nsets, nset_blocks, material_names,
          property_names, element_lines, elset_blocks, surface_lines, contacts, tied_contacts,
          boundary_blocks, function_blocks, initial_blocks, dload_blocks, rigid_bodies, couplings,
@@ -5988,24 +6132,42 @@ def start(input_file_path):
 ####################################################################################################
 # Call the output function to write data to Radioss from the conversion blocks                     #
 ####################################################################################################
-
         output_done = write_output(transform_lines, transform_data, node_lines, nset_blocks,
-         material_names, property_names, non_numeric_references, nsets, element_lines, elset_blocks,
-         surface_lines, contacts, tied_contacts, boundary_blocks, function_blocks,
-         initial_blocks, dload_blocks, rigid_bodies, couplings, discoups, mpc_ties,
-         conn_beams, engine_file, simple_file_name, output_file_name,
-         output_file_path, engine_file_name, engine_file_path
-         )
+                                   material_names, property_names, non_numeric_references, nsets,
+                                   element_lines, elset_blocks, surface_lines, contacts,
+                                   tied_contacts, boundary_blocks, function_blocks,
+                                   initial_blocks, dload_blocks, rigid_bodies, couplings,
+                                   discoups, mpc_ties, conn_beams, engine_file, simple_file_name,
+                                   output_file_name, output_file_path, engine_file_name,
+                                   engine_file_path
+                                   )
+
+####################################################################################################
+# Return Status (True if script completed )                                                        #
+####################################################################################################
+        return output_done
+
+    except Exception as e:
+        # Log the error and return failure
+        print("------------------------------------------------------------")
+        print(f"Error in inp2rad: {e}")
+        return False
 
 
 def execute_gui(input_deck,tm):
     input_file_path=input_deck
     run_timer = tm
     or_gui = True    # When run in Batch mode, avoids interaction.
-    start(input_file_path)
+    try:
+        # Call the start function and capture its return value
+        success = start(input_file_path)
+        return success
+    except Exception as e:
+        # Handle unexpected exceptions
+        return False
 
 if __name__ == "__main__":
-    
+
 #---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|
 #-  FOR Subprocess based INPUT (called from command line or OpenRadioss gui submission tool)
 #---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|
@@ -6019,8 +6181,8 @@ if __name__ == "__main__":
         if not input_file_path:
             print("No input file selected. Exiting...")
             sys.exit()
-        or_gui=False
-        run_timer = False
+        or_gui = False
+        run_timer = True
 
     # take input file from OpenRadioss special submission gui version
     elif len(sys.argv) >= 2:
