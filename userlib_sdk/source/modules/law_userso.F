@@ -239,6 +239,10 @@ C
         my_real RHO0(MVSIZ)
         my_real TEMP(MVSIZ)      ! temperature
         my_real DVOL(MVSIZ)
+
+        ! high explosive
+        my_real TB(MVSIZ)     !< Detonation time for high explosive (input)
+        my_real BFRAC(MVSIZ)  !< Burn Fraction for high explosive  (input/output)
 C-----------------------------------------------
 C   O U T P U T   A r g u m e n t s
 C----------------------------------------------- 
@@ -257,6 +261,7 @@ C
         my_real SIGVZX(MVSIZ)
     
         my_real DPLA(MVSIZ)
+
       
        END TYPE ULAWINTBUF
 C-----------------------------------------------
