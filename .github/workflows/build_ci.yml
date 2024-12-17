@@ -45,7 +45,7 @@ jobs:
   build_output_converters_linux:
     if: ${{ github.repository_owner == 'OpenRadioss' }}
     # DEV ONLY # runs-on: ["linux64","dev"] 
-    runs-on: ["linux64","prod"]
+    runs-on: ["linux64","build","prod"]
     container: 
       image: fr-qafactorydev.europe.altair.com/build-linux64_gf:cos8-ompi411-devts11
       credentials: 
@@ -138,7 +138,7 @@ jobs:
   build_output_converters_windows_no_container:
     if: ${{ github.repository_owner == 'OpenRadioss' }}
     # DEV ONLY # runs-on: ["win64","dev_pmci"]
-    runs-on: ["win64","prod"]
+    runs-on: ["win64","build","prod"]
 
     env:
       STATUS_BUILD: 0
