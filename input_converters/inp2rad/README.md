@@ -127,7 +127,7 @@ Supported keywords: (not all sub-options necessarily supported):
 
 *FRICTION
 
-*HYPERELASTIC (MOONEY-RIVLIN, OGDEN forms only)
+*HYPERELASTIC (MOONEY-RIVLIN, OGDEN, NEO HOOKE forms only)
 
 *HYPERFOAM
 
@@ -157,16 +157,16 @@ Supported keywords: (not all sub-options necessarily supported):
 
 *SOLID SECTION
 
+*SUPERELASTIC
+
 *SURFACE, TYPE=ELEMENT or TYPE=NODE
-
-*TIE
-
-*SURFACE, TYPE=NODE
 
 *SURFACE INTERACTION
 
 *SURFACE INTERACTION, NAME=RADIOSS_GENERAL (special usecase to ease PrePoMax usage, existence of this will result in a global general contact)
 
 *SYSTEM
+
+*TIE
 
 *UNIAXIAL TEST DATA
