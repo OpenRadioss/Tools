@@ -43,7 +43,7 @@ spotflag_default = 27 #change tied interface spotflag (27, 28 options usually)
 debug_mode = False # enables writing of intermediate files for debugging
 
 #---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|
-# Functions to convert aspects of the Abaqus Model
+# Functions to convert aspects of the .inp Model
 #---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|
 
 ####################################################################################################
@@ -651,7 +651,7 @@ def convert_materials(input_lines):
             continue
 
         #special treatment for rigid entities, we create a mat void,
-        #since in abaqus, there is no material
+        #since in .inp, there is no material
         if rigid_line_match:
             # regular expression to find 'elset =' or 'elset='
             elset_pattern = r'\bELSET\s*=\s*("([\w\-+/ ]+)"|[\w\-+/ ]+)'
@@ -1255,7 +1255,7 @@ def write_admas(material_name, nsets, mass, output_file):
 #   RIGID elements have special treatment, if an ELSET is defined, it is used as the               #
 #           PROP and PART, if it doesn't exist, we create new part and prop                        #
 #                                                                                                  #
-#   Usually 'PARTS' don't really exist in Abaqus, (ignoring parts in the context of instances)     #
+#   Usually 'PARTS' don't really exist in .inp, (ignoring parts in the context of instances)       #
 #                                                                                                  #
 #     we observe logic as follows:                                                                 #
 #                                                                                                  #
@@ -1576,7 +1576,7 @@ def convert_connbeams(property_names):
             conntype = property_data['conntype']  # Get the 'conntype' value from property_data
 
             conn_beams.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            conn_beams.append(f"#Spring PROP for connection definition: {property_name}: for Abaqus CONN3D2 Beams")
+            conn_beams.append(f"#Spring PROP for connection definition: {property_name}: for .inp CONN3D2 Beams")
             conn_beams.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
             conn_beams.append(f"/PROP/TYPE13/{property_id}\n{property_name}")
             conn_beams.append("#               Mass             Inertia   skew_ID   sens_ID    Isflag     Ifail     Ileng    Ifail2")
@@ -2281,7 +2281,7 @@ def write_element_groups(nset_counter, nsets, sh3n_list, shell_list, brick_list,
         if element_type == "sh3n":
             nset_counter += 1
             elset_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            elset_lines.append("#Tria Element Group for standalone *ELSET entries in Abaqus input")
+            elset_lines.append("#Tria Element Group for standalone *ELSET entries in .inp input")
             elset_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
             elset_lines.append(f"/GRSH3N/SH3N/{nset_counter}")
             elset_sh3n_short_name = f"{elset_basename}___sh3ns"
@@ -2291,7 +2291,7 @@ def write_element_groups(nset_counter, nsets, sh3n_list, shell_list, brick_list,
             nsets[elset_sh3n_short_name] = {'id': nset_counter} # Store the name/ID relationship
             nset_counter += 1
             nelset_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            nelset_lines.append("#Node group based on standalone SH3N *ELSET entries in Abaqus input")
+            nelset_lines.append("#Node group based on standalone SH3N *ELSET entries in .inp input")
             nelset_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
             nelset_lines.append(f"/GRNOD/GRSH3N/{nset_counter}")
             nelset_sh3n_short_name = f"{elset_basename}___grnod"
@@ -2313,7 +2313,7 @@ def write_element_groups(nset_counter, nsets, sh3n_list, shell_list, brick_list,
         elif element_type == "shell":
             nset_counter += 1
             elset_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            elset_lines.append("#Quadrilateral Shell Element Group for standalone *ELSET entries in Abaqus input")
+            elset_lines.append("#Quadrilateral Shell Element Group for standalone *ELSET entries in .inp input")
             elset_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
             elset_lines.append(f"/GRSHEL/SHEL/{nset_counter}")
             elset_shell_short_name = f"{elset_basename}___shells"
@@ -2323,7 +2323,7 @@ def write_element_groups(nset_counter, nsets, sh3n_list, shell_list, brick_list,
             nsets[elset_shell_short_name] = {'id': nset_counter} # Store the name/ID relationship
             nset_counter += 1
             nelset_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            nelset_lines.append("#Node group based on standalone SHELL *ELSET entries in Abaqus input")
+            nelset_lines.append("#Node group based on standalone SHELL *ELSET entries in .inp input")
             nelset_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
             nelset_lines.append(f"/GRNOD/GRSHEL/{nset_counter}")
             nelset_shell_short_name = f"{elset_basename}___grnod"
@@ -2345,7 +2345,7 @@ def write_element_groups(nset_counter, nsets, sh3n_list, shell_list, brick_list,
         elif element_type == "brick":
             nset_counter += 1
             elset_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            elset_lines.append("#Solid Element Group for standalone *ELSET entries in Abaqus input")
+            elset_lines.append("#Solid Element Group for standalone *ELSET entries in .inp input")
             elset_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
             elset_lines.append(f"/GRBRIC/BRIC/{nset_counter}")
             elset_brick_short_name = f"{elset_basename}___bricks"
@@ -2355,7 +2355,7 @@ def write_element_groups(nset_counter, nsets, sh3n_list, shell_list, brick_list,
             nsets[elset_brick_short_name] = {'id': nset_counter} # Store the name/ID relationship
             nset_counter += 1
             nelset_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            nelset_lines.append("#Node group based on standalone BRICK *ELSET entries in Abaqus input")
+            nelset_lines.append("#Node group based on standalone BRICK *ELSET entries in .inp input")
             nelset_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
             nelset_lines.append(f"/GRNOD/GRBRIC/{nset_counter}")
             nelset_brick_short_name = f"{elset_basename}___grnod"
@@ -2405,7 +2405,7 @@ def write_element_groups(nset_counter, nsets, sh3n_list, shell_list, brick_list,
 
         nset_counter += 1
         grnset_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-        grnset_lines.append("#Node group based on all *ELSET entries in Abaqus input")
+        grnset_lines.append("#Node group based on all *ELSET entries in .inp input")
         grnset_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
         grnset_lines.append(f"/GRNOD/GRNOD/{nset_counter}")
         grnset_name = f"Node Group of all nodes of {grelset}"
@@ -2687,7 +2687,7 @@ def parse_surface_data(input_lines, elset_dicts, nset_counter, nsets,
                     prop_lines.append("".join(props_per_line))
 
                 surface_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                surface_lines.append(f"#SURF PART EXT for all parts from Abaqus surf:\n#{current_surface_name}")
+                surface_lines.append(f"#SURF PART EXT for all parts from .inp surf:\n#{current_surface_name}")
                 surface_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 surface_lines.append(f"/SURF/PART/EXT/{surf_id}\n{current_surface_name}")
                 surface_lines.extend(prop_lines)
@@ -3768,7 +3768,7 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
                     dload_dir[0] * dload_dirb[1] - dload_dir[1] * dload_dirb[0]
                 ]
 
-                # First Check if the cross product is the zero vector for Abaqus Value and global Y
+                # First Check if the cross product is the zero vector for .inp Value and global Y
                 if cross_product == [0, 0, 0]: # vectors are parallel
                     dload_dirb = [0.0 ,0.0, 1.0] # change to global Z if original vector was global Y
 
@@ -3809,7 +3809,7 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
         dgrav_block += "#                 X2                  Y2                  Z2\n"
         dgrav_block += f"{dload_dir[0]:20.15g}{dload_dir[1]:20.15g}{dload_dir[2]:20.15g}\n"
         dgrav_block += "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
-        dgrav_block += "# Gravity From Abaqus DLOAD\n"
+        dgrav_block += "# Gravity From .inp DLOAD\n"
 
         if amplitude_name and amplitude_name in functs_dict:
             funct_id = functs_dict[amplitude_name].get('id')  # Get function ID for Amplitude from directory
@@ -4431,13 +4431,13 @@ def convert_mpc_ties(input_lines, prop_id, max_elem_id):
             prop_id += 1 #increment the global prop_id
             spring_prop_name = f"SpringBeams_for_Connections_{prop_id}"
             mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            mpc_ties.append(f"#Spring PART for connection definition: {spring_prop_name}: for Abaqus *MPC TIE")
+            mpc_ties.append(f"#Spring PART for connection definition: {spring_prop_name}: for .inp *MPC TIE")
             mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
             mpc_ties.append(f"/PART/{prop_id}\n{spring_prop_name}")
             mpc_ties.append("#     prop       mat    subset")
             mpc_ties.append(f"{prop_id:>10}         0         0")
             mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            mpc_ties.append(f"#Spring PROP for connection definition: {spring_prop_name}: for Abaqus *MPC TIE")
+            mpc_ties.append(f"#Spring PROP for connection definition: {spring_prop_name}: for .inp *MPC TIE")
             mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
             mpc_ties.append(f"/PROP/TYPE13/{prop_id}\n{spring_prop_name}")
             mpc_ties.append("#               Mass             Inertia   skew_ID   sens_ID    Isflag     Ifail     Ileng    Ifail2")
@@ -4488,7 +4488,7 @@ def convert_mpc_ties(input_lines, prop_id, max_elem_id):
             mpc_ties.append("                   0                   0                   0                   0")
             mpc_ties.append("                   0                   0                   0                   0")
             mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            mpc_ties.append(f"#Spring Elements for connection definition: {spring_prop_name}: for Abaqus *MPC TIE")
+            mpc_ties.append(f"#Spring Elements for connection definition: {spring_prop_name}: for .inp *MPC TIE")
             mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
             mpc_ties.append(f"/SPRING/{prop_id}")
             mpc_ties.append("#  Sprg_ID  NodeID_1  NodeID_2")
@@ -4505,7 +4505,7 @@ def convert_mpc_ties(input_lines, prop_id, max_elem_id):
             mpc_node_2 = mpcdata[2].strip()
             max_elem_id += 1 # Increment the max elem_id
 
-            #create a spring for each abaqus TIE *MPC)
+            #create a spring for each .inp TIE *MPC)
             if mpc_type.lower() == 'tie':
                 mpc_ties.append(f"{max_elem_id:>10}{mpc_node_1:>10}{mpc_node_2:>10}")
 
@@ -5215,10 +5215,10 @@ def input_read(input_file_path):
 
 #---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|
     if or_gui:
-        print("Reading Abaqus Input, Please wait...")
+        print("Reading .inp file, Please wait...")
 
     else:
-        print("Converting Abaqus Input, Please wait...")
+        print("Converting .inp file, Please wait...")
 
     with open(input_file_path, "r") as input_file:
 
@@ -5236,7 +5236,7 @@ def input_read(input_file_path):
 
 
 ####################################################################################################
-# Pass the input lines from the abaqus deck as a list                                              #
+# Pass the input lines from the .inp deck as a list                                                #
 ####################################################################################################
 
         original_lines = input_file.readlines()
@@ -5848,7 +5848,7 @@ def ppm_rigids(input_lines):
             rbody_id_pattern = r'ref\s*node\s*=\s*([^,]+)'
             rbody_id_match = re.search(rbody_id_pattern, line, re.IGNORECASE)
 
-            #this is to find ppm calculix rot_node and call def to convert input format to Abaqus ref node
+            #this is to find ppm calculix rot_node and call def to convert input format to .inp ref node
             rbody_rotid_pattern = r'rot\s*node\s*=\s*([^,]+)'
             rbody_rotid_match = re.search(rbody_rotid_pattern, line, re.IGNORECASE)
 
@@ -6176,7 +6176,7 @@ if __name__ == "__main__":
         root.withdraw()
 
         input_file_path = filedialog.askopenfilename(
-            title="Select Input File", filetypes=[("Abaqus File", "*.inp")])
+            title="Select Input File", filetypes=[(".inp File", "*.inp")])
 
         if not input_file_path:
             print("No input file selected. Exiting...")
