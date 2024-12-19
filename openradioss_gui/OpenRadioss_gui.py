@@ -22,8 +22,8 @@ import platform
 import tkinter as tk
 if platform.system() == 'Windows':
     import ctypes
-    myappid = 'openradioss.jobgui.1.6.0'
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('openradioss.jobgui.1.6.0')
+    myappid = 'openradioss.jobgui.1.7.0'
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('openradioss.jobgui.1.7.0')
 #import time
 import subprocess
 from tkinter import filedialog
@@ -51,12 +51,12 @@ class openradioss_gui:
         self.debug=debug
         self.current_platform=platform.system() 
         self.job_holder = JobHolder(self.debug)
-        self.Window     = gui_def.window(vd3penabled)
+        self.Window     = gui_def.window(vd3penabled, vtkhdfenabled)
 
       #-------------------------------- Functions #--------------------------------
       # Close the app when the close button is clicked or the window is closed
       # no job is running or the user confirms the close action
-#----------------------------------------------------------------------------
+      #----------------------------------------------------------------------------
       def close_window(self):
          if self.job_holder.is_empty() or messagebox.askokcancel('Close Window', 'Job is running. Close?'):
            self.Window.close()
@@ -91,7 +91,7 @@ class openradioss_gui:
                d3plot = 'no'
 
            allcommand = [os.path.normpath(file), nt, np, precision, anim_to_vtk, th_to_csv, starter_only, d3plot, anim_to_vtkhdf]
- 
+
            # Add Job in Queue
            if messagebox.askokcancel('Add job', 'Add job?'):
                self.save_config()
@@ -193,7 +193,7 @@ class openradioss_gui:
 
            if not os.path.exists(directory):
                os.makedirs(directory)
-    
+
            json_file=os.path.join(directory, 'config.json')
            print('Json File:',json_file)
            try:
@@ -209,7 +209,7 @@ class openradioss_gui:
                       vtkhdf_status.set(config_file['vtkhdf'])
                    if vd3penabled:
                       d3plot_status.set(config_file['d3plot'])
-            
+
            except:
                config_file={}
 
@@ -220,26 +220,24 @@ if __name__ == "__main__":
     #----------------------------- GUI Elements #--------------------------------
     # File Menu
     gui = openradioss_gui(0)
+
+    # Dropdown to set variables
+    selected_flags = gui.Window.get_selected_options()
+
+    # Assign tk.BooleanVar objects
+    single_status = selected_flags['Single Precision']
+    starter_status = selected_flags['Run Starter Only']
+    vtk_status = selected_flags['Anim - vtk']
+    vtkhdf_status = selected_flags['Anim - vtkhdf']
+    d3plot_status = selected_flags['Anim - d3plot']
+    csv_status = selected_flags['TH - csv']
+
+    # Remaining GUI elements
     job_file_entry = gui.Window.file('Job file (.rad, .key, or .k, or .inp)', gui.select_file, gui.Window.icon_folder)
 
     # Create checkboxes
     nt_entry = gui.Window.thread_mpi('-nt', 5, 0, 2)
     np_entry = gui.Window.thread_mpi('-np', 5, 5, 2)
-    single_status = gui.Window.checkbox1('Single Precision', 5, 0)
-    starter_status = gui.Window.checkbox2('Run Starter Only', 5, 0)
-
-    # Optional checkboxes
-    if vtkhdfenabled:
-        vtk_status = gui.Window.checkbox1('Anim - vtk', 5, 0)
-        vtkhdf_status = gui.Window.checkbox1('Anim - vtkhdf', 5, 0)
-    else:
-        vtk_status = gui.Window.checkbox1('Anim - vtk', 5, 0)
-
-    if vd3penabled:
-        d3plot_status = gui.Window.checkbox3('Anim - d3plot', 5, 0)
-        csv_status = gui.Window.checkbox2('TH - csv', 5, 5)
-    else:
-        csv_status = gui.Window.checkbox2('TH - csv', 5, 5)
 
     # Create buttons
     gui.Window.button('Add Job', gui.add_job, (0, 5))
