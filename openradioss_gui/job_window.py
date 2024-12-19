@@ -36,6 +36,10 @@ except ImportError:
     # If VortexRadioss Module not present disable d3plot options
     vd3penabled = False
 try:
+    from animtovtkhdf import AnimToVTKHDF
+except ImportError:
+    vtkhdfenabled = False        
+try:
     import inp2rad
     inp2rad_enabled=True
 except ImportError:
@@ -71,7 +75,6 @@ class JobWindow():
         self.runOpenRadioss = RunOpenRadioss(self.command,self.debug)
         self.jobname,self.run_id,self.exec_dir=self.runOpenRadioss.get_jobname_runid_rundirectory()
         # Gather the jobname, run_id, job directory from the command
-
 
         if jnm1.endswith('.rad'):
             self.job_name = os.path.basename(jnm1)[0:-9]
@@ -264,20 +267,20 @@ class JobWindow():
                 self.h3d_button['state'] = 'disable'
                 if vd3penabled:
                     self.d3p_button['state'] = 'disable'
-        
+
                 self.print(" --------------------------------------------------------")
                 self.print(" Input file is an .inp file, Converting to Radioss format")
                 self.print(" --------------------------------------------------------")
                 self.print("")
-        
+
                 inp2rad_successful = False  # Flag to track success of conversion
-        
+
                 # Redirect inp2rad stdout and stderr to GUI text widget
                 redirect_text = RedirectText(self.log_text)
                 with contextlib.redirect_stdout(redirect_text), contextlib.redirect_stderr(redirect_text):
                     # Attempt to execute the conversion
                     success = inp2rad.execute_gui(self.command[0], True)
-    
+
                 # Check if the process completed successfully
                 if success:  # Assuming `success` is a boolean or status code
                     self.command[0] = self.command[0][:-4] + '.rad'
@@ -294,7 +297,7 @@ class JobWindow():
                     self.close_button['state'] = 'normal'
                     self.window.protocol('WM_DELETE_WINDOW', self.on_close)
                     self.is_finished = True
-    
+
                 # Only re-enable buttons if the operation was successful
                 if inp2rad_successful:
                     self.stop_button['state'] = 'active'
@@ -303,20 +306,20 @@ class JobWindow():
                     self.h3d_button['state'] = 'active'
                     if vd3penabled:
                         self.d3p_button['state'] = 'active'
-                        
+
                 # Stop further execution if the inp2rad operation was unsuccessful
                 if not inp2rad_successful:
                     self.print(" ---------------------------------------------------------")
                     self.print(" Stopping execution due to unsuccessful inp2rad conversion")
                     self.print(" ---------------------------------------------------------")
                     return  # Exit this function early and prevent further execution
-              
+
             else:
                 self.print(" ----------------------------------------------------------------------")
                 self.print(" Input file is an .inp file, Conversion to Radioss format not possible ")
                 self.print(" Check presence of inp2rad.py in the same directory              ")
                 self.print(" ----------------------------------------------------------------------")
-        
+
         # Starter Deck - execute Starter
         # -------------------------------
         self.run_number = self.run_id
@@ -332,7 +335,6 @@ class JobWindow():
             # Run Starter Command
             self.job_process(starter_command_line,custom_env,self.exec_dir)
             self.run_number = self.run_number + 1
-
 
         # Go to Engine : proceed or not
         starter_only=self.command[6]
@@ -355,7 +357,6 @@ class JobWindow():
                 if self.debug==1:print("EngineCommand: ",engine_command_line)
                 self.job_process(engine_command_line,custom_env,self.exec_dir)
                 self.run_number = self.run_number + 1
-
 
             anim_to_vtk=self.command[4]
             if anim_to_vtk=='yes':
@@ -443,6 +444,38 @@ class JobWindow():
                     self.print(" --------------------------------------------------------------------")
                     self.print(" NB: Anim-d3plot option selected, but no Anim files found to convert")
                     self.print(" --------------------------------------------------------------------")
+
+            anim_to_vtkhdf=self.command[8]
+            if anim_to_vtkhdf=='yes':
+                # Execute Anim to VTKHDF
+                # --------------------
+                animation_file_list = self.runOpenRadioss.get_animation_list()
+                if self.debug==1:print("Animation_file_list:",animation_file_list)
+                if len(animation_file_list)>0:
+                    self.print("")
+                    self.print("")
+                    self.print(" ------------------------------------------------------------")
+                    self.print(" Anim-vtkhdf option selected, Converting Anim Files to vtkhdf")
+                    self.print(" ------------------------------------------------------------")
+                    self.print("")
+                    converter = AnimToVTKHDF(verbose=False, static=True)
+                    animation_files_for_vtkhdf = [os.path.join(self.exec_dir, file) for file in animation_file_list]
+                    output_file_for_vtkhdf = os.path.join(self.exec_dir, self.jobname+".vtkhdf")
+                    try:
+                        converter.convert(inputf=animation_files_for_vtkhdf, outputf=output_file_for_vtkhdf)
+                    except Exception as e:
+                        messagebox.showinfo('Error', 'Error in vtkhdf conversion: ' + str(e))
+
+                    self.print("")
+                    self.print(" ---------------------------------------")
+                    self.print(" Anim file conversion to vtkhdf complete")
+                    self.print(" ---------------------------------------")
+                else:
+                    self.print("")
+                    self.print("")
+                    self.print(" -------------------------------------------------------------------")
+                    self.print(" NB: Anim-vtkhdf option selected, but no Anim files found to convert")
+                    self.print(" -------------------------------------------------------------------")
 
         # Job Finished
         # ------------
