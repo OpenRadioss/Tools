@@ -36,6 +36,10 @@ except ImportError:
     # If VortexRadioss Module not present disable d3plot options
     vd3penabled = False
 try:
+    from animtovtkhdf import AnimToVTKHDF
+except ImportError:
+    vtkhdfenabled = False        
+try:
     import inp2rad
     inp2rad_enabled=True
 except ImportError:
@@ -356,7 +360,6 @@ class JobWindow():
                 self.job_process(engine_command_line,custom_env,self.exec_dir)
                 self.run_number = self.run_number + 1
 
-
             anim_to_vtk=self.command[4]
             if anim_to_vtk=='yes':
                 # Execute Anim to VTK
@@ -443,6 +446,40 @@ class JobWindow():
                     self.print(" --------------------------------------------------------------------")
                     self.print(" NB: Anim-d3plot option selected, but no Anim files found to convert")
                     self.print(" --------------------------------------------------------------------")
+
+            anim_to_vtkhdf=self.command[8]
+            if anim_to_vtkhdf=='yes':
+                # Execute Anim to VTKHDF
+                # --------------------
+                animation_file_list = self.runOpenRadioss.get_animation_list()
+                if self.debug==1:print("Animation_file_list:",animation_file_list)
+                if len(animation_file_list)>0:
+                    self.print("")
+                    self.print("")
+                    self.print(" ------------------------------------------------------------")
+                    self.print(" Anim-vtkhdf option selected, Converting Anim Files to vtkhdf")
+                    self.print(" ------------------------------------------------------------")
+                    self.print("")
+                    converter = AnimToVTKHDF(verbose=False, static=True)
+                    animation_files_for_vtkhdf = [os.path.join(self.exec_dir, file) for file in animation_file_list]
+                    output_file_for_vtkhdf = os.path.join(self.exec_dir, self.jobname+".vtkhdf")
+                    try:
+                        converter.convert(inputf=animation_files_for_vtkhdf, outputf=output_file_for_vtkhdf)
+                    except Exception as e:
+                        messagebox.showinfo('Error', 'Error in vtkhdf conversion: ' + str(e))
+                    
+                    self.print("")
+                    self.print(" ------------------------------------")
+                    self.print(" Anim file conversion to vtkhdf complete")
+                    self.print(" ------------------------------------")
+                else:
+                    self.print("")
+                    self.print("")
+                    self.print(" ----------------------------------------------------------------")
+                    self.print(" NB: Anim-vtk option selected, but no Anim files found to convert")
+                    self.print(" ----------------------------------------------------------------")
+
+
 
         # Job Finished
         # ------------

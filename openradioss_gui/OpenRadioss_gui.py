@@ -36,6 +36,11 @@ try:
 except ImportError:
     # If VortexRadioss Module not present disable d3plot options
     vd3penabled = False
+try:
+    from animtovtkhdf import AnimToVTKHDF
+    vtkhdfenabled = True
+except ImportError:
+    vtkhdfenabled = False
 import gui_def
 
 
@@ -74,6 +79,10 @@ class openradioss_gui:
            np           = np_entry.get_user_input('1')
            precision    = 'sp' if single_status.get() else 'dp' 
            anim_to_vtk  = 'yes' if vtk_status.get() else 'no'
+           if vtkhdfenabled:
+               anim_to_vtkhdf = 'yes' if vtkhdf_status.get() else 'no'
+           else:
+               anim_to_vtkhdf = 'no'
            th_to_csv    = 'yes' if csv_status.get() else 'no'
            starter_only = 'yes' if starter_status.get() else 'no'
            if vd3penabled:
@@ -81,7 +90,7 @@ class openradioss_gui:
            else:
                d3plot = 'no'
 
-           allcommand = [os.path.normpath(file), nt, np, precision, anim_to_vtk, th_to_csv, starter_only, d3plot]
+           allcommand = [os.path.normpath(file), nt, np, precision, anim_to_vtk, th_to_csv, starter_only, d3plot, anim_to_vtkhdf]
  
            # Add Job in Queue
            if messagebox.askokcancel('Add job', 'Add job?'):
@@ -151,6 +160,8 @@ class openradioss_gui:
            config['vtk'] = vtk_status.get()
            config['sp'] = single_status.get()
            config['csv'] = csv_status.get()
+           if vtkhdfenabled:
+                config['vtkhdf'] = vtkhdf_status.get()
            if vd3penabled:
                config['d3plot'] = d3plot_status.get()
            config['np'] = np_entry.get_user_input()
@@ -194,6 +205,8 @@ class openradioss_gui:
                    vtk_status.set(config_file['vtk'])
                    single_status.set(config_file['sp'])
                    csv_status.set(config_file['csv'])
+                   if vtkhdfenabled:
+                      vtkhdf_status.set(config_file['vtkhdf'])
                    if vd3penabled:
                       d3plot_status.set(config_file['d3plot'])
             
@@ -204,33 +217,40 @@ class openradioss_gui:
 # Main entry point
 # ===========================================
 if __name__ == "__main__":
-#----------------------------- GUI Elements #--------------------------------
-# File Menu
-  gui= openradioss_gui(0)
-  job_file_entry=gui.Window.file('Job file (.rad, .key, or .k, or .inp)', gui.select_file, gui.Window.icon_folder)
+    #----------------------------- GUI Elements #--------------------------------
+    # File Menu
+    gui = openradioss_gui(0)
+    job_file_entry = gui.Window.file('Job file (.rad, .key, or .k, or .inp)', gui.select_file, gui.Window.icon_folder)
 
-  # Create checkboxes
-  nt_entry          = gui.Window.thread_mpi('-nt', 5,0,2)
-  np_entry          = gui.Window.thread_mpi('-np', 5,5,2)
-  single_status     = gui.Window.checkbox1('Single Precision ',5,5)
-  vtk_status        = gui.Window.checkbox1('Anim - vtk',5,2)
-  starter_status    = gui.Window.checkbox2('Run Starter Only',5,2)
-  if vd3penabled:
-    d3plot_status = gui.Window.checkbox2('Anim - d3plot',5,2)
-    csv_status    = gui.Window.checkbox3('TH - csv',0,0)
-  else:
-    csv_status    = gui.Window.checkbox2('TH - csv    ',5,2)
+    # Create checkboxes
+    nt_entry = gui.Window.thread_mpi('-nt', 5, 0, 2)
+    np_entry = gui.Window.thread_mpi('-np', 5, 5, 2)
+    single_status = gui.Window.checkbox1('Single Precision', 5, 0)
+    starter_status = gui.Window.checkbox2('Run Starter Only', 5, 0)
 
-  # Create buttons
-  gui.Window.button('Add Job', gui.add_job, (0, 5))
-  gui.Window.button('Show Queue', gui.show_queue, 5)
-  gui.Window.button('Clear Queue', gui.clear_queue, 5)
-  gui.Window.button('Close', gui.close_window, (5, 0))
+    # Optional checkboxes
+    if vtkhdfenabled:
+        vtk_status = gui.Window.checkbox1('Anim - vtk', 5, 0)
+        vtkhdf_status = gui.Window.checkbox1('Anim - vtkhdf', 5, 0)
+    else:
+        vtk_status = gui.Window.checkbox1('Anim - vtk', 5, 0)
 
-  # Create a menu bar
-  gui.Window.menubar('Info')
+    if vd3penabled:
+        d3plot_status = gui.Window.checkbox3('Anim - d3plot', 5, 0)
+        csv_status = gui.Window.checkbox2('TH - csv', 5, 5)
+    else:
+        csv_status = gui.Window.checkbox2('TH - csv', 5, 5)
 
-  gui.load_config()
-  gui.Window.root.protocol("WM_DELETE_WINDOW", gui.close_window)
-  gui.Window.root.after(1000, gui.run_job)
-  gui.Window.root.mainloop()
+    # Create buttons
+    gui.Window.button('Add Job', gui.add_job, (0, 5))
+    gui.Window.button('Show Queue', gui.show_queue, 5)
+    gui.Window.button('Clear Queue', gui.clear_queue, 5)
+    gui.Window.button('Close', gui.close_window, (5, 0))
+
+    # Create a menu bar
+    gui.Window.menubar('Info')
+
+    gui.load_config()
+    gui.Window.root.protocol("WM_DELETE_WINDOW", gui.close_window)
+    gui.Window.root.after(1000, gui.run_job)
+    gui.Window.root.mainloop()
