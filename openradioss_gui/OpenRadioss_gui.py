@@ -242,7 +242,7 @@ class openradioss_gui:
                    self.single_status.set(config_file['sp'])
                    self.csv_status.set(config_file['csv'])
                    if vtkhdfenabled:
-                      self.add_jobvtkhdf_status.set(config_file['vtkhdf'])
+                      self.vtkhdf_status.set(config_file['vtkhdf'])
                    if vd3penabled:
                       self.d3plot_status.set(config_file['d3plot'])
 
