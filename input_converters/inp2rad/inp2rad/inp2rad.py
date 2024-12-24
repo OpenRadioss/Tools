@@ -1735,6 +1735,7 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
     current_element_type = None
     current_element_block = []
     remaining_lines = []
+    ppmselect = False
 
     for line in input_lines:
         # Regular expression to find '*ELEMENT,TYPE='
@@ -1751,10 +1752,17 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
                 if element_dict:
                     current_element_dicts = element_dicts.get(current_element_type, [])
                     #print(current_element_type)
-                    property_id = property_names[prop_match]['prop_id']
-                    current_element_dicts.append(
-                        {"ELSET": elset, "PROP_ID": property_id, "elements": element_dict}
-                        )
+                    try:
+                        property_id = property_names[prop_match]['prop_id']
+                        current_element_dicts.append(
+                            {"ELSET": elset, "PROP_ID": property_id, "elements": element_dict}
+                            )
+                    except:
+                        current_element_dicts.append(
+                            {"ELSET": elset, "PROP_ID": 0, "elements": element_dict}
+                            )
+                        print ("Warning: No Property Found for Element, if using PrePoMax, use PARTS as Property assignment, not 'Selection'")
+                        ppmselect = True
                     element_dicts[current_element_type] = current_element_dicts
                     if current_element_type.lower() == 'sc8r':
                         property_names[prop_match]['nint'] = '997'
@@ -1818,10 +1826,18 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
                     current_element_block, current_element_type, max_elem_id
                     )
                 current_element_dicts = element_dicts.get(current_element_type, [])
-                property_id = property_names[prop_match]['prop_id']
-                current_element_dicts.append(
-                    {"ELSET": elset, "PROP_ID": property_id, "elements": element_dict}
-                    )
+                try:
+                    property_id = property_names[prop_match]['prop_id']
+                    current_element_dicts.append(
+                        {"ELSET": elset, "PROP_ID": property_id, "elements": element_dict}
+                        )
+                except:
+                    current_element_dicts.append(
+                        {"ELSET": elset, "PROP_ID": 0, "elements": element_dict}
+                        )
+                    print ("WARNING: No Property Found for Element,")
+                    print ("         if using PrePoMax, use PARTS for Property assignment, not 'Selection'")
+                    ppmselect = True
                 element_dicts[current_element_type] = current_element_dicts
                 if current_element_type.lower() == 'sc8r':
                     property_names[elset]['nint'] = '997'
@@ -1840,7 +1856,7 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
     if not debug_mode:
         return (
             elset_dicts, element_lines, element_dicts, sh3n_list, shell_list, brick_list,
-            property_names, max_elem_id, input_lines, nsets, nset_counter
+            property_names, max_elem_id, input_lines, nsets, nset_counter, ppmselect
             )
 
 
@@ -1856,7 +1872,7 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
 
     return (
         elset_dicts, element_lines, element_dicts, sh3n_list, shell_list, brick_list,
-        property_names, max_elem_id, input_lines, nsets, nset_counter
+        property_names, max_elem_id, input_lines, nsets, nset_counter, ppmselect
         )
 
 
@@ -4650,7 +4666,7 @@ def main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
 
     #new dictionary based version for element writing
     (elset_dicts, element_lines, element_dicts, sh3n_list, shell_list, brick_list, property_names,
-        max_elem_id, input_lines, nsets, nset_counter
+        max_elem_id, input_lines, nsets, nset_counter, ppmselect
         ) = parse_element_data(input_lines, elset_dicts, property_names, non_numeric_references,
         nsets, nset_counter
         )
@@ -4758,21 +4774,21 @@ def main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
         print(f"Engine File Done:      {elapsed_time:8.3f} seconds")
 
     return (
-            transform_lines, transform_data, node_lines, nsets, nset_blocks, material_names, property_names,
-            element_lines, elset_blocks, surface_lines, contacts, tied_contacts, boundary_blocks,
-            function_blocks, initial_blocks, dload_blocks, rigid_bodies, couplings,
-            discoups, mpc_ties, conn_beams, engine_file
+            transform_lines, transform_data, node_lines, nsets, nset_blocks, material_names,
+            property_names, ppmselect, element_lines, elset_blocks, surface_lines, contacts,
+            tied_contacts, boundary_blocks, function_blocks, initial_blocks, dload_blocks,
+            rigid_bodies, couplings, discoups, mpc_ties, conn_beams, engine_file
            )
 
 
 ####################################################################################################
 # Define Text Blocks for headers of each Radioss deck section                                      #
 ####################################################################################################
-def write_output(transform_lines, transform_data, node_lines, nset_blocks, material_names, property_names,
- non_numeric_references, nsets, element_lines, elset_blocks, surface_lines, contacts,
- tied_contacts, boundary_blocks, function_blocks, initial_blocks, dload_blocks,
- rigid_bodies, couplings, discoups, mpc_ties, conn_beams, engine_file, simple_file_name,
- output_file_name, output_file_path, engine_file_name, engine_file_path
+def write_output(transform_lines, transform_data, node_lines, nset_blocks, material_names,
+ property_names, ppmselect, non_numeric_references, nsets, element_lines, elset_blocks,
+ surface_lines, contacts, tied_contacts, boundary_blocks, function_blocks, initial_blocks,
+ dload_blocks, rigid_bodies, couplings, discoups, mpc_ties, conn_beams, engine_file,
+ simple_file_name, output_file_name, output_file_path, engine_file_name, engine_file_path
  ):
 
     global start_time
@@ -5186,10 +5202,19 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
         print("")
         print(f"Total Processing time: {elapsed_time:8.3f} seconds")
 
+    if ppmselect:
+        print("INFO: PrePoMax Internal Select detected, part/prop assignment incomplete")
+        print("      please correct PART IDs for elements in rad file or return to PPM")
+        print("      and assign properties by Part instead of 'Selection'")
+    
+
     if not or_gui:
         input("Press Enter to exit...")
 
     output_done = True
+
+    if ppmselect:
+        output_done = False
 
     return output_done
 
@@ -6026,7 +6051,7 @@ def find_referenced_elsets(input_lines):
 
 
 ####################################################################################################
-# find referenced nsets (reference other elsets by name)                                           #
+# find referenced nsets (reference other nsets by name)                                            #
 ####################################################################################################
 def find_referenced_nsets(input_lines):
     nset_references = {}
@@ -6122,9 +6147,9 @@ def start(input_file_path):
 # Call the main_conversion function to get the necessary data from the conversion blocks           #
 ####################################################################################################
         (transform_lines, transform_data, node_lines, nsets, nset_blocks, material_names,
-         property_names, element_lines, elset_blocks, surface_lines, contacts, tied_contacts,
-         boundary_blocks, function_blocks, initial_blocks, dload_blocks, rigid_bodies, couplings,
-         discoups, mpc_ties, conn_beams, engine_file
+         property_names, ppmselect, element_lines, elset_blocks, surface_lines, contacts,
+         tied_contacts, boundary_blocks, function_blocks, initial_blocks, dload_blocks,
+         rigid_bodies, couplings, discoups, mpc_ties, conn_beams, engine_file
          ) = main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
          non_numeric_references, relsets_for_expansion_dict, nset_references
          )
@@ -6133,13 +6158,13 @@ def start(input_file_path):
 # Call the output function to write data to Radioss from the conversion blocks                     #
 ####################################################################################################
         output_done = write_output(transform_lines, transform_data, node_lines, nset_blocks,
-                                   material_names, property_names, non_numeric_references, nsets,
-                                   element_lines, elset_blocks, surface_lines, contacts,
-                                   tied_contacts, boundary_blocks, function_blocks,
-                                   initial_blocks, dload_blocks, rigid_bodies, couplings,
-                                   discoups, mpc_ties, conn_beams, engine_file, simple_file_name,
-                                   output_file_name, output_file_path, engine_file_name,
-                                   engine_file_path
+                                   material_names, property_names, ppmselect,
+                                   non_numeric_references, nsets, element_lines, elset_blocks,
+                                   surface_lines, contacts, tied_contacts, boundary_blocks,
+                                   function_blocks, initial_blocks, dload_blocks, rigid_bodies,
+                                   couplings, discoups, mpc_ties, conn_beams, engine_file,
+                                   simple_file_name, output_file_name, output_file_path,
+                                   engine_file_name, engine_file_path
                                    )
 
 ####################################################################################################
