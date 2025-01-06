@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright>  Copyright 1986-2024 Altair Engineering Inc.  
+# Copyright>  Copyright 1986-2025 Altair Engineering Inc.  
 # Copyright> 
 # Copyright>  Permission is hereby granted, free of charge, to any person obtaining 
 # Copyright>  a copy of this software and associated documentation files (the "Software"), 
@@ -18,6 +18,9 @@
 # Copyright>  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIAsBILITY, 
 # Copyright>  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR 
 # Copyright>  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+#!/bin/bash
+
 
 function my_help()
 {
