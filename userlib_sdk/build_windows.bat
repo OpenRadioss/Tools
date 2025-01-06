@@ -1,6 +1,6 @@
 echo OFF
 
-REM Copyright>  Copyright 1986-2024 Altair Engineering Inc.  
+REM Copyright>  Copyright 1986-2025 Altair Engineering Inc.  
 REM Copyright> 
 REM Copyright>  Permission is hereby granted, free of charge, to any person obtaining 
 REM Copyright>  a copy of this software and associated documentation files (the "Software"), 
