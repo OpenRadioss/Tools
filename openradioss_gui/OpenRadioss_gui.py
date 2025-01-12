@@ -47,7 +47,40 @@ class openradioss_gui:
         self.current_platform=platform.system() 
         self.job_holder = JobHolder(self.debug)
         self.Window     = gui_def.window(vd3penabled)
+          
+        self.job_file_entry=gui.Window.file('Job file (.rad, .key, or .k, or .inp)', gui.select_file, gui.Window.icon_folder)
+        self.job_holder = JobHolder(1)
+        
+        #self.job_file_entry=self.Window.file('Job file (.rad, .key, or .k, or .inp)', self.select_file, self.Window.icon_folder)
+        
+        # Create checkboxes
+        self.nt_entry          = self.Window.thread_mpi('-nt', 5,0,2)
+        self.np_entry          = self.Window.thread_mpi('-np', 5,5,2)
+        self.single_status     = self.Window.checkbox1('Single Precision ',5,5)
+        self.vtk_status        = self.Window.checkbox1('Anim - vtk',5,2)
+        self.starter_status    = self.Window.checkbox2('Run Starter Only',5,2)
+        if vd3penabled:
+            self.d3plot_status = self.Window.checkbox2('Anim - d3plot',5,2)
+            self.csv_status    = self.Window.checkbox3('TH - csv',0,0)
+        else:
+            self.csv_status    = self.Window.checkbox2('TH - csv    ',5,2)
 
+        # Create buttons
+        self.Window.button('Add Job', self.add_job, (0, 5))
+        self.Window.button('Show Queue', self.show_queue, 6)
+        self.Window.button('Clear Queue', self.clear_queue, 6)
+        self.Window.button('Close', self.close_window, (5, 0))
+
+        # Create a menu bar
+        self.Window.menubar('Info')
+
+        self.load_config()
+        self.Window.root.protocol("WM_DELETE_WINDOW", self.close_window)
+        self.Window.root.after(1000, self.run_job)
+        self.Window.root.mainloop()
+
+
+        
       #-------------------------------- Functions #--------------------------------
       # Close the app when the close button is clicked or the window is closed
       # no job is running or the user confirms the close action
@@ -58,26 +91,26 @@ class openradioss_gui:
            quit()
 
 
-        #-------------------------------- Functions #--------------------------------
-        # Queues the job when the add job button is clicked
-        #----------------------------------------------------------------------------
+      #-------------------------------- Functions #--------------------------------
+      # Queues the job when the add job button is clicked
+      #----------------------------------------------------------------------------
       def add_job(self):
            self.check_install()
 
-           if job_file_entry.is_placeholder_active() or not os.path.exists(job_file_entry.get_user_input()):
+           if self.job_file_entry.is_placeholder_active() or not os.path.exists(self.job_file_entry.get_user_input()):
                messagebox.showerror('', 'Select job.')
                return
 
            # Get Values based on Checkbox Statuses
-           file         = job_file_entry.get_user_input()
-           nt           = nt_entry.get_user_input('1')
-           np           = np_entry.get_user_input('1')
-           precision    = 'sp' if single_status.get() else 'dp' 
-           anim_to_vtk  = 'yes' if vtk_status.get() else 'no'
-           th_to_csv    = 'yes' if csv_status.get() else 'no'
-           starter_only = 'yes' if starter_status.get() else 'no'
+           file         = self.job_file_entry.get_user_input()
+           nt           = self.nt_entry.get_user_input('1')
+           np           = self.np_entry.get_user_input('1')
+           precision    = 'sp' if self.single_status.get() else 'dp' 
+           anim_to_vtk  = 'yes' if self.vtk_status.get() else 'no'
+           th_to_csv    = 'yes' if self.csv_status.get() else 'no'
+           starter_only = 'yes' if self.starter_status.get() else 'no'
            if vd3penabled:
-               d3plot = 'yes' if d3plot_status.get() else 'no'
+               d3plot = 'yes' if self.d3plot_status.get() else 'no'
            else:
                d3plot = 'no'
 
@@ -105,13 +138,13 @@ class openradioss_gui:
                title='Select input file',
                filetypes=[('Radioss file', '*.rad *.key *.k *.inp' )]
            )
-           job_file_entry.on_focus_gain()
-           job_file_entry.delete(0, tk.END)
-           job_file_entry.insert(0, file_path)
+           self.job_file_entry.on_focus_gain()
+           self.job_file_entry.delete(0, tk.END)
+           self.job_file_entry.insert(0, file_path)
 
       def check_mpi_path(self):
            mpi_path_file = "path_to_intel-mpi.txt"
-           if np_entry.get_user_input() > '1' and not os.path.exists(mpi_path_file):
+           if self.np_entry.get_user_input() > '1' and not os.path.exists(mpi_path_file):
                messagebox.showinfo('', 'Running MPI requires intel mpi installation. Please browse to an intel-mpi location. Or select np = 1')
                directory_path = filedialog.askdirectory(
                    title='Select intel-mpi directory'            
@@ -128,7 +161,7 @@ class openradioss_gui:
                sp_executable = "../exec/starter_win64_sp.exe"
            elif platform.system() == 'Linux':
                sp_executable = "../exec/starter_linux64_gf_sp"
-           if single_status.get() and not os.path.exists(sp_executable):
+           if self.single_status.get() and not os.path.exists(sp_executable):
                messagebox.showinfo('WARNING', 'Single Precision Executables not Installed\n      Please Install or submit without sp option checked')
 
            else:
@@ -147,14 +180,14 @@ class openradioss_gui:
       # Create Json Config File & write on disk
       def save_config(self):
            config={}
-           config['starter_only'] = starter_status.get()
-           config['vtk'] = vtk_status.get()
-           config['sp'] = single_status.get()
-           config['csv'] = csv_status.get()
+           config['starter_only'] = self.starter_status.get()
+           config['vtk'] = self.vtk_status.get()
+           config['sp'] = self.single_status.get()
+           config['csv'] = self.csv_status.get()
            if vd3penabled:
-               config['d3plot'] = d3plot_status.get()
-           config['np'] = np_entry.get_user_input()
-           config['nt'] = nt_entry.get_user_input()
+               config['d3plot'] = self.d3plot_status.get()
+           config['np'] = self.np_entry.get_user_input()
+           config['nt'] = self.nt_entry.get_user_input()
 
            # Open File & Write Json file
            if self.current_platform == 'Windows': 
@@ -190,12 +223,12 @@ class openradioss_gui:
                    config_file=json.load(file)
                    file.close()
 
-                   starter_status.set(config_file['starter_only'])
-                   vtk_status.set(config_file['vtk'])
-                   single_status.set(config_file['sp'])
-                   csv_status.set(config_file['csv'])
+                   self.starter_status.set(config_file['starter_only'])
+                   self.vtk_status.set(config_file['vtk'])
+                   self.single_status.set(config_file['sp'])
+                   self.csv_status.set(config_file['csv'])
                    if vd3penabled:
-                      d3plot_status.set(config_file['d3plot'])
+                      self.d3plot_status.set(config_file['d3plot'])
             
            except:
                config_file={}
@@ -207,30 +240,3 @@ if __name__ == "__main__":
 #----------------------------- GUI Elements #--------------------------------
 # File Menu
   gui= openradioss_gui(0)
-  job_file_entry=gui.Window.file('Job file (.rad, .key, or .k, or .inp)', gui.select_file, gui.Window.icon_folder)
-
-  # Create checkboxes
-  nt_entry          = gui.Window.thread_mpi('-nt', 5,0,2)
-  np_entry          = gui.Window.thread_mpi('-np', 5,5,2)
-  single_status     = gui.Window.checkbox1('Single Precision ',5,5)
-  vtk_status        = gui.Window.checkbox1('Anim - vtk',5,2)
-  starter_status    = gui.Window.checkbox2('Run Starter Only',5,2)
-  if vd3penabled:
-    d3plot_status = gui.Window.checkbox2('Anim - d3plot',5,2)
-    csv_status    = gui.Window.checkbox3('TH - csv',0,0)
-  else:
-    csv_status    = gui.Window.checkbox2('TH - csv    ',5,2)
-
-  # Create buttons
-  gui.Window.button('Add Job', gui.add_job, (0, 5))
-  gui.Window.button('Show Queue', gui.show_queue, 5)
-  gui.Window.button('Clear Queue', gui.clear_queue, 5)
-  gui.Window.button('Close', gui.close_window, (5, 0))
-
-  # Create a menu bar
-  gui.Window.menubar('Info')
-
-  gui.load_config()
-  gui.Window.root.protocol("WM_DELETE_WINDOW", gui.close_window)
-  gui.Window.root.after(1000, gui.run_job)
-  gui.Window.root.mainloop()
