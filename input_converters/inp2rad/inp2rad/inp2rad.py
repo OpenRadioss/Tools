@@ -3845,7 +3845,7 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
             part_id_rows = []
             for i in range(0, len(prop_ids), 10):
                 row_values = prop_ids[i:i+10]
-                formatted_row = ''.join(f"{value:>10}" for value in row_values)
+                formatted_row = ''.join(f"{value:>10}" for value in row_values) + '\n'
                 part_id_rows.append(formatted_row)
 
             # Join all part_id_rows with a newline between each row
