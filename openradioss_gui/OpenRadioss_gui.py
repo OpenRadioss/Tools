@@ -230,6 +230,7 @@ class openradioss_gui:
            if not os.path.exists(directory):
                os.makedirs(directory)
 
+
            json_file=os.path.join(directory, 'config.json')
            print('Json File:',json_file)
            try:
