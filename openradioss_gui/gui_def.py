@@ -31,27 +31,20 @@ if arch=='Windows':
 elif arch=='Linux':
     button_width=8
 
-
 class window:
-    def __init__(self,vd3penabled):
+    def __init__(self, vd3penabled, vtkhdfenabled):
         self.root = tk.Tk()
         self.root.title('OpenRadioss')
-        if vd3penabled:
-             if arch == 'Windows':
-                self.root.geometry('790x105')
-                self.root.minsize(790, 105)
-             elif arch == 'Linux':
-                self.root.geometry('910x105')
-                self.root.minsize(910, 105)
-             self.root.resizable(True, True)
-        else:
-             if arch == 'Windows':
-                self.root.geometry('700x105')
-                self.root.minsize(700, 105)
-             elif arch == 'Linux':
-                self.root.geometry('800x105')
-                self.root.minsize(800, 105)
-             self.root.resizable(True, True)
+        self.vd3penabled = vd3penabled
+        self.vtkhdfenabled = vtkhdfenabled
+
+        if arch == 'Windows':
+            self.root.geometry('700x105')
+            self.root.minsize(700, 105)
+        elif arch == 'Linux':
+            self.root.geometry('800x105')
+            self.root.minsize(800, 105)
+        self.root.resizable(True, True)
 
         # Icons
         if arch == 'Windows':
@@ -61,6 +54,25 @@ class window:
              icon_image = tk.PhotoImage(file='./icon/ross.png')
              self.root.iconphoto(True, icon_image)
              self.icon_folder = tk.PhotoImage(file='./icon/or_folder.png')
+
+        # Dropdown Variables
+        self.variables = {
+            'Single Precision': tk.BooleanVar(),
+            'Run Starter Only': tk.BooleanVar(),
+            'Anim - vtk': tk.BooleanVar(),
+            'Anim - vtkhdf': tk.BooleanVar(),
+            'Anim - d3plot': tk.BooleanVar(),
+            'TH - csv': tk.BooleanVar(),
+        }
+
+        self.variable_flags = {
+            'Single Precision': 'single_status',
+            'Run Starter Only': 'starter_status',
+            'Anim - vtk': 'vtk_status',
+            'Anim - vtkhdf': 'vtkhdf_status',
+            'Anim - d3plot': 'd3plot_status',
+            'TH - csv': 'csv_status',
+        }
 
         # Frame file
         self.frame_file = tk.Frame(self.root)
@@ -73,20 +85,35 @@ class window:
         self.frame_checkboxes = tk.Frame(self.frame_thread)
         self.frame_checkboxes.pack(side=tk.TOP)
 
-        self.frame_checkboxes1 = tk.Frame(self.frame_checkboxes)
-        self.frame_checkboxes1.pack(side=tk.RIGHT, pady=(5,0))
+        # Frame for Dropdown
+        self.frame_dropdown = tk.Frame(self.frame_checkboxes)
+        self.frame_dropdown.pack(side=tk.RIGHT)
 
-        self.frame_checkboxes2 = tk.Frame(self.frame_checkboxes1)
-        self.frame_checkboxes2.pack(side=tk.BOTTOM)
-
-        if vd3penabled:
-          self.frame_checkboxes3 = tk.Frame(self.frame_checkboxes2)
-          self.frame_checkboxes3.pack(side=tk.RIGHT)
+        # Dropdown Button
+        self.dropdown_button = tk.Menubutton(self.frame_dropdown, text="Run Options", relief=tk.RAISED)
+        self.dropdown_menu = tk.Menu(self.dropdown_button, tearoff=False)
+        self.dropdown_button.config(menu=self.dropdown_menu)
 
         # Buttons Frame
         self.frame_control = tk.Frame(self.root)
         self.frame_control.pack(side=tk.RIGHT, padx=(0, 30))
 
+        # Explicitly add all labels to the dropdown
+        for label in self.variables:
+            if label == 'Anim - vtkhdf' and not vtkhdfenabled:
+                continue  # Skip Anim - vtkhdf if vtkhdfenabled is False
+            if label == 'Anim - d3plot' and not vd3penabled:
+                continue  # Skip Anim - d3plot if vd3penabled is False
+
+            # Add the checkbox to the dropdown menu
+            self.dropdown_menu.add_checkbutton(label=label, variable=self.variables[label])
+
+        # Pack the dropdown button
+        self.dropdown_button.pack(side=tk.LEFT, padx=5)
+
+    def get_selected_options(self):
+        # Return the current state of the dropdown variables
+        return self.variables
 
     def menubar(self,title):
         self.menubar = tk.Menu(self.root)
@@ -98,6 +125,7 @@ class window:
             self.about_menu.add_command(label="Get the latest version of OpenRadioss (github link)", command=self._latestv_dialog)
             self.about_menu.add_command(label="Documentation and Latest Version of this gui (github_link)", command=self._latestgui_dialog)
             self.about_menu.add_command(label="Get the latest version of the VortexRadioss d3plot python module (github link)", command=self._latestvrad_dialog)
+            self.about_menu.add_command(label="Get the latest version of the kitware animtovtkhdf python module (gitlab link)", command=self._latestvtkh_dialog)
             self.about_menu.add_command(label="Visit the OpenRadioss web page", command=self._orweb_dialog)
             self.about_menu.add_command(label="About this gui", command=self._about_dialog)
 
@@ -113,29 +141,10 @@ class window:
         entry.pack(side=tk.LEFT,padx=px,ipady=py)
         return entry
     
-    def checkbox1(self,text,px,py):
-        status = tk.BooleanVar()
-        checkbox = tk.Checkbutton(self.frame_checkboxes1, text=text, variable=status)
-        checkbox.pack(side=tk.LEFT, padx=px, ipady=py)
-        return status
-
-    def checkbox2(self,text,px,py):
-        status = tk.BooleanVar()
-        checkbox = tk.Checkbutton(self.frame_checkboxes2, text=text, variable=status)
-        checkbox.pack(side=tk.LEFT, padx=px, ipady=py)
-        return status
-    
-    def checkbox3(self,text,px,py):
-        status = tk.BooleanVar()
-        checkbox = tk.Checkbutton(self.frame_checkboxes2, text=text, variable=status)
-        checkbox.pack(side=tk.LEFT, padx=px, ipady=py)
-        return status
-
     def button(self, text, command, pad):
         button = ButtonWithHighlight(self.frame_control, text=text, command=command,width=button_width)        
         button.pack(side=tk.LEFT, padx=pad)
 
-    
     def close(self):
            self.root.destroy()
 
@@ -146,13 +155,10 @@ class window:
           webbrowser.open("https://github.com/OpenRadioss/Tools/tree/main/openradioss_gui")
     def _latestvrad_dialog(self):
           webbrowser.open("https://github.com/Vortex-CAE/Vortex-Radioss")
+    def _latestvtkh_dialog(self):
+          webbrowser.open("https://gitlab.kitware.com/keu-public/openradioss-to-vtkhdf")
     def _orweb_dialog(self):
           webbrowser.open("https://openradioss.org")
     def _about_dialog(self):
           messagebox.showinfo("About", "this job submission gui is from OpenRadioss tools" )
-
-
-
-
-
 
