@@ -60,7 +60,7 @@ class RedirectText:
 class JobWindow():
 
     def __init__(self, command,debug):
-        #DEbug flag activated in OpenRadioss_gui.py
+        #Debug flag activated in OpenRadioss_gui.py
         self.debug=debug
         self.command = command
         self.job_dir = os.path.dirname(command[0])
@@ -90,24 +90,29 @@ class JobWindow():
 
         self.window = tk.Toplevel()
         self.window.title(self.job_name)
+        
         # Initially disable 'X' button while job is running
         self.window.protocol('WM_DELETE_WINDOW', (lambda: 'pass'))
         if platform.system() == 'Windows':
-            # Windows specific code
             self.window.iconbitmap('./icon/ross.ico')
         elif platform.system() == 'Linux':
-            # Linux specific code
             icon_image = tk.PhotoImage(file='./icon/ross.png')
             self.window.iconphoto(True, icon_image)
+        
+        # Configure grid layout for the window
+        self.window.rowconfigure(0, weight=1)  # Row for ScrolledText expands
+        self.window.rowconfigure(1, weight=0)  # Row for buttons remains fixed
+        self.window.columnconfigure(0, weight=1)
+        
+        # ScrolledText widget
         self.log_text = scrolledtext.ScrolledText(self.window, width=100, height=40)
-        self.log_text.pack(fill=tk.BOTH, expand=True, padx=30, pady=30)
-
+        self.log_text.grid(row=0, column=0, sticky="nsew", padx=30, pady=(30, 10))
+        
+        # Frame for buttons (anchored at the bottom)
         self.frame_control = tk.Frame(self.window, padx=10, pady=5)
-        self.frame_control.pack(side=tk.TOP, pady=10)
-
-        self.process = None
-
-        # Control buttons
+        self.frame_control.grid(row=1, column=0, pady=(10, 20))
+        
+        # Add buttons to the frame
         self.stop_button = ButtonWithHighlight(self.frame_control, text='Stop', command=self.stop_job, padx=30)
         self.stop_button.pack(side=tk.LEFT, padx=5)
         self.kill_button = ButtonWithHighlight(self.frame_control, text='Kill', command=self.kill_job, padx=30)
@@ -119,11 +124,11 @@ class JobWindow():
         if vd3penabled:
             self.d3p_button = ButtonWithHighlight(self.frame_control, text='d3plot', command=self.d3p_job, padx=30)
             self.d3p_button.pack(side=tk.LEFT, padx=5)
-
-        # Disable the 'Close' button while job is running
+        
         self.close_button = ButtonWithHighlight(self.frame_control, text='Close', state='disable', command=self.on_close, padx=30)
         self.close_button.pack(side=tk.LEFT, padx=5)
-
+        
+        # Start the thread
         self.th = threading.Thread(target=self.run_single_job)
         self.th.start()
 
