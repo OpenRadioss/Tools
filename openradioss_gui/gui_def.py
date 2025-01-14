@@ -17,6 +17,7 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 # IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import pathlib
 import tkinter as tk
 from tkinter import messagebox
 import platform
@@ -31,6 +32,9 @@ if arch=='Windows':
 elif arch=='Linux':
     button_width=8
 
+tPath=str(pathlib.Path(__file__).absolute())
+fPath=tPath[:len(tPath)-10]  #10 for gui_def.py
+    
 class window:
     def __init__(self, vd3penabled, vtkhdfenabled):
         self.root = tk.Tk()
@@ -48,12 +52,12 @@ class window:
 
         # Icons
         if arch == 'Windows':
-             self.root.iconbitmap('./icon/ross.ico')
-             self.icon_folder = tk.PhotoImage(file='./icon/or_folder.png')
+             self.root.iconbitmap(fPath+'/icon/ross.ico')
+             self.icon_folder = tk.PhotoImage(file=fPath+'/icon/or_folder.png')
         elif arch == 'Linux':
-             icon_image = tk.PhotoImage(file='./icon/ross.png')
+             icon_image = tk.PhotoImage(file=fPath+'/icon/ross.png')
              self.root.iconphoto(True, icon_image)
-             self.icon_folder = tk.PhotoImage(file='./icon/or_folder.png')
+             self.icon_folder = tk.PhotoImage(file=fPath+'/icon/or_folder.png')
 
         # Dropdown Variables
         self.variables = {

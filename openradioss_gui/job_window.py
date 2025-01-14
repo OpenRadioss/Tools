@@ -17,6 +17,7 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 # IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import pathlib
 import os
 import re
 import platform
@@ -47,6 +48,8 @@ except ImportError:
 
 current_platform = platform.system()
 
+tPath=str(pathlib.Path(__file__).absolute())
+fPath=tPath[:len(tPath)-13]  #13 for job_window.py
 
 class RedirectText:
     def __init__(self, widget):
@@ -97,9 +100,9 @@ class JobWindow():
         # Initially disable 'X' button while job is running
         self.window.protocol('WM_DELETE_WINDOW', (lambda: 'pass'))
         if platform.system() == 'Windows':
-            self.window.iconbitmap('./icon/ross.ico')
+            self.window.iconbitmap(fPath+'/icon/ross.ico')
         elif platform.system() == 'Linux':
-            icon_image = tk.PhotoImage(file='./icon/ross.png')
+            icon_image = tk.PhotoImage(file=fPath+'/icon/ross.png')
             self.window.iconphoto(True, icon_image)
         
         # Configure grid layout for the window
