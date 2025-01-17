@@ -51,14 +51,15 @@ The D3plot converter can be found at: [Vortex-CAE GitHub repository](https://git
 
 ### Notes
 
-* **Single Precision**  button enables the OpenRadioss single precision version
-* **Run Starter Only** button executes Starter only.
-* **Anim - vtk** button invokes the Animation to VTK converter at the end of OpenRadioss Engine simulation.
-* **TH - csv** button invokes the TH to CSV converter at the end of OpenRadioss Engine simulation.
+* **Single Precision**  in Run Options dropdown enables the OpenRadioss single precision version
+* **Run Starter Only** in Run Options dropdown executes Starter only.
+* **Anim - vtk** in Run Options dropdown invokes the Animation to VTK converter at the end of OpenRadioss Engine simulation.
+* **TH - csv** in Run Options dropdown invokes the TH to CSV converter at the end of OpenRadioss Engine simulation.
 * **Show Queue** and **Clear Queue** buttons manage the run queue.
 * The **info** menu has links to the downloads section of github and an ‘About’ credit to the script creators
 * **In Windows version only**: On first attempt to submit an mpi run (-np > 1) you will be prompted to locate a suitable vars.bat file on your machine, once selected, this is remembered (to reset, delete the created ‘path_to_mpi_vars.txt’ file from the install directory, or edit its contents)
-* ***D3plot** button appears only if Vortex-CAE D3plot converter is detected.
+* ***Anim - d3plot** in Run Options dropdown appears only if Vortex-CAE D3plot converter is detected.
+* ***Anim - vtkhdf** in Run Options dropdown appears only if Kitware animtovtkhdf converter is detected.
 
 ### The Run Window
 
