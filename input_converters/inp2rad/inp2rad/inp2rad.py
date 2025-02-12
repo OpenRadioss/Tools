@@ -162,6 +162,7 @@ def read_nodes(input_lines):
         for filtered_line in remaining_lines:  # for debug
             test_output_file.write(filtered_line) # Write the filtered deck # for debug
 
+    print("postnodes written")
     return node_data, remaining_lines
 
 
@@ -215,7 +216,7 @@ def convert_distcoup(input_lines):
                 'element_id': element_id, 'refnode': refnode, 'nodes': [], 'count': 0
                 }
 
-        elif line.startswith('*DISTRIBUTING COUPLING'):
+        elif line.lower().startswith('*distributing coupling'):
             elset_match = elset_pattern.search(line)
             if elset_match:
                 current_elset = elset_match.group(1)
@@ -229,18 +230,30 @@ def convert_distcoup(input_lines):
                 i += 1
             i -= 1
 
-        elif line.startswith('*COUPLING'):
+        elif line.lower().startswith('*coupling'):
+            if debug_mode:
+                print(f"found a coupling on line {line}")
             refnode_match = refnode_pattern.search(line)
             surface_match = surface_pattern.search(line)
             if refnode_match and surface_match:
                 current_refnode = refnode_match.group(1)
                 current_surface = surface_match.group(1)
-                if i + 1 < len(input_lines) and input_lines[i + 1].strip().startswith('*DISTRIBUTING'):
+                if debug_mode:
+                    print(f"refnode {current_refnode}, surface {current_surface}")
+                if i + 1 < len(input_lines) and input_lines[i + 1].strip().lower().startswith('*distributing'):
                     coupling_data[current_surface] = {'refnode': current_refnode, 'nodes': []}
                     coupling_data[current_surface]['count'] = str(j)
 
                 else:
+                    if debug_mode:
+                        print (f"appending {line}")
                     remaining_lines.append(line)
+                    
+            else:
+                if debug_mode:
+                    print (f"ref and surf no match: appending {line}")
+                remaining_lines.append(line)
+        
 
         elif re.search(r'^\s*\*SURFACE\s*,\s*(?=.*\bTYPE\s*=\s*NODE\b)(?!.*\bINTERACTION\b)', line, re.IGNORECASE):
             surface_match = re.search(r'NAME\s*=\s*("([^"]+)"|([^,]+))', line, re.IGNORECASE)
@@ -334,7 +347,7 @@ def convert_nsets(input_lines, nset_references):
             # Initialize NSET entry
             nsets[nset_name] = {'id': None, 'values': [], 'is_referenced': False}
 
-            # Get the next line with start, end, and step values for the range
+            # Get the next line with start, end, and (optional) step values for the range
             next_line = input_lines[i + 1].strip()
             if next_line.endswith(','):
             # Remove trailing comma
@@ -342,7 +355,16 @@ def convert_nsets(input_lines, nset_references):
             else:
                 next_line = next_line
 
-            start, end, step = map(int, next_line.split(','))
+            parts = list(map(int, next_line.split(',')))  # Convert to integers
+            
+            # Ensure there are at least two values (start, end), and set step = 1 if missing
+            if len(parts) == 2:
+                start, end = parts
+                step = 1  # Default step
+            elif len(parts) == 3:
+                start, end, step = parts
+            else:
+                raise ValueError(f"Invalid range format in NSET definition: {next_line}")
 
             # Generate the range of numbers
             values = list(range(start, end + 1, step))
@@ -563,6 +585,7 @@ def convert_nsets(input_lines, nset_references):
         for filtered_line in output_lines: # For debug
             test_output_file.write(filtered_line)  # Write the filtered deck # for debug
 
+    print("postnsets written") 
     return nsets, nset_counter, output_lines
 
 ####################################################################################################
@@ -1422,6 +1445,9 @@ def convert_props(input_lines, material_names):
             property_names[property_name]['nint'] = '555'
             property_names[property_name]['conntype'] = conntype
             property_names[property_name]['material_id'] = 0
+            # Increment the property ID
+            prop_id += 1
+
 
         elif section_type == 'solid':
             # Assign a property ID to the property
@@ -1870,6 +1896,7 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
         for filtered_line in input_lines:  # for debug
             test_output_file.write(filtered_line) # Write the filtered deck # for debug
 
+    print("postelements written")
     return (
         elset_dicts, element_lines, element_dicts, sh3n_list, shell_list, brick_list,
         property_names, max_elem_id, input_lines, nsets, nset_counter, ppmselect
@@ -4039,8 +4066,11 @@ def convert_coupling(input_lines, nsets, max_elem_id):
 
     for line in input_lines:
         # Updated regex pattern to ensure both 'COUPLING' and 'CONSTRAINT' are present in the line
+        #if re.search(r'COUPLING', line, re.IGNORECASE) and re.search(r'CONSTRAINT', line, re.IGNORECASE):
         if re.search(r'\bCOUPLING\b', line, re.IGNORECASE) and re.search(r'\bCONSTRAINT\b', line, re.IGNORECASE):
             couplingk = True
+            if debug_mode:
+                print(f"found a coupling")
 
         if re.search(r'^\s*\*KINEMATIC\s+COUPLING\s*,\s*REF\s*NODE\s*=\s*[^,]+', line, re.IGNORECASE):
             kcoupling = True
@@ -4055,7 +4085,8 @@ def convert_coupling(input_lines, nsets, max_elem_id):
 
             if coupling_name_match:
                 coupling_name = coupling_name_match.group(1).strip()  # Extracted name
-
+                if debug_mode:
+                    print(f"coupling name is {coupling_name}")
             else:
                 coupling_name = None  # Handle the case if NAME is not found
 
@@ -5266,10 +5297,32 @@ def input_read(input_file_path):
 
         original_lines = input_file.readlines()
 
-    return(original_lines, input_file_name, simple_file_name, output_file_name, output_file_path,
-     engine_file_name, engine_file_path)
+####################################################################################################
+# Check for INCLUDE files and process contents                                                     #
+####################################################################################################
+            
+    expanded_lines = []
+    include_pattern = re.compile(r'\*INCLUDE\s*,\s*INPUT\s*=\s*(.+)', re.IGNORECASE)
 
+    for line in original_lines:
+        match = include_pattern.match(line.strip())
+        if match:
+            include_path = match.group(1).strip()
+            include_path = os.path.normpath(os.path.join(os.path.dirname(input_file_path), include_path))  # Resolve relative path
+            if os.path.exists(include_path):
+                print(f"Including file: {include_path}")
+                with open(include_path, "r") as include_file:
+                    expanded_lines.extend(include_file.readlines())
+            else:
+                print(f"Warning: Included file {include_path} not found. Keeping original reference.")
+                expanded_lines.append(line)
+        else:
+            expanded_lines.append(line)
 
+    return (expanded_lines, input_file_name, simple_file_name, output_file_name, 
+            output_file_path, engine_file_name, engine_file_path)
+            
+            
 ####################################################################################################
 # Line pre-processor, strips comment lines, special characters etc                                 #
 ####################################################################################################
@@ -5381,7 +5434,9 @@ def expand_elset_ranges(input_lines):
         for filtered_line in input_lines:  # for debug
             test_output_file.write(filtered_line) # Write the filtered deck # for debug
 
+    print("expanded written")
     return input_lines
+
 
 ####################################################################################################
 # Creates part elsets from intersection with Referenced Elsets                                     #
@@ -5618,6 +5673,7 @@ def create_part_elsets(input_lines):
         for filtered_line in modified_lines:  # for debug
             test_output_file.write(filtered_line) # Write the filtered deck # for debug
 
+    print("partcreation written")
     return [line.rstrip() + '\n' for line in modified_lines]  # Ensure lines end with a newline
 
 
@@ -5851,6 +5907,7 @@ def create_rigid_elsets(input_lines):
         for filtered_line in modified_rigid_lines:  # for debug
             test_output_file.write(filtered_line) # Write the filtered deck # for debug
 
+    print("rigid partcreation written")
     return [line.rstrip() + '\n' for line in modified_rigid_lines]  # Ensure lines end with a newline
 
 
@@ -5979,6 +6036,7 @@ def ppm_rigids(input_lines):
         for filtered_line in modified_ppm_lines:  # for debug
             test_output_file.write(filtered_line) # Write the filtered deck # for debug
 
+    print("rotnode subs written")
     return [line.rstrip() + '\n' for line in modified_ppm_lines]  # Ensure lines end with a newline
 
 
@@ -6116,6 +6174,7 @@ def replace_elsets_in_sections(input_lines, elset_references):
             test_output_file.write(f"{parents}\n")       # Write `parents` with newline
             test_output_file.write(f"{elset_names}\n")   # Write `elset_names` with newline
 
+    print("filter written")
     return input_lines, elsets_for_expansion_dict, relsets_for_expansion_dict
 
 
