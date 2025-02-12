@@ -1422,6 +1422,9 @@ def convert_props(input_lines, material_names):
             property_names[property_name]['nint'] = '555'
             property_names[property_name]['conntype'] = conntype
             property_names[property_name]['material_id'] = 0
+            # Increment the property ID
+            prop_id += 1
+
 
         elif section_type == 'solid':
             # Assign a property ID to the property
