@@ -131,6 +131,8 @@ Supported keywords: (not all sub-options necessarily supported):
 
 *HYPERFOAM
 
+*INCLUDE (include files supported for input, the output .rad file will be a single merged file)
+
 *INITIAL CONDITIONS (VELOCITY only)
 
 *KINEMATIC
