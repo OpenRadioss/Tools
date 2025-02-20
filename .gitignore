@@ -4,4 +4,4 @@ vs_build*
 *.lib
 *.a
 *.pyc
-
+.vscode/settings.json
