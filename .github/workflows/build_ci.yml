@@ -5,7 +5,7 @@ on:
   push:
     branches:
       # - main
-      - dev/ci*
+      - 'dev/ci/**'
 
 env:
   JENKINS_SERVER_TOKEN: ${{ secrets.JENKINS_SERVER_TOKEN }}
