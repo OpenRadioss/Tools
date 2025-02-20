@@ -34,7 +34,7 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - image_name: linux64-rl8.9-bld:intel2025.0.1-impi2021.2-ompi4.1.2-ts1
+          - image_name: linux64-rl8.9-bld:intel2025.0.1-impi2021.2-ompi4.1.2-ts11
             os: linux64
 
           - image_name: os-arm-smp-bld
