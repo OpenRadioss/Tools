@@ -14,7 +14,7 @@ env:
   FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
   TO_EMAIL: "${{ secrets.TO_EMAIL }}"
   # DEV ONLY #
-  # TO_EMAIL: "mquinzin@altair.com"
+  TO_EMAIL: "mquinzin@altair.com"
   MAIL_RELAY: ${{ secrets.MAIL_RELAY }}
   MAIL_CONFIG_FILE: "/etc/mail.rc"
   MAIL_COMMAND: "Mail"
@@ -64,6 +64,10 @@ jobs:
       STATUS_BUILD: 0
 
     steps:
+
+      # Get sources
+      - name: Checkout git sources
+        uses: actions/checkout@v4
 
       - name: Build userlib_sdk
         run: |
@@ -142,33 +146,33 @@ jobs:
       #     # Set correct end of step status (if not an email will be sent)
       #     echo "STATUS_BUILD=1" >> $GITHUB_ENV
 
-      # - name: Managing step execution
-      #   if: ${{ always() }}
-      #   run: |
+      - name: Managing step execution
+        if: ${{ always() }}
+        run: |
 
-      #     MAILMSG="Some error(s) has(ve) been raised during workflow execution:\n\n"
-      #     echo -e "\n#### STATUS_STEP_BUILD ${{ env.os }} ###"
-      #     if [ "$STATUS_BUILD" = 0 ]
-      #     then
-      #       echo -e "Status\t[ \033[31;2;1mFAILED\033[0m ]" 
-      #       MAILMSG="The build of output converter tools ${{ env.os }} has failed \n"
+          MAILMSG="Some error(s) has(ve) been raised during workflow execution:\n\n"
+          echo -e "\n#### STATUS_STEP_BUILD ${{ env.os }} ###"
+          if [ "$STATUS_BUILD" = 0 ]
+          then
+            echo -e "Status\t[ \033[31;2;1mFAILED\033[0m ]" 
+            MAILMSG="The build of userlib_sdb ${{ env.os }} / ${{ matrix.os }} / ${{ matrix.precision }} has failed \n"
 
-      #       # Send email 
+            # Send email 
 
-      #       # Setting SMTP server (docker host)
-      #       DOCKER_HOST=`/sbin/ip route|awk '/default/ { print $3 }'`
-      #       echo "set smtp=smtp://${DOCKER_HOST}:25" >> ${{ env.MAIL_CONFIG_FILE }} 
+            # Setting SMTP server (docker host)
+            DOCKER_HOST=`/sbin/ip route|awk '/default/ { print $3 }'`
+            echo "set smtp=smtp://${DOCKER_HOST}:25" >> ${{ env.MAIL_CONFIG_FILE }} 
 
-      #       # Print message in log 
-      #       echo -e $MAILMSG
+            # Print message in log 
+            echo -e $MAILMSG
 
-      #       # Send email
-      #       echo -e "$MAILMSG" | ${{ env.MAIL_COMMAND }} -r $FROM_EMAIL -s "Error in Github CI repo ${{ github.repository }} (${{ github.sha }})" $TO_EMAIL
-      #       exit 1;
+            # Send email
+            echo -e "$MAILMSG" | ${{ env.MAIL_COMMAND }} -r $FROM_EMAIL -s "Error in Github CI repo ${{ github.repository }} (${{ github.sha }})" $TO_EMAIL
+            exit 1;
 
-      #     else
-      #       echo -e "Status\t[ \033[32;2;1mOK\033[0m ]"
-      #     fi
+          else
+            echo -e "Status\t[ \033[32;2;1mOK\033[0m ]"
+          fi
 
       # # Upload artifact
       # - name: Upload built artifacts
