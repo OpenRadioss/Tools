@@ -72,7 +72,7 @@ jobs:
       - name: Build userlib_sdk
         run: |
           cd userlib_sdk
-          chmod 755 ./build_script.sh    
+          chmod 755 ./build_script.bash    
 
           if [ "${{ matrix.os }}" = "linux64" ]
           then
