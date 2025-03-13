@@ -771,18 +771,52 @@ def convert_materials(input_lines):
         elif current_material_name and line.lower().startswith('*hyperfoam'):
             hyperfoam_line = input_lines[i].strip()
 
-            #default value for poissons ratio in case one is not defined in data
+            # Default value for Poisson's ratio in case one is not defined in data
             poissrat = 0.1
 
             # Use regular expressions to extract relevant information
-            match = re.search(
-                r'POISSON=([-+]?\d*\.\d+|\d+(?:[eE][-+]?\d+)?)', hyperfoam_line, re.IGNORECASE
-                )
+            matchpr = re.search(
+                r'POISSON\s*=\s*([-+]?\d*\.\d+|\d+(?:[eE][-+]?\d+)?)', hyperfoam_line, re.IGNORECASE
+            )
 
-            if match:
-                poissrat = float(match.group(1))
+            matchn = re.search(
+                r'N\s*=\s*([-+]?\d*\.\d+|\d+(?:[eE][-+]?\d+)?)', hyperfoam_line, re.IGNORECASE
+            )
 
-            material_names[current_material_name]['poissrat'] = poissrat
+            if matchpr:
+                poissrat = float(matchpr.group(1))
+
+                material_names[current_material_name]['poissrat'] = poissrat
+
+            elif matchn:
+                n = int(matchn.group(1))
+                total_values = n * 3  # Total values to read (mu, alpha, pr)
+
+                material_names[current_material_name]['n'] = n
+
+                # Read the next total_values values
+                all_values = []
+                while len(all_values) < total_values:
+                    i += 1
+                    if i >= len(input_lines) or input_lines[i].strip().startswith('*'):
+                        break
+                    data_line = input_lines[i].strip()
+                    all_values.extend([float(val) for val in data_line.split(',') if val.strip()])
+
+                # Ensure we have exactly total_values
+                if len(all_values) < total_values:
+                    raise ValueError(f"Expected {total_values} values but got {len(all_values)}")
+
+                # Split the values into mu, alpha, and pr
+                mu_values = all_values[0:n*2:2]
+                alpha_values = all_values[1:n*2:2]
+                pr_values = all_values[n*2:n*3]
+        
+                # Assign mu, alpha, and pr values
+                for j in range(n):
+                    material_names[current_material_name][f'mu{j+1}'] = mu_values[j]
+                    material_names[current_material_name][f'alpha{j+1}'] = alpha_values[j]
+                    material_names[current_material_name][f'pr{j+1}'] = pr_values[j]
 
         # uniaxial test
         elif current_material_name and line.lower().startswith('*uniaxial test data'):
@@ -989,12 +1023,20 @@ def check_if_se(properties):
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
-# checks variables for hyperfoam material and returns them to the material write section
-def check_if_hypf(properties):
+# checks variables for hyperfoam uniaxial material and returns them to the material write section
+def check_if_hypfua(properties):
     desired_mps = ['material_id', 'rho', 'poissrat', 'uniaxial_data']
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
+# checks variables for hyperfoam mu alpha material and returns them to the material write section
+def check_if_hypfmua(properties):
+    desired_mps = ['material_id', 'rho', 'n']
+    n = properties.get('n', 0)
+    for i in range(1, n + 1):
+        desired_mps.extend([f'mu{i}', f'alpha{i}', f'pr{i}'])
+    return all(prop in properties for prop in desired_mps)
+    
 # checks variables for rigid material and returns them to the material write section
 def check_if_rigid(properties):
     desired_mps = ['material_id', 'rigid']
@@ -1131,6 +1173,36 @@ def write_coh_material(
     output_file.write("#   Nb_fct   Fsmooth                Fcut\n")
     output_file.write("         0         0                   0\n")
 
+# MAT LAW62
+# writes law62 foam material
+def write_hypfmua_material(material_id, material_name, rho, n, mu_values,
+                            alpha_values, pr_values, output_file):
+    
+    output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
+    output_file.write(f"/MAT/LAW62/{material_id}\n")
+    output_file.write(material_name + "\n")
+    output_file.write("#              RHO_I\n")
+    output_file.write(f"{rho:>20.15g}\n")
+    output_file.write("#                 Nu         N         M              mu_max Flag_Visc      form\n")
+    # Use the first value from pr_values
+    pr1 = pr_values[0]
+    output_file.write(f"{pr1:>20.15g}{n:>10}         0\n")
+    # Write mu values, 5 per line
+    output_file.write("#               mu_i\n")
+    for i in range(0, len(mu_values), 5):
+        mu_chunk = mu_values[i:i+5]
+        output_file.write("".join(f"{mu:>20.15g}" for mu in mu_chunk) + "\n")
+    # Write alpha values, 5 per line
+    output_file.write("#            alpha_i\n")
+    for i in range(0, len(alpha_values), 5):
+        alpha_chunk = alpha_values[i:i+5]
+        output_file.write("".join(f"{alpha:>20.15g}" for alpha in alpha_chunk) + "\n")
+    # Write pr values, 5 per line
+    output_file.write("#               nu_i\n")
+    for i in range(0, len(pr_values), 5):
+        pr_chunk = pr_values[i:i+5]
+        output_file.write("".join(f"{pr:>20.15g}" for pr in pr_chunk) + "\n")
+
 # MAT LAW69
 # writes law69 ogden material
 def write_ogden_c_material(
@@ -1160,7 +1232,7 @@ def write_ogden_c_material(
 
 # MAT LAW70
 # writes law70 foam material
-def write_hypf_material(
+def write_hypfua_material(
     material_id, material_name, rho, poissrat, uniaxial_data, output_file
     ):
     output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
@@ -2973,7 +3045,7 @@ def convert_ties(input_lines, surf_name_to_id, nsets, inter_id):
 
             tc_type = "node to surface"
             if tc_type_match:
-                tc_type = tc_type_match.group(1).strip().lower()
+                tc_type = tc_type_match.group(1).strip().lower()    
 
         elif tied_contact_name and not line.startswith('*'):
             contact_groups = line.split(",")  # Split the line by comma
@@ -3018,7 +3090,7 @@ def convert_ties(input_lines, surf_name_to_id, nsets, inter_id):
                     tie_holder.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                     tie_holder.append(f"/INTER/TYPE2/{inter_id}\n{tied_contact_name}_symm")
                     tie_holder.append("#  Grnd_ID   Surf_id    Ignore  Spotflag     Level   Isearch     Idel2                       dSearch")
-                    tie_holder.append(f"{symm_tie_nset_id:>10}{symm_tie_surf_id:>10}         3        27         0         0         2                    {tc_postol_value:>10.8g}")
+                    tie_holder.append(f"{symm_tie_nset_id:>10}{symm_tie_surf_id:>10}         3        {spotflag_default:>2}         0         0         2                    {tc_postol_value:>10.8g}")
                     tie_holder.append("#              Stfac                Visc                          Istf")
                     tie_holder.append("                   0                   0                             0")
 
@@ -4958,6 +5030,20 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 write_coh_material(material_id, material_name, rho, emodulus,
                     gmodulus, output_file
                     )
+        #MAT LAW62
+        for material_name, properties in material_names.items():
+            if check_if_hypfmua(properties):
+                material_id = properties['material_id']
+                rho = properties['rho']
+                n = properties['n']
+                # Collect all mu, alpha, and pr values
+                mu_values = [properties[key] for key in properties if key.startswith('mu')]
+                alpha_values = [properties[key] for key in properties if key.startswith('alpha')]
+                pr_values = [properties[key] for key in properties if key.startswith('pr')]
+
+                # Write the card format for materials with foam mu a properties
+                write_hypfmua_material(material_id, material_name, rho, n, mu_values, alpha_values,
+                                       pr_values, output_file)
 
         #MAT LAW69
         for material_name, properties in material_names.items():
@@ -4974,13 +5060,13 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         #MAT LAW70
         for material_name, properties in material_names.items():
-            if check_if_hypf(properties):
+            if check_if_hypfua(properties):
                 material_id = properties['material_id']
                 rho = properties['rho']
                 poissrat = properties['poissrat']
                 uniaxial_data = properties['uniaxial_data']
-    # Write the card format for materials with foam properties
-                write_hypf_material(material_id, material_name, rho, poissrat, uniaxial_data,
+    # Write the card format for materials with foam uniaxial properties
+                write_hypfua_material(material_id, material_name, rho, poissrat, uniaxial_data,
                     output_file
                     )
 
