@@ -33,9 +33,21 @@ jobs:
       matrix:
         include:
           - image_name: linux64-rl8.9-bld:intel2025.0.1-impi2021.2-ompi4.1.2-ts11
+            precision: dp
+            compiler: intel
+            os: linux64
+          - image_name: linux64-rl8.9-bld:intel2025.0.1-impi2021.2-ompi4.1.2-ts11
+            precision: sp
+            compiler: intel
             os: linux64
           # ARM machine must be upgrader to RL9 to support the github runner installation (>rh7)
           # - image_name: os-arm-smp-bld
+          #   precision: dp
+          #   compiler: armflang
+          #   os: linuxa64
+          # - image_name: os-arm-smp-bld
+          #   precision: sp
+          #   compiler: armflang
           #   os: linuxa64
 
     runs-on: ["${{ matrix.os }}","dev_pmci"] 
@@ -53,16 +65,45 @@ jobs:
 
     steps:
 
-      - name: Check tools version
+      - name: Build userlib_sdk
         run: |
-          echo " " 
-          echo "    GCC"
-          gcc --version
-          echo " "
-          echo "    INTEL"
-          ifort --version
+          cd userlib_sdk
+          source /home/adminqa/.bashrc
+          chmod 755 ./build_script.sh    
 
-          
+          if [ "${{ matrix.os }}" = "linux64" ]
+          then
+            echo "Running BUILD for linux"
+            source /opt/rh/gcc-toolset-11/enable
+            source /opt/intel/oneapi/compiler/2025.0/env/vars.sh
+            source /opt/intel/oneapi/mkl/2025.0/env/vars.sh
+            echo " " 
+            echo "    GCC"
+            gcc --version
+            echo " "
+            echo "    INTEL"
+            ifort --version
+    
+          else 
+            echo "Running BUILD for ARM"
+            # TBC
+          fi
+
+          pwd
+          ls -l
+          echo "----"
+          echo " " 
+          cmd="./build_script.bash -arch=${{ matrix.os }} -compiler=${{ matrix.compiler }} -prec=${{ matrix.precision }}"
+          echo "========================================="
+          echo "--  BUILD userlib_sdk / ${{ matrix.os }} / ${{ matrix.precision }} --"   
+          echo "--  $cmd --"   
+          echo "========================================="
+
+          pwd
+          ls -l
+          echo "----"
+          ls -l userlib_sdk          
+
       # - name: Clean local exe dir
       #   run: |
       #     rm -rf exec
