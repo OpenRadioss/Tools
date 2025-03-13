@@ -72,7 +72,6 @@ jobs:
       - name: Build userlib_sdk
         run: |
           cd userlib_sdk
-          source /home/adminqa/.bashrc
           chmod 755 ./build_script.sh    
 
           if [ "${{ matrix.os }}" = "linux64" ]
