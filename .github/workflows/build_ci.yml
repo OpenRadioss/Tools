@@ -85,7 +85,7 @@ jobs:
             gcc --version
             echo " "
             echo "    INTEL"
-            ifort --version
+            ifx --version
     
           else 
             echo "Running BUILD for ARM"
@@ -96,7 +96,7 @@ jobs:
           ls -l
           echo "----"
           echo " " 
-          cmd="./build_script.bash -arch=${{ matrix.os }} -compiler=${{ matrix.compiler }} -prec=${{ matrix.precision }}"
+          cmd="./build_script.bash -arch=${{ matrix.os }}_ifx -compiler=${{ matrix.compiler }} -prec=${{ matrix.precision }}"
           echo "========================================="
           echo "--  BUILD userlib_sdk / ${{ matrix.os }} / ${{ matrix.precision }} --"   
           echo "--  $cmd --"   
