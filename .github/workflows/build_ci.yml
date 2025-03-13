@@ -23,8 +23,6 @@ jobs:
 
   build_userlib_sdk_linuxs:
 
-    # TBCCC use a matrix to group linux and arm 
-
     if: ${{ github.repository_owner == 'OpenRadioss' }}
     # DEV ONLY # runs-on: ["linux64","dev_pmci"] 
     # runs-on: ["linux64","build","prod"]
@@ -36,7 +34,7 @@ jobs:
         include:
           - image_name: linux64-rl8.9-bld:intel2025.0.1-impi2021.2-ompi4.1.2-ts11
             os: linux64
-
+          # ARM machine must be upgrader to RL9 to support the github runner installation (>rh7)
           # - image_name: os-arm-smp-bld
           #   os: linuxa64
 
@@ -55,12 +53,16 @@ jobs:
 
     steps:
 
-      - name: Test
+      - name: Check tools version
         run: |
-          cat /etc/os-release
-          uname -a
+          echo " " 
+          echo "    GCC"
+          gcc --version
+          echo " "
+          echo "    INTEL"
+          ifort --version
 
-
+          
       # - name: Clean local exe dir
       #   run: |
       #     rm -rf exec
