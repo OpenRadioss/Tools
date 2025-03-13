@@ -12,7 +12,7 @@ env:
   JENKINS_SERVER_URL: ${{ secrets.JENKINS_SERVER_URL }}
   CERTS_SERVER_NAME: ${{ secrets.CERTS_SERVER_NAME }}
   FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
-  TO_EMAIL: "${{ secrets.TO_EMAIL }}"
+  # TO_EMAIL: "${{ secrets.TO_EMAIL }}"
   # DEV ONLY #
   TO_EMAIL: "mquinzin@altair.com"
   MAIL_RELAY: ${{ secrets.MAIL_RELAY }}
