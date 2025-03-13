@@ -107,6 +107,9 @@ jobs:
           echo "----"
           ls -l userlib_sdk          
 
+          # Set correct end of step status (if not an email will be sent)
+            echo "STATUS_BUILD=1" >> $GITHUB_ENV
+
       # - name: Clean local exe dir
       #   run: |
       #     rm -rf exec
