@@ -72,6 +72,8 @@ jobs:
       - name: Build userlib_sdk
         run: |
           cd userlib_sdk
+          # Remove previous bins, should not be part of github sources !!!
+          rm -rf userlib_sdk
           chmod 755 ./build_script.bash    
 
           if [ "${{ matrix.os }}" = "linux64" ]
@@ -153,11 +155,11 @@ jobs:
         run: |
 
           MAILMSG="Some error(s) has(ve) been raised during workflow execution:\n\n"
-          echo -e "\n#### STATUS_STEP_BUILD ${{ env.os }} ###"
+          echo -e "\n#### STATUS_STEP_BUILD ${{ matrix.os }}-${{ matrix.precision }} ###"
           if [ "$STATUS_BUILD" = 0 ]
           then
             echo -e "Status\t[ \033[31;2;1mFAILED\033[0m ]" 
-            MAILMSG="The build of userlib_sdb ${{ env.os }} / ${{ matrix.os }} / ${{ matrix.precision }} has failed \n"
+            MAILMSG="The build of userlib_sdk ${{ matrix.os }} / ${{ matrix.precision }} has failed \n"
 
             # Send email 
 
@@ -176,12 +178,12 @@ jobs:
             echo -e "Status\t[ \033[32;2;1mOK\033[0m ]"
           fi
 
-      # # Upload artifact
-      # - name: Upload built artifacts
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: output-converters-${{ env.os }}
-      #     path: exec
+      # Upload artifact
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: userlib_sdk-${{ matrix.os }}-${{ matrix.precision }}
+          path: userlib_sdk/userlib_sdk/*
 
   # build_userlib_sdk_linux:      
   #   if: ${{ github.repository_owner == 'OpenRadioss' }}
