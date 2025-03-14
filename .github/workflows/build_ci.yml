@@ -103,7 +103,8 @@ jobs:
           echo "--  BUILD userlib_sdk / ${{ matrix.os }} / ${{ matrix.precision }} --"   
           echo "--  $cmd --"   
           echo "========================================="
-
+          eval $cmd
+          
           pwd
           ls -l
           echo "----"
