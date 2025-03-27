@@ -47,7 +47,7 @@ jobs:
   
     # DEV ONLY # runs-on: ["${{ matrix.os }}","dev_pmci"] 
     runs-on: ["${{ matrix.os }}","build","prod"]
-
+    
     container: 
       image: "fr-qafactorydev.europe.altair.com/${{ matrix.image_name }}"
       credentials: 
@@ -394,8 +394,7 @@ jobs:
   deliver:
     needs: ["build_output_converters_linux","build_output_converters_windows_no_container","build_userlib_sdk_linuxs","build_userlib_sdk_win"]
     if: ${{ github.repository_owner == 'OpenRadioss' }}
-    # DEV ONLY # runs-on: ["dev_delivery","dev"] 
-    runs-on: delivery
+    runs-on: ["prod","linux64"] 
     container: 
       image: fr-qafactorydev.europe.altair.com/common-linux64
       credentials: 
@@ -420,21 +419,33 @@ jobs:
         include:
           - artifact: userlib_sdk-linux64-dp
             path: userlib_sdk_exec
+            compiler: oneapi
+            precision: dp
             os: linux64
           - artifact: userlib_sdk-linux64-sp
             path: userlib_sdk_exec
+            compiler: oneapi
+            precision: sp
             os: linux64
           - artifact: userlib_sdk-linuxa64-dp
             path: userlib_sdk_exec
+            compiler: armflang
+            precision: dp
             os: linuxa64
           - artifact: userlib_sdk-linuxa64-sp
             path: userlib_sdk_exec
+            compiler: armflang
+            precision: sp
             os: linuxa64          
           - artifact: userlib_sdk-win64-dp
             path: userlib_sdk_exec
+            compiler: oneapi
+            precision: dp
             os: win64
           - artifact: userlib_sdk-win64-sp
             path: userlib_sdk_exec
+            compiler: oneapi
+            precision: sp
             os: win64
           - artifact: output-converters-linux64
             path: exec
@@ -462,7 +473,12 @@ jobs:
           # Upload artifacts ${{ matrix.artifact }} to JFrog
           if [ "${{ matrix.path }}" = "userlib_sdk_exec" ]
           then
-            jf rt upload ${JF_OPTIONS} "${{ matrix.path }}/(*)" ${{ env.USERLIB_SDK }}/{1}
+            prec_suffix=''
+            if [ ${{ matrix.precision }} = "sp" ]
+            then
+              prec_suffix='_sp'
+            fi
+            jf rt upload ${JF_OPTIONS} "${{ matrix.path }}/(*${{ matrix.os }}${prec_suffix}_${{ matrix.compiler }}*)" ${{ env.USERLIB_SDK }}/{1}
           else
             jf rt upload ${JF_OPTIONS} "${{ matrix.path }}/(*${{ matrix.os }}*)" ${{ env.OUTPUT_CONVERTER_PREFIX }}/${{ matrix.os }}/{1}
           fi
