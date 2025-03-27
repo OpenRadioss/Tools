@@ -18,7 +18,7 @@
 # IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 import os
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 import sys
 import re
 import time
@@ -38,7 +38,8 @@ e_magnitude = 10.0
 # initialize a variable tracking max density to be used as basis of spring 'weld' mass
 rho_magnitude = 1e-9
 spotflag_default = 27 #change tied interface spotflag (27, 28 options usually)
-
+radversion = 2025 #2023: for compatibility with HM 2025 and Radioss <2024
+                  #or 2025: for OpenRadioss, enables s2s tied contact and icontrol for solids
 
 debug_mode = False # enables writing of intermediate files for debugging
 
@@ -89,10 +90,11 @@ def convert_transforms(input_lines):
                         Xc, Yc, Zc = z_coords[0], z_coords[1], z_coords[2]
                     except ValueError:
                         # Default Z-axis direction if not provided
-                        Xc, Yc, Zc = 0.0, 0.0, 1.0
+                        Xc, Yc, Zc = 0.0, 0.0, 0.0
                 else:
                     # Default Z-axis direction if not provided
-                    Xc, Yc, Zc = 0.0, 0.0, 1.0
+                    Xb, Yb, Zb = coords[3], coords[4], coords[2]
+                    Xc, Yc, Zc = coords[0], coords[1]+1, coords[2]
 
             if not transform_id == 0:
                 # Generate the Radioss format output
@@ -452,11 +454,16 @@ def convert_nsets(input_lines, nset_references):
 
         # Check for SURFACE type NODE NSET definition
         elif matchnode:
+            nset_already = False
             # Extract the NSET name
             nset_name_match = re.search(r'\bNAME\s*=\s*([^,]+)', line, re.IGNORECASE)
             nset_name = nset_name_match.group(1).strip()
-            nsets[nset_name] = {'id': None, 'values': [], 'is_referenced': False}
-
+            if nset_name in nsets:
+                nset_already = True
+            if nset_name not in nsets:
+                nsets[nset_name] = {'id': None, 'values': [], 'is_referenced': False}
+            if debug_mode:   
+                print(f"found matchnode nset: {nset_name}")
             # Move to the next line(s) to gather the NSET values
             i += 1
             nset_values = []
@@ -483,7 +490,8 @@ def convert_nsets(input_lines, nset_references):
                 )
 
             else:
-                del nsets[nset_name]
+                if not nset_already:
+                    del nsets[nset_name]
                 # If no nset numeric values, Add the original name back to the output
                 output_lines.append(line + '\n')
                 for j in range(0, len(hold_incase), 8):
@@ -494,6 +502,7 @@ def convert_nsets(input_lines, nset_references):
                 output_lines.append(', '.join(map(str, nset_values[j:j + 8])) + '\n')
 
             matchnode = False
+            nset_already = False
 
         # Check for KINEMATIC COUPLING type NODE NSET definition
         elif matchkc:
@@ -629,6 +638,7 @@ def convert_materials(input_lines):
     global e_magnitude
     global rho_magnitude
     material_names = {}  # initializes a dictionary of Material name relationships
+    extra_material_names = {} # initializes a dictionary of extra mat name relationships, e.g. prony
     current_material_name = None
     material_id = 1  # Initialize the material ID
 
@@ -648,12 +658,18 @@ def convert_materials(input_lines):
 
         superelastic_pattern = r'^\*\s*superelastic\b'
         superelastic_line_match = re.search(superelastic_pattern, line, re.IGNORECASE)
+        
+        viscoelastic_pattern = r'^\*\s*viscoelastic\s*,?\s*time\s*=\s*prony\b'
+        viscoelastic_line_match = re.search(viscoelastic_pattern, line, re.IGNORECASE)
 
         neohooke_pattern = r'^\*\s*hyperelastic\b.*,\s*neo hooke'
         neohooke_line_match = re.search(neohooke_pattern, line, re.IGNORECASE)
 
         ogden_pattern = r'^\*\s*hyperelastic\b.*,\s*ogden'
         ogden_line_match = re.search(ogden_pattern, line, re.IGNORECASE)
+        
+        reducedpoly_pattern = r'^\*\s*hyperelastic\b.*,\s*reduced polynomial'
+        reducedpoly_line_match = re.search(reducedpoly_pattern, line, re.IGNORECASE)
 
         mooney_rivlin_pattern = r'^\*\s*hyperelastic\b.*,\s*mooney-rivlin'
         mooney_rivlin_line_match = re.search(mooney_rivlin_pattern, line, re.IGNORECASE)
@@ -666,6 +682,7 @@ def convert_materials(input_lines):
 
             # Assign a material ID to the material
             material_names[material_name] = {'material_id': material_id}
+            extra_material_names[material_name] = {'material_id': material_id}
             current_material_name = material_name  # Set the current material name
 
             material_id += 1  # Increment the material ID
@@ -783,12 +800,22 @@ def convert_materials(input_lines):
                 r'N\s*=\s*([-+]?\d*\.\d+|\d+(?:[eE][-+]?\d+)?)', hyperfoam_line, re.IGNORECASE
             )
 
+            matchtdi = re.search(
+                r'test\s+data\s+input\s*,?', hyperfoam_line, re.IGNORECASE
+            )
+            
+            matchtd = re.search(
+                r'testdata\s*,?', hyperfoam_line, re.IGNORECASE
+            )
+
             if matchpr:
                 poissrat = float(matchpr.group(1))
-
                 material_names[current_material_name]['poissrat'] = poissrat
 
-            elif matchn:
+            if matchtdi or matchtd:
+                material_names[current_material_name]['poissrat'] = poissrat 
+
+            elif matchn and not matchtdi and not matchtd:
                 n = int(matchn.group(1))
                 total_values = n * 3  # Total values to read (mu, alpha, pr)
 
@@ -839,6 +866,23 @@ def convert_materials(input_lines):
                  'fct_id': fct_id,
                  'xy_data': uniaxial_data
             } # assign each uniaxial data set a function id
+            i -= 1
+
+        # prony series
+        elif current_material_name and viscoelastic_line_match:
+            i += 1
+            prony_data = []  # Initialize prony_data for the current material
+            while i < len(input_lines) and not input_lines[i].startswith('*'):
+                # Read and convert the prony series data
+                data_line = input_lines[i].strip()
+                # Extract the first three fields
+                data_values = [float(val) for val in data_line.split(',')[:3]]
+                # add values to series
+                prony_data.append((abs(data_values[0]), abs(data_values[1]), 1/abs(data_values[2])))
+                i += 1
+            extra_material_names[current_material_name]['prony_data'] = {
+                 'series_data': prony_data
+            } # add prony data to the material
             i -= 1
 
         # plastic
@@ -915,6 +959,26 @@ def convert_materials(input_lines):
             material_names[current_material_name]['ogden_n'] = ogden_n
             material_names[current_material_name]['poissrat'] = poissrat
 
+        # reduced_polynomial test_data
+        elif current_material_name and reducedpoly_line_match and 'test data input' in line.lower():
+            # Set default values
+            ogden_n = 1
+            poissrat = 0.45
+
+            # Search for N= and POISSON= in the line, ignoring spaces around the equals sign
+            n_match = re.search(r'\bN\s*=\s*([\d.]+)', line, re.IGNORECASE)
+            poisson_match = re.search(r'\bPOISSON\s*=\s*([\d.]+)', line, re.IGNORECASE)
+
+            # If matches found, convert to float and update the values
+            if n_match:
+                ogden_n = int(n_match.group(1))
+            if poisson_match:
+                poissrat = float(poisson_match.group(1))
+
+            # Assign to the material properties dictionary
+            material_names[current_material_name]['ogden_n'] = ogden_n
+            material_names[current_material_name]['poissrat'] = poissrat
+
         # mooney-rivlin
         elif current_material_name and mooney_rivlin_line_match:
             i += 1
@@ -959,7 +1023,7 @@ def convert_materials(input_lines):
 
         i += 1  # Move to the next line
 
-    return material_names, fct_id # return material names to main convert def
+    return material_names, extra_material_names, fct_id # return material names to main convert def
 
 
 ###############################################################################################
@@ -1040,6 +1104,13 @@ def check_if_hypfmua(properties):
 # checks variables for rigid material and returns them to the material write section
 def check_if_rigid(properties):
     desired_mps = ['material_id', 'rigid']
+    return all(
+        prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
+        )
+
+# checks variables for prony_series and returns them to the material write section
+def check_if_prony(properties):
+    desired_mps = ['material_id', 'prony_data']
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
@@ -1245,7 +1316,7 @@ def write_hypfua_material(
     xy_data = uniaxial_data['xy_data']
     #calculate EO from xy data
     x2, y2 = xy_data[1]  # Take Second data point in uniaxial data to calculate EO
-    hypf_EO = 10 * y2 / x2
+    hypf_EO = 2 * y2 / x2
     #calculate E_Max from xy data
     x_penultimate, y_penultimate = xy_data[-2]  # Penultimate data point in uniaxial data
     x_final, y_final = xy_data[-1]  # Final data point in uniaxial data
@@ -1314,6 +1385,22 @@ def write_ogden_material(
     output_file.write("#                D_i\n")
     output_file.write(f"{ogden_D:>20.15g}\n")
 
+def write_prony_series(
+    material_id, prony_data, output_file
+    ):
+    series_data = prony_data['series_data']
+    output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
+    output_file.write(f"# Prony Series for material ID {material_id}\n")
+    output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
+    output_file.write(f"/VISC/PRONY/{material_id}\n")
+    output_file.write("#        M\n")
+    num_terms = len(series_data)  # Count number of items
+    output_file.write(f"{num_terms:>10}\n")
+    output_file.write("#                 GI               BETAI                  KI              BETAKI\n")
+    #write the prony data fields
+    for item in series_data:
+        g, k, b = item
+        output_file.write(f"{g:>20.15g}{b:>20.15g}{k:>20.15g}{b:>20.15g}\n")
 
 # RIGIDS
 # writes void material for rigid parts
@@ -1572,7 +1659,7 @@ def write_parts(property_names, non_numeric_references, output_file):
     for property_name, property_data in property_names.items():
         # Look up the value (part_name) for the matching key
         part_name = next(
-            (values[0] for key, values in non_numeric_references.items() if key == property_name),
+            (key for key, values in non_numeric_references.items() if key == property_name),
             property_name  # Default to property_name if no match
         )
 
@@ -1594,7 +1681,7 @@ def write_parts(property_names, non_numeric_references, output_file):
 def write_props(property_names, output_file):
     for property_name, property_data in property_names.items():
         property_id = property_data['prop_id'] #generate property_id for this def
-       #print(property_data)
+        #print(property_data)
         prop_type = property_data['nint']  # Get the 'type' value from property_data (nint value)
         # Check prop_type and write different cards based on its value
         if prop_type == '5': #5 is code for Shells
@@ -1608,6 +1695,9 @@ def write_props(property_names, output_file):
             output_file.write("                   0                   0                   0                   0                .015\n")
             output_file.write("#        N                         Thick              Ashear              Ithick     Iplas\n")
             output_file.write(f"{prop_type:>10}          {shthk:>20.15g}                .833                   1         1\n")
+            if radversion == 2025:
+                output_file.write("#                                                                                     Ipos\n")
+                output_file.write("                                                                                         0\n")
         elif prop_type == '1': #1 is code for Membrane Shells
             shthk = float(property_data['shthk'])  # Get the 'shthk' value from property_data
             output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
@@ -1619,6 +1709,9 @@ def write_props(property_names, output_file):
             output_file.write("                   0                   0                   0                   0                .015\n")
             output_file.write("#        N                         Thick              Ashear              Ithick     Iplas\n")
             output_file.write(f"{prop_type:>10}          {shthk:>20.15g}                .833                   0         0\n")
+            if radversion == 2025:
+                output_file.write("#                                                                                     Ipos\n")
+                output_file.write("                                                                                         0\n")
         elif prop_type == '888': #888 is code for Cohesives
             output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
             output_file.write(f"/PROP/TYPE43/{property_id}\n")
@@ -1630,11 +1723,14 @@ def write_props(property_names, output_file):
             output_file.write(f"/PROP/SOLID/{property_id}\n")
             output_file.write(property_name + "\n")
             output_file.write("#   Isolid    Ismstr               Icpre  Itetra10     Inpts   Itetra4    Iframe                  dn\n")
-            output_file.write("        24        -1                  -1         2         0         3         0                  .1\n")
+            output_file.write("        24        -1                  -1         2         0         3        -1                  .1\n")
             output_file.write("#                q_a                 q_b                   h            LAMBDA_V                MU_V\n")
             output_file.write("                 1.1                 .05                   0                   0                   0\n")
             output_file.write("#             dt_min            Vdef_min            Vdef_max             ASP_max             COL_min\n")
             output_file.write("                 0.0                0.01               100.0               100.0                0.01\n")
+            if radversion == 2025:
+                output_file.write("#     Ndir sphpartID  Icontrol\n")
+                output_file.write("                             1\n")
         elif prop_type == '998': #998 is code for Void
             shthk = float(property_data['shthk'])  # Get the 'shthk' value from property_data (hardcoded as 0.01 currently for void
             output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
@@ -1650,9 +1746,11 @@ def write_props(property_names, output_file):
             output_file.write("        15        -1                                       5         0                            .1\n")
             output_file.write("#                q_a                 q_b                   h\n")
             output_file.write("                 1.1                 .05                   0\n")
-            output_file.write("#             dt_min\n")
-            output_file.write("                   0\n")
-
+            output_file.write("#             dt_min            Vdef_min            Vdef_max             ASP_max             COL_min\n")
+            output_file.write("                 0.0                0.01               100.0               100.0                0.01\n")
+            if radversion == 2025:
+                output_file.write("#                     Icontrol\n")
+                output_file.write("                             1\n")
 
 ####################################################################################################
 # Function to convert CONN3D2 of type BEAM to Type13 Springs                                       #
@@ -1859,7 +1957,9 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
                         current_element_dicts.append(
                             {"ELSET": elset, "PROP_ID": 0, "elements": element_dict}
                             )
-                        print ("Warning: No Property Found for Element, if using PrePoMax, use PARTS as Property assignment, not 'Selection'")
+                        print ("Warning: No Property Found for Element,")
+                        print ("         if using PrePoMax, please use PART NAME as Region Type") 
+                        print ("         for shell parts Section assignment, not 'Selection'")
                         ppmselect = True
                     element_dicts[current_element_type] = current_element_dicts
                     if current_element_type.lower() == 'sc8r':
@@ -1933,8 +2033,9 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
                     current_element_dicts.append(
                         {"ELSET": elset, "PROP_ID": 0, "elements": element_dict}
                         )
-                    print ("WARNING: No Property Found for Element,")
-                    print ("         if using PrePoMax, use PARTS for Property assignment, not 'Selection'")
+                    print ("Warning: No Property Found for Element,")
+                    print ("         if using PrePoMax, please use PART NAME as Region Type") 
+                    print ("         for shell parts Section assignment, not 'Selection'")
                     ppmselect = True
                 element_dicts[current_element_type] = current_element_dicts
                 if current_element_type.lower() == 'sc8r':
@@ -1947,7 +2048,7 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
 
     #calls the 'convert elements' subdef below (format for output)
     (elset_dicts, element_lines, sh3n_list, shell_list, brick_list,
-     nsets, nset_counter) = convert_elements(elset_dicts,
+     nsets, nset_counter) = convert_elements(non_numeric_references, elset_dicts,
      element_dicts, nsets, nset_counter
      )
 
@@ -2000,14 +2101,14 @@ def process_element_block(current_element_block, current_element_type, max_elem_
 
         if or_gui:
             print("### INFO ###")
-            print(f"element type {current_element_type} is not yet supported by A2R")
+            print(f"element type {current_element_type} is not yet supported by inp2rad")
             print("please try to use an alternative")
             print("or you may try standalone conversion by calling this script at commandline")
-            sys.exit("A2R unable to continue")
+            sys.exit("inp2rad unable to continue")
 
         else:
             print("### INFO ###")
-            print(f"element type {current_element_type} is not yet supported by A2R")
+            print(f"element type {current_element_type} is not yet supported by inp2rad")
             print("please try to use an alternative")
             print("process will attempt to continue the best it can")
             print("")
@@ -2060,7 +2161,7 @@ def process_element_block(current_element_block, current_element_type, max_elem_
 ####################################################################################################
 # Function to convert elements data dictionary for output                                          #
 ####################################################################################################
-def convert_elements(elset_dicts, element_dicts, nsets, nset_counter):
+def convert_elements(non_numeric_references, elset_dicts, element_dicts, nsets, nset_counter):
     element_lines = []
     sh3n_list = []
     shell_list = []
@@ -2071,31 +2172,42 @@ def convert_elements(elset_dicts, element_dicts, nsets, nset_counter):
 
         for element_dict in element_list:
             elset = element_dict["ELSET"]
+            part_name = next(
+            #(values[0] for key, values in non_numeric_references.items() if key == property_name),
+            (key for key, values in non_numeric_references.items() if elset in values),
+            elset  # Default to elset name if no match
+            )
+
             property_id = element_dict ["PROP_ID"]
 
             if element_type.lower() == "mass":
                 nset_counter += 1
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# Node Set for Masses from Elset: {elset}")
+                element_lines.append(f"# Node Set for Masses from Elset: {part_name}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"/GRNOD/NODE/{nset_counter}")  # Output section header
                 nsets[elset] = {'id': nset_counter}
                 element_lines.append(f"nodes with added mass from Elset {elset}")
                 element_lines.append("#   NODEID")
+
+                all_nodes = []  # Collect all nodes
                 for element in element_dict["elements"]:
-                    nodes = ', '.join(element.get('nodes', []))
-                    nodes = nodes.split(', ')
-                    formatted_nodes = ''.join([value.rjust(10) for value in nodes])
-                    element_lines.append(f"{formatted_nodes}")
+                    all_nodes.extend(element.get('nodes', []))  # Flatten node lists
+            
+                # Format output with 10 nodes per line
+                for i in range(0, len(all_nodes), 10):
+                    chunk = all_nodes[i:i+10]  # Take 10 nodes at a time
+                    formatted_nodes = ''.join(value.rjust(10) for value in chunk)  # Format as fixed-width
+                    element_lines.append(formatted_nodes)  # Append to output
 
             elif element_type.lower() == "conn3d2":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# Spring Elements for PART: {elset}, PID: {property_id}")
+                element_lines.append(f"# Spring Elements for PART: {part_name}, PID: {property_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"/SPRING/{property_id}")  # Output section header
-                for element in element_dict["elements"]:
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
-                    # Add element_id to sh3n_list
+                    # Add element_id to spring_list
                     spring_list.append(element_id)
                     nodes = ', '.join(element.get('nodes', []))
                     nodes = nodes.split(', ')
@@ -2108,10 +2220,10 @@ def convert_elements(elset_dicts, element_dicts, nsets, nset_counter):
                 or element_type.lower() == "m3d3"
                 ):
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 3 Noded Shell Elements for PART: {elset}, PID: {property_id}")
+                element_lines.append(f"# 3 Noded Shell Elements for PART: {part_name}, PID: {property_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"/SH3N/{property_id}")  # Output section header
-                for element in element_dict["elements"]:
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to sh3n_list
                     sh3n_list.append(element_id)
@@ -2131,10 +2243,10 @@ def convert_elements(elset_dicts, element_dicts, nsets, nset_counter):
                 or element_type.lower() == "m3d4r"
                 ):
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 4 Noded Shell Elements for PART: {elset}, PID: {property_id}")
+                element_lines.append(f"# 4 Noded Shell Elements for PART: {part_name}, PID: {property_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"/SHELL/{property_id}")  # Output section header
-                for element in element_dict["elements"]:
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to shell_list
                     shell_list.append(element_id)
@@ -2150,10 +2262,10 @@ def convert_elements(elset_dicts, element_dicts, nsets, nset_counter):
 
             elif element_type.lower() == "c3d4":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 4 Noded Tetrahedral Elements for PART: {elset}, PID: {property_id}")
+                element_lines.append(f"# 4 Noded Tetrahedral Elements for PART: {part_name}, PID: {property_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"/TETRA4/{property_id}")  # Output section header
-                for element in element_dict["elements"]:
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to brick_list
                     brick_list.append(element_id)
@@ -2170,10 +2282,10 @@ def convert_elements(elset_dicts, element_dicts, nsets, nset_counter):
 
             elif element_type.lower() == "c3d6":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 6 Noded Degenerated Penta Elements for PART: {elset}, PID: {property_id}")
+                element_lines.append(f"# 6 Noded Degenerated Penta Elements for PART: {part_name}, PID: {property_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"/BRICK/{property_id}")  # Output section header
-                for element in element_dict["elements"]:
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to brick_list
                     brick_list.append(element_id)
@@ -2190,10 +2302,10 @@ def convert_elements(elset_dicts, element_dicts, nsets, nset_counter):
 
             elif element_type.lower() == "coh3d6":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 6 Noded Degenerated Penta Cohesive Elements for PART: {elset}, PID: {property_id}")
+                element_lines.append(f"# 6 Noded Degenerated Penta Cohesive Elements for PART: {part_name}, PID: {property_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"/BRICK/{property_id}")  # Output section header
-                for element in element_dict["elements"]:
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to brick_list
                     brick_list.append(element_id)
@@ -2210,10 +2322,10 @@ def convert_elements(elset_dicts, element_dicts, nsets, nset_counter):
 
             elif element_type.lower() == "sc6r":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 6 Noded Degenerated Penta Elements for PART: {elset}, PID: {property_id}")
+                element_lines.append(f"# 6 Noded Degenerated Penta Elements for PART: {part_name}, PID: {property_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"/BRICK/{property_id}")  # Output section header
-                for element in element_dict["elements"]:
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to brick_list
                     brick_list.append(element_id)
@@ -2233,10 +2345,10 @@ def convert_elements(elset_dicts, element_dicts, nsets, nset_counter):
                 or element_type.lower() == "c3d8r"
                 ):
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 8 Noded Brick Elements for PART: {elset}, PID: {property_id}")
+                element_lines.append(f"# 8 Noded Brick Elements for PART: {part_name}, PID: {property_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"/BRICK/{property_id}")  # Output section header
-                for element in element_dict["elements"]:
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to brick_list
                     brick_list.append(element_id)
@@ -2252,10 +2364,10 @@ def convert_elements(elset_dicts, element_dicts, nsets, nset_counter):
 
             elif element_type.lower() == "coh3d8":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 8 Noded Cohesive Elements for PART: {elset}, PID: {property_id}")
+                element_lines.append(f"# 8 Noded Cohesive Elements for PART: {part_name}, PID: {property_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"/BRICK/{property_id}")  # Output section header
-                for element in element_dict["elements"]:
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to brick_list
                     brick_list.append(element_id)
@@ -2271,10 +2383,10 @@ def convert_elements(elset_dicts, element_dicts, nsets, nset_counter):
 
             elif element_type.lower() == "sc8r":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 8 Noded Thick Shell Elements for PART: {elset}, PID: {property_id}")
+                element_lines.append(f"# 8 Noded Thick Shell Elements for PART: {part_name}, PID: {property_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"/BRICK/{property_id}")  # Output section header
-                for element in element_dict["elements"]:
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to brick_list
                     brick_list.append(element_id)
@@ -2292,10 +2404,10 @@ def convert_elements(elset_dicts, element_dicts, nsets, nset_counter):
                 or element_type.lower() == "c3d10m"
                 ):
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 10 Noded Tetrahedral Elements for PART: {elset}, PID: {property_id}")
+                element_lines.append(f"# 10 Noded Tetrahedral Elements for PART: {part_name}, PID: {property_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"/TETRA10/{property_id}")  # Output section header
-                for element in element_dict["elements"]:
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to brick_list
                     brick_list.append(element_id)
@@ -2928,7 +3040,7 @@ def convert_contacts(input_lines, property_names, surf_id, friction_dict, surf_n
                 # Extract the property_id from the sub-dictionary and convert it to an integer
                 property_id = int(property_data['prop_id'])
                 # Append the integer 'property_id' to the list (excluding springs and dummy property for masses)
-                if not property_data['nint'] == '777' and not property_data['nint'] == '555':
+                if not property_data['nint'] == '777' and not property_data['nint'] == '555' and property_id not in prop_id_list:
                     prop_id_list.append(property_id)
 
             surf_id += 1
@@ -2963,6 +3075,7 @@ def convert_contacts(input_lines, property_names, surf_id, friction_dict, surf_n
             contacts.append("#              Stmin               Stmax     Igap0     Ipen0            Ipen_max")
             contacts.append("                   0                   0         0         0                   0")
             contacts.append("#              Stfac                Fric                                  Tstart               Tstop")
+            prop_lines = []
             if ppmcontact:
                 contact_properties_exist = True
                 friction_ref = "RADIOSS_GENERAL"
@@ -3045,7 +3158,7 @@ def convert_ties(input_lines, surf_name_to_id, nsets, inter_id):
 
             tc_type = "node to surface"
             if tc_type_match:
-                tc_type = tc_type_match.group(1).strip().lower()    
+                tc_type = tc_type_match.group(1).strip().lower()
 
         elif tied_contact_name and not line.startswith('*'):
             contact_groups = line.split(",")  # Split the line by comma
@@ -3060,39 +3173,70 @@ def convert_ties(input_lines, surf_name_to_id, nsets, inter_id):
                 nset_data = nsets.get(nodes_to_tie)
                 #look up the nset counter for the referenced nset (based on original nodeset)
                 tie_nset_id = nset_data['id'] if nset_data else 0
-            #look up the surf counter for the referenced surface
+            #look up the surf counter for the referenced main surface
             tie_surf_id = surf_name_to_id.get(surface_to_tie_to, 0)
             tie_holder = []
-            if tie_surf_id != 0 and tie_nset_id != 0:
-                inter_id += 1 # Increment the inter_id
-                #create the first tie for each surface pair (nodes for surf 1, surfs for surf 2)
-                tie_holder.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                tie_holder.append(f"#Tied interface definition: {tied_contact_name}")
-                tie_holder.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                tie_holder.append(f"/INTER/TYPE2/{inter_id}\n{tied_contact_name}")
-                tie_holder.append("#  Grnd_ID   Surf_id    Ignore  Spotflag     Level   Isearch     Idel2                       dSearch")
-                tie_holder.append(f"{tie_nset_id:>10}{tie_surf_id:>10}         3        {spotflag_default:>2}         0         0         2                    {tc_postol_value:>10.8g}")
-                tie_holder.append("#              Stfac                Visc                          Istf")
-                tie_holder.append("                   0                   0                             0")
-
-            if tc_type == "surface to surface":
-                #create a symmetric tie for each surf pair if type is surf - surf (surfs for surf 1, nodes for surf 2)
-                symm_surface_for_nodes = contact_groups[1].strip()
-                symm_surface_to_tie_to = contact_groups[0].strip()
-                symm_nodes_to_tie = f"{symm_surface_for_nodes}___nodes"
-                nset_data = nsets.get(symm_nodes_to_tie)
-                symm_tie_nset_id = nset_data['id'] if nset_data else 0 #look up the nset counter for the referenced nset (based on the surface)
-                symm_tie_surf_id = surf_name_to_id.get(symm_surface_to_tie_to, 0) #look up the surf counter for the referenced surface
-                if symm_tie_surf_id != 0 and symm_tie_nset_id != 0:
+            if radversion == 2025:
+                if tc_type == "node to surface" and tie_surf_id != 0 and tie_nset_id != 0:
                     inter_id += 1 # Increment the inter_id
+                    #create the tie for each node to surface pair (nodes for surf 1, surfs for surf 2)
                     tie_holder.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                    tie_holder.append(f"#Tied interface definition (symm for s2s): {tied_contact_name}")
+                    tie_holder.append(f"#Tied interface definition (n2s): {tied_contact_name}")
                     tie_holder.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                    tie_holder.append(f"/INTER/TYPE2/{inter_id}\n{tied_contact_name}_symm")
-                    tie_holder.append("#  Grnd_ID   Surf_id    Ignore  Spotflag     Level   Isearch     Idel2                       dSearch")
-                    tie_holder.append(f"{symm_tie_nset_id:>10}{symm_tie_surf_id:>10}         3        {spotflag_default:>2}         0         0         2                    {tc_postol_value:>10.8g}")
+                    tie_holder.append(f"/INTER/TYPE2/{inter_id}\n{tied_contact_name}")
+                    tie_holder.append("# Grnd_IDs  Surf_IDm    Ignore  Spotflag     Level   Isearch     Idel2  Surf_IDs             dSearch")
+                    tie_holder.append(f"{tie_nset_id:>10}{tie_surf_id:>10}         3        {spotflag_default:>2}         0         0         2         0          {tc_postol_value:>10.8g}")
                     tie_holder.append("#              Stfac                Visc                          Istf")
                     tie_holder.append("                   0                   0                             0")
+
+                elif tc_type == "surface to surface":
+                    #create surf to surf type tied contact
+                    s2s_main_surface = contact_groups[1].strip()
+                    s2s_second_surface = contact_groups[0].strip()
+                    s2s_main_surf_id = surf_name_to_id.get(s2s_main_surface, 0) #look up the surf counter for the referenced surface
+                    s2s_second_surf_id = surf_name_to_id.get(s2s_second_surface, 0) #look up the surf counter for the referenced surface
+                    if s2s_main_surf_id != 0 and s2s_second_surf_id != 0:
+                        inter_id += 1 # Increment the inter_id
+                        tie_holder.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                        tie_holder.append(f"#Tied interface definition (s2s): {tied_contact_name}")
+                        tie_holder.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                        tie_holder.append(f"/INTER/TYPE2/{inter_id}\n{tied_contact_name}")
+                        tie_holder.append("# Grnd_IDs  Surf_IDm    Ignore  Spotflag     Level   Isearch     Idel2  Surf_IDs             dSearch")
+                        tie_holder.append(f"         0{s2s_main_surf_id:>10}         3        {spotflag_default:>2}         0         0         2{s2s_second_surf_id:>10}          {tc_postol_value:>10.8g}")
+                        tie_holder.append("#              Stfac                Visc                          Istf")
+                        tie_holder.append("                   0                   0                             0")
+
+            elif radversion == 2023:
+                if tie_surf_id != 0 and tie_nset_id != 0:
+                    inter_id += 1 # Increment the inter_id
+                    #create the first tie for each surface pair (nodes for surf 1, surfs for surf 2)
+                    tie_holder.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                    tie_holder.append(f"#Tied interface definition: {tied_contact_name}")
+                    tie_holder.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                    tie_holder.append(f"/INTER/TYPE2/{inter_id}\n{tied_contact_name}")
+                    tie_holder.append("#  Grnd_ID   Surf_id    Ignore  Spotflag     Level   Isearch     Idel2                       dSearch")
+                    tie_holder.append(f"{tie_nset_id:>10}{tie_surf_id:>10}         3        {spotflag_default:>2}         0         0         2                    {tc_postol_value:>10.8g}")
+                    tie_holder.append("#              Stfac                Visc                          Istf")
+                    tie_holder.append("                   0                   0                             0")
+
+                if tc_type == "surface to surface":
+                    #create a symmetric tie for each surf pair if type is surf - surf (surfs for surf 1, nodes for surf 2)
+                    symm_surface_for_nodes = contact_groups[1].strip()
+                    symm_surface_to_tie_to = contact_groups[0].strip()
+                    symm_nodes_to_tie = f"{symm_surface_for_nodes}___nodes"
+                    nset_data = nsets.get(symm_nodes_to_tie)
+                    symm_tie_nset_id = nset_data['id'] if nset_data else 0 #look up the nset counter for the referenced nset (based on the surface)
+                    symm_tie_surf_id = surf_name_to_id.get(symm_surface_to_tie_to, 0) #look up the surf counter for the referenced surface
+                    if symm_tie_surf_id != 0 and symm_tie_nset_id != 0:
+                        inter_id += 1 # Increment the inter_id
+                        tie_holder.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                        tie_holder.append(f"#Tied interface definition (symm for s2s): {tied_contact_name}")
+                        tie_holder.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                        tie_holder.append(f"/INTER/TYPE2/{inter_id}\n{tied_contact_name}_symm")
+                        tie_holder.append("#  Grnd_ID   Surf_id    Ignore  Spotflag     Level   Isearch     Idel2                       dSearch")
+                        tie_holder.append(f"{symm_tie_nset_id:>10}{symm_tie_surf_id:>10}         3        {spotflag_default:>2}         0         0         2                    {tc_postol_value:>10.8g}")
+                        tie_holder.append("#              Stfac                Visc                          Istf")
+                        tie_holder.append("                   0                   0                             0")
 
             tied_contacts.extend(tie_holder)
 
@@ -3760,12 +3904,22 @@ def convert_initial(input_lines, nset_counter, nsets):
                 iniv_mag_x = iniv_mags.get('iniv_mag_x')
                 iniv_mag_y = iniv_mags.get('iniv_mag_y')
                 iniv_mag_z = iniv_mags.get('iniv_mag_z')
-                iniv_block = (
-                    "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
-                    f"/INIVEL/TRA/{ref_nset_counter}\n{iniv_name}\n"
-                    "#                 Vx                  Vy                  Vz   Gnod_id   Skew_id\n"
-                    f"{iniv_mag_x:>20.15g}{iniv_mag_y:>20.15g}{iniv_mag_z:>20.15g}{ref_nset_counter:>10}"
-                )
+                if radversion == 2025:
+                     iniv_block = (
+                     "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
+                     f"/INIVEL/TRA/{ref_nset_counter}\n{iniv_name}\n"
+                     "#                 Vx                  Vy                  Vz   Gnod_id   Skew_id\n"
+                     f"{iniv_mag_x:>20.15g}{iniv_mag_y:>20.15g}{iniv_mag_z:>20.15g}{ref_nset_counter:>10}\n"
+                     "#   Tstart   sens_ID\n"
+                     "       0.0         0"
+                     )
+                elif radversion ==2023:
+                     iniv_block = (
+                     "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
+                     f"/INIVEL/TRA/{ref_nset_counter}\n{iniv_name}\n"
+                     "#                 Vx                  Vy                  Vz   Gnod_id   Skew_id\n"
+                     f"{iniv_mag_x:>20.15g}{iniv_mag_y:>20.15g}{iniv_mag_z:>20.15g}{ref_nset_counter:>10}"
+                     )
                 initial_blocks.append(iniv_block)
             continue
 
@@ -3784,13 +3938,24 @@ def convert_initial(input_lines, nset_counter, nsets):
 
         # Create INIVEL block
         iniv_mag_x, iniv_mag_y, iniv_mag_z = mag_key
-        iniv_block = (
+        if radversion == 2025:
+            iniv_block = (
+            "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
+            f"/INIVEL/TRA/{ref_nset_counter}\n"
+            "Shared INIVEL for group of nodes\n"
+            "#                 Vx                  Vy                  Vz   Gnod_id   Skew_id\n"
+            f"{iniv_mag_x:>20.15g}{iniv_mag_y:>20.15g}{iniv_mag_z:>20.15g}{ref_nset_counter:>10}\n"
+            "#   Tstart   sens_ID\n"
+            "       0.0         0"
+            )
+        elif radversion == 2023:
+            iniv_block = (
             "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
             f"/INIVEL/TRA/{ref_nset_counter}\n"
             "Shared INIVEL for group of nodes\n"
             "#                 Vx                  Vy                  Vz   Gnod_id   Skew_id\n"
             f"{iniv_mag_x:>20.15g}{iniv_mag_y:>20.15g}{iniv_mag_z:>20.15g}{ref_nset_counter:>10}"
-        )
+            )
 
         initial_blocks.append(iniv_grnod)
         initial_blocks.append(iniv_block)
@@ -3808,6 +3973,7 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
     already_set = False
     section = None
     skipgrav = False
+    dload_set_exists = False
 
     for line in input_lines:
         line = line.strip()
@@ -3847,6 +4013,7 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
 
                         elset_line_match = re.search(elset_line_pattern, line, re.IGNORECASE)
                         if elset_line_match:
+                            dload_set_exists = True
                             inside_elset_section = True
                             elset_values = []
                             prop_ids = []
@@ -3865,7 +4032,7 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
                         property_id = property_names[values]['prop_id']
                         prop_ids.append(property_id)
 
-            else:
+            if not dload_name or dload_set_exists == False:
                 if skipgrav:
                     continue
                 prop_ids = []
@@ -3914,6 +4081,8 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
             if dload_name:
                 nset_counter += 1
             ref_nset_counter = nset_counter if dload_name else 0
+            if dload_set_exists == False:
+                ref_nset_counter = 0
         skewandgravid = nset_counter
         dgrav_block = "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
         dgrav_block += f"/SKEW/FIX/{skewandgravid}\nSkew for Gravity {dload_name}\n"
@@ -3983,7 +4152,8 @@ def convert_rigids(
     if mpc_rigids:
         for nodeset, refnode in mpc_rigids:
             input_lines.append (f"*rigid body, ref node = {refnode}, nset = {nodeset}")
-            print (f"*rigid body, ref node = {refnode}, elset = {nodeset}")
+            if debug_mode:
+                print (f"*rigid body, ref node = {refnode}, elset = {nodeset}")
 
     for line in input_lines:
         if line.lower().strip().startswith('*rigid body'):
@@ -4164,10 +4334,12 @@ def convert_coupling(input_lines, nsets, max_elem_id):
 
             if coupling_surf_match:
                 coupling_surf = coupling_surf_match.group(1).strip()
-
+                if debug_mode:
+                     print(f"coupling surf is {coupling_surf}")
             if coupling_rbodyid_match:
                 rbody_id = coupling_rbodyid_match.group(1).strip()
-
+                if debug_mode:
+                     print(f"ref node is {rbody_id}")
         if kcoupling:
             couplingk = False
             # Extract data from coupling line
@@ -4231,7 +4403,6 @@ def convert_coupling(input_lines, nsets, max_elem_id):
             #input(f"found nset: {nodes_set_id} id: {coupling_nset_id}")
 
             if  coupling_nset_id != 0:
-
                 coupling_holder.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 coupling_holder.append(f"# RBODY for Coupling {coupling_name}")
                 coupling_holder.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
@@ -4245,6 +4416,8 @@ def convert_coupling(input_lines, nsets, max_elem_id):
                 coupling_holder.append("                   0                   0                   0")
                 coupling_holder.append("#  Ioptoff   Iexpams")
                 coupling_holder.append("         0         0")
+                couplingk = False
+                kcoupling = False
 
     return coupling_holder, max_elem_id
 
@@ -4387,7 +4560,7 @@ def parse_control_data(input_lines, simple_file_name):
         fst_match = re.search(fst_pattern, line, re.IGNORECASE)
 
         # Define a regular expression pattern to match the line starting with '*DYNAMIC, EXPLICIT'
-        runtime_pattern = r'^\s*\*DYNAMIC(?:\s*,\s*\w+\s*=\s*\w+)?\s*,\s*EXPLICIT(?:\s*=\s*\d+)?\s*,?\s*$'
+        runtime_pattern = runtime_pattern = r'^\s*\*DYNAMIC\s*,\s*EXPLICIT(?:\s*,\s*[\w\s-]+)?\s*$'
 
         # Use re.search to find the first match (case-insensitive)
         runtime_match = re.search(runtime_pattern, line, re.IGNORECASE)
@@ -4752,7 +4925,7 @@ def main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
         elapsed_time = time.time() - start_time
         print(f"Nsets Done:            {elapsed_time:8.3f} seconds")
 
-    material_names, fct_id = convert_materials(input_lines)
+    material_names, extra_material_names, fct_id = convert_materials(input_lines)
     if run_timer:
         elapsed_time = time.time() - start_time
         print(f"Materials Done:        {elapsed_time:8.3f} seconds")
@@ -4878,9 +5051,10 @@ def main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
 
     return (
             transform_lines, transform_data, node_lines, nsets, nset_blocks, material_names,
-            property_names, ppmselect, element_lines, elset_blocks, surface_lines, contacts,
-            tied_contacts, boundary_blocks, function_blocks, initial_blocks, dload_blocks,
-            rigid_bodies, couplings, discoups, mpc_ties, conn_beams, engine_file
+            extra_material_names, property_names, ppmselect, element_lines, elset_blocks,
+            surface_lines, contacts, tied_contacts, boundary_blocks, function_blocks,
+            initial_blocks, dload_blocks, rigid_bodies, couplings, discoups, mpc_ties,
+            conn_beams, engine_file
            )
 
 
@@ -4888,9 +5062,9 @@ def main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
 # Define Text Blocks for headers of each Radioss deck section                                      #
 ####################################################################################################
 def write_output(transform_lines, transform_data, node_lines, nset_blocks, material_names,
- property_names, ppmselect, non_numeric_references, nsets, element_lines, elset_blocks,
- surface_lines, contacts, tied_contacts, boundary_blocks, function_blocks, initial_blocks,
- dload_blocks, rigid_bodies, couplings, discoups, mpc_ties, conn_beams, engine_file,
+ extra_material_names, property_names, ppmselect, non_numeric_references, nsets, element_lines,
+ elset_blocks, surface_lines, contacts, tied_contacts, boundary_blocks, function_blocks,
+ initial_blocks, dload_blocks, rigid_bodies, couplings, discoups, mpc_ties, conn_beams, engine_file,
  simple_file_name, output_file_name, output_file_path, engine_file_name, engine_file_path
  ):
 
@@ -4903,7 +5077,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 # REPORT ISSUES to https://github.com/OpenRadioss/Tools/discussions
 /BEGIN
 {simple_file_name}
-      2023         0
+      {radversion}         0
                   Mg                  mm                   s
                   Mg                  mm                   s
 #---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|
@@ -5107,6 +5281,14 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 write_ogden_material(material_id, material_name, rho, ogden_mu, ogden_alpha,
                     ogden_D, output_file
                     )
+
+        #PRONY SERIES
+        for material_name, properties in extra_material_names.items():
+            if check_if_prony(properties):
+                material_id = properties['material_id']
+                prony_data = properties['prony_data']
+   # Write the card format for prony series
+                write_prony_series(material_id, prony_data, output_file)
 
         #MAT VOID
         for material_name, properties in material_names.items():
@@ -5421,14 +5603,14 @@ def preprocess_lines(original_lines):
         if line.lower().startswith('*assembly'):
             if or_gui:
                 print("### INFO ###")
-                print("part/instance models are not (yet!) supported by the A2R script")
+                print("part/instance models are not (yet!) supported by the inp2rad script")
                 print("please use a flattened model")
                 print("or you may try standalone conversion by calling this script at commandline")
-                sys.exit("A2R unable to continue")
+                sys.exit("inp2rad unable to continue")
                 break
 
             print("### INFO ###")
-            print("part/instance models are not (yet!) supported by the A2R script")
+            print("part/instance models are not (yet!) supported by the inp2rad script")
             print("if possible use a flattened model")
             print("process will attempt to continue the best it can")
             print("")
@@ -5766,7 +5948,7 @@ def create_part_elsets(input_lines):
 ####################################################################################################
 # Creates rigid elsets from intersection with Referenced Elsets                                    #
 ####################################################################################################
-def create_rigid_elsets(input_lines):
+def create_rigid_elsets(input_lines, elset_references):
     placeholder_rigidsets = {} # Dictionary to store placeholder_rigidelset names, element data
     rigid_elset_sets = {}  # Dictionary to store rigid elset names and their element IDs
     referenced_rigid_elsets = set()  # Set to store rigid elsets referenced in rigid cards
@@ -5900,14 +6082,20 @@ def create_rigid_elsets(input_lines):
             # Only process elsets that were referenced in a rigid body
             if elset_name in referenced_rigid_elsets:
                 element_ids = []
-                # Read the following lines to collect element IDs
-                i += 1
-                while i < len(input_lines) and not input_lines[i].strip().startswith('*'):
-                    element_ids.extend(input_lines[i].split(','))
+                if elset_name in elset_references:
+                    #print(f"{elset_name} is existing")
+                    element_ids = elset_references.get(elset_name, [])
                     i += 1
-
-                # Store the collected element IDs for this elset
-                rigid_elset_sets[elset_name] = set(el.strip() for el in element_ids)
+                    rigid_elset_sets[elset_name] = set(str(el) for el in element_ids)
+                    #print (rigid_elset_sets)
+                else:     
+                    # Read the following lines to collect element IDs
+                    i += 1
+                    while i < len(input_lines) and not input_lines[i].strip().startswith('*'):
+                        element_ids.extend(input_lines[i].split(','))
+                        i += 1
+                    # Store the collected element IDs for this elset
+                    rigid_elset_sets[elset_name] = set(el.strip() for el in element_ids)
             else:
                 # Skip this elset if it wasn't referenced
                 # Move to the next line to avoid re-checking the same elset
@@ -6283,7 +6471,7 @@ def start(input_file_path):
         elset_references, non_numeric_references = find_referenced_elsets(input_lines)
         nset_references = find_referenced_nsets(input_lines)
         input_lines = create_part_elsets(input_lines)
-        input_lines = create_rigid_elsets(input_lines)
+        input_lines = create_rigid_elsets(input_lines, elset_references)
         input_lines = ppm_rigids(input_lines)
         (input_lines, elsets_for_expansion_dict, relsets_for_expansion_dict
          ) = replace_elsets_in_sections(input_lines, elset_references)
@@ -6292,9 +6480,9 @@ def start(input_file_path):
 # Call the main_conversion function to get the necessary data from the conversion blocks           #
 ####################################################################################################
         (transform_lines, transform_data, node_lines, nsets, nset_blocks, material_names,
-         property_names, ppmselect, element_lines, elset_blocks, surface_lines, contacts,
-         tied_contacts, boundary_blocks, function_blocks, initial_blocks, dload_blocks,
-         rigid_bodies, couplings, discoups, mpc_ties, conn_beams, engine_file
+         extra_material_names, property_names, ppmselect, element_lines, elset_blocks,
+         surface_lines, contacts, tied_contacts, boundary_blocks, function_blocks, initial_blocks,
+         dload_blocks, rigid_bodies, couplings, discoups, mpc_ties, conn_beams, engine_file
          ) = main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
          non_numeric_references, relsets_for_expansion_dict, nset_references
          )
@@ -6303,7 +6491,7 @@ def start(input_file_path):
 # Call the output function to write data to Radioss from the conversion blocks                     #
 ####################################################################################################
         output_done = write_output(transform_lines, transform_data, node_lines, nset_blocks,
-                                   material_names, property_names, ppmselect,
+                                   material_names, extra_material_names, property_names, ppmselect,
                                    non_numeric_references, nsets, element_lines, elset_blocks,
                                    surface_lines, contacts, tied_contacts, boundary_blocks,
                                    function_blocks, initial_blocks, dload_blocks, rigid_bodies,
@@ -6353,17 +6541,28 @@ if __name__ == "__main__":
             sys.exit()
         or_gui = False
         run_timer = True
+        
+        # Ask the user if they want a rad file compatible with HM
+        if messagebox.askyesno("Compatibility Question", "Do you want latest Radioss format (2025)?\n 'No' will return 2023 format for legacy compatibility"):
+            radversion = 2025
+        else:
+            radversion = 2023  # allows conversion to v2023 if needed for legacy compatibility
 
     # take input file from OpenRadioss special submission gui version
     elif len(sys.argv) >= 2:
-        parser = argparse.ArgumentParser(description="A2R Converter")
+        parser = argparse.ArgumentParser(description="inp2rad Converter")
         parser.add_argument('input_file', nargs='?', help="Path to the input file")
         parser.add_argument('--timer', '-t', action='store_true', help="Run with timer")
+        parser.add_argument('--radv' , '-rv', type=int, choices=[2023, 2025], help='RAD file version (2023 or 2025)')
         args = parser.parse_args()
 
-        or_gui = True    # When run in Batch mode, avoids interaction.
+        or_gui = False    # When run in Batch mode, True avoids interaction.
         run_timer = args.timer
         input_file_path = args.input_file
+        if args.radv:
+            radversion = args.radv
+        else:
+            radversion = 2025
 #---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|
 #-  FOR SELF CONTAINED INPUT (opens a file browser if script is called without file argument)
 #---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|
