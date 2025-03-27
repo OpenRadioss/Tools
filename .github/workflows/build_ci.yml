@@ -5,11 +5,10 @@ on:
   push:
     branches:
       - main
+      # DEV ONLY #
+      # - 'dev/ci/**'
 
 env:
-  JENKINS_SERVER_TOKEN: ${{ secrets.JENKINS_SERVER_TOKEN }}
-  JENKINS_SERVER_URL: ${{ secrets.JENKINS_SERVER_URL }}
-  CERTS_SERVER_NAME: ${{ secrets.CERTS_SERVER_NAME }}
   FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
   TO_EMAIL: "${{ secrets.TO_EMAIL }}"
   # DEV ONLY #
@@ -20,27 +19,204 @@ env:
 
 jobs:
 
-  build_userlib_sdk_linux:      
+  build_userlib_sdk_linuxs:
+
     if: ${{ github.repository_owner == 'OpenRadioss' }}
-    runs-on: ["linux64","prod"]
+
+    strategy:
+      # If one job fails others are canceled
+      fail-fast: true
+      matrix:
+        include:
+          - image_name: linux64-rl8.9-bld:intel2025.0.1-impi2021.2-ompi4.1.2-ts11
+            precision: dp
+            compiler: oneapi
+            os: linux64
+          - image_name: linux64-rl8.9-bld:intel2025.0.1-impi2021.2-ompi4.1.2-ts11
+            precision: sp
+            compiler: oneapi
+            os: linux64
+          - image_name: linuxa64-rl8.9-bld:armfl24.04-ompi4.1.2-ts11
+            precision: dp
+            compiler: armflang
+            os: linuxa64
+          - image_name: linuxa64-rl8.9-bld:armfl24.04-ompi4.1.2-ts11
+            precision: sp
+            compiler: armflang
+            os: linuxa64
+  
+    # DEV ONLY # runs-on: ["${{ matrix.os }}","dev_pmci"] 
+    runs-on: ["${{ matrix.os }}","build","prod"]
+
     container: 
-      image: fr-qafactorydev.europe.altair.com/trigger-jenkins
+      image: "fr-qafactorydev.europe.altair.com/${{ matrix.image_name }}"
       credentials: 
         username: ${{secrets.DOCKER_REGISTRY_USER}}
         password: ${{secrets.DOCKER_REGISTRY_PASSWD}}
       volumes: 
-        - /etc/localtime:/etc/localtime:ro  
-        - /etc/docker/certs.d:/etc/docker/certs.d:ro
+        - /etc/localtime:/etc/localtime:ro
+  
+    env:
+      STATUS_BUILD: 0
+
+    steps:
+
+      # Get sources
+      - name: Checkout git sources
+        uses: actions/checkout@v4
+
+      - name: Build userlib_sdk
+        run: |
+          cd userlib_sdk
+          chmod 755 ./build_script.bash    
+
+          if [ "${{ matrix.os }}" = "linux64" ]
+          then
+            echo "Running BUILD for linux"
+            source /opt/rh/gcc-toolset-11/enable
+            source /opt/intel/oneapi/compiler/2025.0/env/vars.sh
+            source /opt/intel/oneapi/mkl/2025.0/env/vars.sh
+            echo " " 
+            echo "    GCC"
+            gcc --version
+            echo " "
+            echo "    INTEL IFX"
+            ifx --version
+            echo " " 
+          else 
+            echo "Running BUILD for arm"
+
+
+            export MODULEPATH=$MODULEPATH:/opt/arm/modulefiles
+            source /etc/profile.d/modules.sh
+            module load binutils/13.2.0 gnu/13.2.0 acfl/24.04 armpl/24.04.0
+            export LD_LIBRARY_PATH=/opt/openmpi/lib:$LD_LIBRARY_PATH
+            echo " " 
+            echo "    GCC"
+            gcc --version
+            echo " "
+            echo "    ArmFlang"
+            armflang --version
+            echo " " 
+          fi
+
+          echo "----"
+          echo " " 
+          cmd="./build_script.bash -arch=${{ matrix.os }} -compiler=${{ matrix.compiler }} -prec=${{ matrix.precision }}"
+          echo "========================================="
+          echo "--  BUILD userlib_sdk / ${{ matrix.os }} / ${{ matrix.precision }} --"   
+          echo "--  $cmd --"   
+          echo "========================================="
+          eval $cmd
+          
+          # Set correct end of step status (if not an email will be sent)
+          echo "STATUS_BUILD=1" >> $GITHUB_ENV
+
+      - name: Managing step execution
+        if: ${{ always() }}
+        run: |
+
+          MAILMSG="Some error(s) has(ve) been raised during workflow execution:\n\n"
+          echo -e "\n#### STATUS_STEP_BUILD ${{ matrix.os }}-${{ matrix.precision }} ###"
+          if [ "$STATUS_BUILD" = 0 ]
+          then
+            echo -e "Status\t[ \033[31;2;1mFAILED\033[0m ]" 
+            MAILMSG="The build of userlib_sdk ${{ matrix.os }} / ${{ matrix.precision }} has failed \n"
+
+            # Send email 
+
+            # Setting SMTP server (docker host)
+            DOCKER_HOST=`/sbin/ip route|awk '/default/ { print $3 }'`
+            echo "set smtp=smtp://${DOCKER_HOST}:25" >> ${{ env.MAIL_CONFIG_FILE }} 
+
+            # Print message in log 
+            echo -e $MAILMSG
+
+            # Send email
+            echo -e "$MAILMSG" | ${{ env.MAIL_COMMAND }} -r $FROM_EMAIL -s "Error in Github CI repo ${{ github.repository }} (${{ github.sha }})" $TO_EMAIL
+            exit 1;
+
+          else
+            echo -e "Status\t[ \033[32;2;1mOK\033[0m ]"
+          fi
+
+      # Upload artifact
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: userlib_sdk-${{ matrix.os }}-${{ matrix.precision }}
+          path: userlib_sdk/userlib_sdk
+
+
+  build_userlib_sdk_win:
+
+    if: ${{ github.repository_owner == 'OpenRadioss' }}
+
+    strategy:
+      # If one job fails others are canceled
+      fail-fast: true
+      matrix:
+        include:
+          - precision: dp
+            compiler: oneapi
+            os: win64
+          - precision: sp
+            compiler: oneapi
+            os: win64
+
+    runs-on: ["${{ matrix.os }}","build","prod"]
 
     env:
-      USERLIB_SDK_JOB_NAME: "github_build_userlib_sdk_linux64"
-  
+      STATUS_BUILD: 0
+
     steps:
-      - name: Trigger jenkins
+
+      # Get sources
+      - name: Checkout git sources
+        uses: actions/checkout@v4
+
+      - name: Build userlib_sdk
         run: |
-          # We use ceritificate to connect to jenkins and a crumb (new wayt to do)
-          crumb=$(curl -u adminqa:${JENKINS_SERVER_TOKEN} --capath "/etc/docker/certs.d/${CERTS_SERVER_NAME}" --cacert "/etc/docker/certs.d/${CERTS_SERVER_NAME}/wildcard_europe_altair_com.crt" -s "${JENKINS_SERVER_URL}/crumbIssuer/api/json" | grep -oP '"crumb":"\K[^"]+')
-          curl -u adminqa:${JENKINS_SERVER_TOKEN} --capath "/etc/docker/certs.d/${CERTS_SERVER_NAME}" --cacert "/etc/docker/certs.d/${CERTS_SERVER_NAME}/wildcard_europe_altair_com.crt" -H "Jenkins-Crumb:$crumb" -X POST "${JENKINS_SERVER_URL}/job/${USERLIB_SDK_JOB_NAME}/buildWithParameters?commit_id=${GITHUB_SHA}"
+          cd userlib_sdk
+          @"
+          @echo off
+          call 'C:\Program Files (x86)\Intel\oneAPI\compiler\2025.0\env\vars.bat'
+          call 'C:\Program Files (x86)\Intel\oneAPI\mkl\2025.0\env\vars.bat'
+          call 'C:\Program Files (x86)\Intel\oneAPI\mpi\2021.10.0\env\vars.bat'
+          cmake --version
+          ninja --version
+          echo =========================================
+          echo --  BUILD userlib_sdk / ${{ matrix.os }} / ${{ matrix.precision }} --
+          echo =========================================
+          .\build_windows.bat -arch=${{ matrix.os }} -compiler=${{ matrix.compiler }} -prec=${{ matrix.precision }}
+          "@ -replace "'", '"' | Out-File -FilePath myrun.bat -Encoding ASCII
+          cmd /c .\myrun.bat    
+
+          Add-Content -Path $env:GITHUB_ENV -Value "STATUS_BUILD=1"
+
+      - name: Managing step execution
+        if: ${{ always() }}
+        run: |
+          $MAILMSG = "Some error(s) has(ve) been raised during workflow execution:`r`n`r`n"
+          Write-Output "`r`n#### STATUS_STEP_BUILD ${{ matrix.os }}-${{ matrix.precision }} ###"
+          if ($env:STATUS_BUILD -eq 0) {
+            Write-Output "Status`t[ $([char]27)[31;2;1mFAILED$([char]27)[0m ]"
+            $MAILMSG += "The build of userlib_sdk ${{ matrix.os }} / ${{ matrix.precision }} has failed`r`n"
+            $ALL_RECIPIENTS = $env:TO_EMAIL -split ","
+            Send-MailMessage -SmtpServer $env:MAIL_RELAY -From $env:FROM_EMAIL -To $ALL_RECIPIENTS -Subject "Error in Github CI repo ${{ github.repository }} (${{github.sha}})" -Body $MAILMSG -Port 25
+            exit 1
+          }
+          else {
+            Write-Output "Status`t[ $([char]27)[32;2;1mOK$([char]27)[0m ]"
+          }
+
+      # Upload artifact
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: userlib_sdk-${{ matrix.os }}-${{ matrix.precision }}
+          path: userlib_sdk/userlib_sdk
+
 
   build_output_converters_linux:
     if: ${{ github.repository_owner == 'OpenRadioss' }}
@@ -214,11 +390,12 @@ jobs:
           name: output-converters-${{ env.os }}
           path: exec
 
-  deliver_output_converters:
-    needs: [build_output_converters_linux,build_output_converters_windows_no_container]
+
+  deliver:
+    needs: ["build_output_converters_linux","build_output_converters_windows_no_container","build_userlib_sdk_linuxs","build_userlib_sdk_win"]
     if: ${{ github.repository_owner == 'OpenRadioss' }}
     # DEV ONLY # runs-on: ["dev_delivery","dev"] 
-    runs-on: ["linux64","prod"]
+    runs-on: delivery
     container: 
       image: fr-qafactorydev.europe.altair.com/common-linux64
       credentials: 
@@ -234,31 +411,61 @@ jobs:
       JF_OPTIONS: "--url=${{ secrets.JFROG_DELIVERY_URL }} --user=${{ secrets.JFROG_DELIVERY_USER }} --password=${{ secrets.JFROG_DELIVERY_TOKEN }}"
       OUTPUT_TOOLS: "${{ secrets.JFROG_DELIVERY_RADIOSS_REPO }}/OpenRadioss_Tools"
       OUTPUT_CONVERTER_PREFIX: "${OUTPUT_TOOLS}/output_converters"
+      USERLIB_SDK: "${{ secrets.JFROG_DELIVERY_RADIOSS_REPO }}/userlib_sdk"
+
+    strategy:
+      # If one job fails others continue
+      fail-fast: false
+      matrix:
+        include:
+          - artifact: userlib_sdk-linux64-dp
+            path: userlib_sdk_exec
+            os: linux64
+          - artifact: userlib_sdk-linux64-sp
+            path: userlib_sdk_exec
+            os: linux64
+          - artifact: userlib_sdk-linuxa64-dp
+            path: userlib_sdk_exec
+            os: linuxa64
+          - artifact: userlib_sdk-linuxa64-sp
+            path: userlib_sdk_exec
+            os: linuxa64          
+          - artifact: userlib_sdk-win64-dp
+            path: userlib_sdk_exec
+            os: win64
+          - artifact: userlib_sdk-win64-sp
+            path: userlib_sdk_exec
+            os: win64
+          - artifact: output-converters-linux64
+            path: exec
+            os: linux64
+          - artifact: output-converters-win64
+            path: exec
+            os: win64
 
     steps:
 
       - name: Clean previous exec
         run: |
           rm -rf exec
+          rm -rf userlib_sdk_exec
 
-      # Get sources
-      - name: Checkout git sources
-        uses: actions/checkout@v4
-        with:
-          lfs: 'true'
-
-      # Download ALL artifacts
-      - name: Download ALL artifacts for Jfrog delivery
+      # Download artifact
+      - name: Download artifacts for Jfrog delivery
         uses: actions/download-artifact@v4
         with:
-          path: exec  
-
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.path }}
+        
       - name: Deliver files on Jfrog
         run: |
-          # Upload artifacts
-          for os in linux64 win64
-          do
-            jf rt upload ${JF_OPTIONS} "exec/output-converters-${os}/*" ${{ env.OUTPUT_CONVERTER_PREFIX }}/${os}/ --flat=true
-          done
+          # Upload artifacts ${{ matrix.artifact }} to JFrog
+          if [ "${{ matrix.path }}" = "userlib_sdk_exec" ]
+          then
+            jf rt upload ${JF_OPTIONS} "${{ matrix.path }}/(*)" ${{ env.USERLIB_SDK }}/{1}
+          else
+            jf rt upload ${JF_OPTIONS} "${{ matrix.path }}/(*${{ matrix.os }}*)" ${{ env.OUTPUT_CONVERTER_PREFIX }}/${{ matrix.os }}/{1}
+          fi
+
 
 
