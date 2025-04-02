@@ -250,12 +250,11 @@ def convert_distcoup(input_lines):
                     if debug_mode:
                         print (f"appending {line}")
                     remaining_lines.append(line)
-                    
+
             else:
                 if debug_mode:
                     print (f"ref and surf no match: appending {line}")
                 remaining_lines.append(line)
-        
 
         elif re.search(r'^\s*\*SURFACE\s*,\s*(?=.*\bTYPE\s*=\s*NODE\b)(?!.*\bINTERACTION\b)', line, re.IGNORECASE):
             surface_match = re.search(r'NAME\s*=\s*("([^"]+)"|([^,]+))', line, re.IGNORECASE)
@@ -358,7 +357,7 @@ def convert_nsets(input_lines, nset_references):
                 next_line = next_line
 
             parts = list(map(int, next_line.split(',')))  # Convert to integers
-            
+
             # Ensure there are at least two values (start, end), and set step = 1 if missing
             if len(parts) == 2:
                 start, end = parts
@@ -462,7 +461,7 @@ def convert_nsets(input_lines, nset_references):
                 nset_already = True
             if nset_name not in nsets:
                 nsets[nset_name] = {'id': None, 'values': [], 'is_referenced': False}
-            if debug_mode:   
+            if debug_mode:
                 print(f"found matchnode nset: {nset_name}")
             # Move to the next line(s) to gather the NSET values
             i += 1
@@ -594,7 +593,7 @@ def convert_nsets(input_lines, nset_references):
         for filtered_line in output_lines: # For debug
             test_output_file.write(filtered_line)  # Write the filtered deck # for debug
 
-    print("postnsets written") 
+    print("postnsets written")
     return nsets, nset_counter, output_lines
 
 ####################################################################################################
@@ -633,7 +632,7 @@ def create_nblocks(nsets):
 ####################################################################################################
 # Function to convert material data                                                                #
 ####################################################################################################
-def convert_materials(input_lines):
+def convert_materials(input_lines, nset_counter):
     fct_id = 0  # Initialize the function ID
     global e_magnitude
     global rho_magnitude
@@ -658,7 +657,10 @@ def convert_materials(input_lines):
 
         superelastic_pattern = r'^\*\s*superelastic\b'
         superelastic_line_match = re.search(superelastic_pattern, line, re.IGNORECASE)
-        
+
+        damping_pattern = r'^\*\s*damping\b'
+        damping_line_match = re.search(damping_pattern, line, re.IGNORECASE)
+
         viscoelastic_pattern = r'^\*\s*viscoelastic\s*,?\s*time\s*=\s*prony\b'
         viscoelastic_line_match = re.search(viscoelastic_pattern, line, re.IGNORECASE)
 
@@ -667,9 +669,12 @@ def convert_materials(input_lines):
 
         ogden_pattern = r'^\*\s*hyperelastic\b.*,\s*ogden'
         ogden_line_match = re.search(ogden_pattern, line, re.IGNORECASE)
-        
+
         reducedpoly_pattern = r'^\*\s*hyperelastic\b.*,\s*reduced polynomial'
         reducedpoly_line_match = re.search(reducedpoly_pattern, line, re.IGNORECASE)
+
+        poly_pattern = r'^\*\s*hyperelastic\b.*,\s*polynomial'
+        poly_line_match = re.search(poly_pattern, line, re.IGNORECASE)
 
         mooney_rivlin_pattern = r'^\*\s*hyperelastic\b.*,\s*mooney-rivlin'
         mooney_rivlin_line_match = re.search(mooney_rivlin_pattern, line, re.IGNORECASE)
@@ -803,7 +808,7 @@ def convert_materials(input_lines):
             matchtdi = re.search(
                 r'test\s+data\s+input\s*,?', hyperfoam_line, re.IGNORECASE
             )
-            
+
             matchtd = re.search(
                 r'testdata\s*,?', hyperfoam_line, re.IGNORECASE
             )
@@ -813,7 +818,7 @@ def convert_materials(input_lines):
                 material_names[current_material_name]['poissrat'] = poissrat
 
             if matchtdi or matchtd:
-                material_names[current_material_name]['poissrat'] = poissrat 
+                material_names[current_material_name]['poissrat'] = poissrat
 
             elif matchn and not matchtdi and not matchtd:
                 n = int(matchn.group(1))
@@ -838,7 +843,7 @@ def convert_materials(input_lines):
                 mu_values = all_values[0:n*2:2]
                 alpha_values = all_values[1:n*2:2]
                 pr_values = all_values[n*2:n*3]
-        
+
                 # Assign mu, alpha, and pr values
                 for j in range(n):
                     material_names[current_material_name][f'mu{j+1}'] = mu_values[j]
@@ -884,6 +889,55 @@ def convert_materials(input_lines):
                  'series_data': prony_data
             } # add prony data to the material
             i -= 1
+
+        # damping
+        elif current_material_name and damping_line_match:
+            nset_counter += 1
+            extra_material_names[current_material_name]['material_nset'] = nset_counter
+
+            # regular expression to find 'alpha =' or 'alpha='
+            alpha_pattern = r'\bALPHA\s*=\s*([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)'
+            alpha_match = re.search(alpha_pattern, line, re.IGNORECASE)
+
+            # regular expression to find 'beta =' or 'beta='
+            beta_pattern = r'\bBETA\s*=\s*([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)'
+            beta_match = re.search(beta_pattern, line, re.IGNORECASE)
+
+            # Check if the line contains 'alpha' and extract the value
+            if alpha_match:
+                # Extract the alpha value from the line
+                alpha_value = alpha_match.group(1).strip()
+                try:
+                    # Convert to float
+                    alpha_value = float(alpha_value)
+                    extra_material_names[current_material_name]['dampalpha'] = alpha_value
+                except ValueError:
+                    # Handle the case where alpha is not a float
+                    print(f"### WARNING ###: Non Numeric Damping Alpha value in material: {current_material_name}")
+                    print("### INFO ###")
+                    print("Only numeric Alpha Damping values are supported in inp2rad")
+
+            if not alpha_match:
+                alpha_value = 0.0
+                extra_material_names[current_material_name]['dampalpha'] = alpha_value
+
+            # Check if the line contains 'beta' and extract the value
+            if beta_match:
+                # Extract the beta value from the line
+                beta_value = beta_match.group(1).strip()
+                # Convert to float
+                try:
+                    beta_value = float(beta_value)
+                    extra_material_names[current_material_name]['dampbeta'] = beta_value
+                except ValueError:
+                    # Handle the case where beta is not a digit
+                    print(f"### WARNING ###: Non Numeric Damping Beta value in material: {current_material_name}")
+                    print("### INFO ###")
+                    print("Only numeric Beta Damping values are supported in inp2rad")
+
+            if not beta_match:
+                beta_value = 0.0
+                extra_material_names[current_material_name]['dampbeta'] = beta_value
 
         # plastic
         elif current_material_name and line.strip().lower().startswith('*plastic'):
@@ -959,7 +1013,7 @@ def convert_materials(input_lines):
             material_names[current_material_name]['ogden_n'] = ogden_n
             material_names[current_material_name]['poissrat'] = poissrat
 
-        # reduced_polynomial test_data
+        # reduced_polynomial test_data (converts to ogden)
         elif current_material_name and reducedpoly_line_match and 'test data input' in line.lower():
             # Set default values
             ogden_n = 1
@@ -978,6 +1032,160 @@ def convert_materials(input_lines):
             # Assign to the material properties dictionary
             material_names[current_material_name]['ogden_n'] = ogden_n
             material_names[current_material_name]['poissrat'] = poissrat
+
+        # polynomial test_data (converts to ogden)
+        elif current_material_name and poly_line_match and 'test data input' in line.lower():
+            # Set default values
+            ogden_n = 1
+            poissrat = 0.45
+
+            # Search for N= and POISSON= in the line, ignoring spaces around the equals sign
+            n_match = re.search(r'\bN\s*=\s*([\d.]+)', line, re.IGNORECASE)
+            poisson_match = re.search(r'\bPOISSON\s*=\s*([\d.]+)', line, re.IGNORECASE)
+
+            # If matches found, convert to float and update the values
+            if n_match:
+                ogden_n = int(n_match.group(1))
+            if poisson_match:
+                poissrat = float(poisson_match.group(1))
+
+            # Assign to the material properties dictionary
+            material_names[current_material_name]['ogden_n'] = ogden_n
+            material_names[current_material_name]['poissrat'] = poissrat
+
+        # polynomial with n terms (converts to bergstrom boyce)
+        elif current_material_name and poly_line_match and 'test data input' not in line.lower():
+            # Set default values
+            poly_n = 0
+            poly_c10 = 0.0
+            poly_c01 = 0.0
+            poly_c20 = 0.0
+            poly_c11 = 0.0
+            poly_c02 = 0.0
+            poly_c30 = 0.0
+            poly_c21 = 0.0
+            poly_c12 = 0.0
+            poly_c03 = 0.0
+            poly_d1 = 0.0
+            poly_d2 = 0.0
+            poly_d3 = 0.0
+
+            # Search for N= in the line, ignoring spaces around the equals sign
+            n_match = re.search(r'\bN\s*=\s*([\d.]+)', line, re.IGNORECASE)
+
+            # If matches found, convert to float and update the values
+            if n_match:
+                poly_n = int(n_match.group(1))
+
+            if poly_n == 1:
+                i += 1
+                poly_line = input_lines[i].strip()
+                poly_values = poly_line.split(',')[0:3]
+                poly_c10, poly_c01, poly_d1 = map(float, poly_values)
+
+            if poly_n == 2:
+                i += 1
+                poly_line = input_lines[i].strip()
+                poly_values = poly_line.split(',')[0:7]
+                poly_c10, poly_c01, poly_c20, poly_c11, poly_c02, poly_d1, poly_d2 = map(float, poly_values)
+
+            if poly_n == 3:
+                i += 1
+                poly_line = input_lines[i].strip()
+                poly_values = poly_line.split(',')[0:8]
+                poly_c10, poly_c01, poly_c20, poly_c11, poly_c02, poly_c30, poly_c21, poly_c12 = map(float, poly_values)
+                i += 1
+                poly_line = input_lines[i].strip()
+                poly_values = poly_line.split(',')[0:4]
+                poly_c03, poly_d1, poly_d2, poly_d3 = map(float, poly_values)
+
+            elif poly_n > 3:
+                print ("")
+                print(f"### WARNING ###: for Material: Cannot convert material '{current_material_name}' automatically")
+                print ("### INFO ###")
+                print (f"inp2rad cannot fit more than 3 polynomial terms yet, please define material '{current_material_name}' manually")
+                if not or_gui:
+                    input("Press Enter to continue...") # Wait for user input before continuing
+                print ("")
+
+            # Assign to the material properties dictionary
+            material_names[current_material_name]['poly_c10'] = poly_c10
+            material_names[current_material_name]['poly_c01'] = poly_c01
+            material_names[current_material_name]['poly_c20'] = poly_c20
+            material_names[current_material_name]['poly_c11'] = poly_c11
+            material_names[current_material_name]['poly_c02'] = poly_c02
+            material_names[current_material_name]['poly_c30'] = poly_c30
+            material_names[current_material_name]['poly_c21'] = poly_c21
+            material_names[current_material_name]['poly_c12'] = poly_c12
+            material_names[current_material_name]['poly_c03'] = poly_c03
+            material_names[current_material_name]['poly_d1'] = poly_d1
+            material_names[current_material_name]['poly_d2'] = poly_d2
+            material_names[current_material_name]['poly_d3'] = poly_d3
+
+        # reduced polynomial with n terms (converts to bergstrom boyce)
+        elif current_material_name and reducedpoly_line_match and 'test data input' not in line.lower():
+            # Set default values
+            poly_n = 0
+            poly_c10 = 0.0
+            poly_c01 = 0.0
+            poly_c20 = 0.0
+            poly_c11 = 0.0
+            poly_c02 = 0.0
+            poly_c30 = 0.0
+            poly_c21 = 0.0
+            poly_c12 = 0.0
+            poly_c03 = 0.0
+            poly_d1 = 0.0
+            poly_d2 = 0.0
+            poly_d3 = 0.0
+
+            # Search for N= in the line, ignoring spaces around the equals sign
+            n_match = re.search(r'\bN\s*=\s*([\d.]+)', line, re.IGNORECASE)
+
+            # If matches found, convert to float and update the values
+            if n_match:
+                poly_n = int(n_match.group(1))
+
+            if poly_n == 1:
+                i += 1
+                poly_line = input_lines[i].strip()
+                poly_values = poly_line.split(',')[0:2]
+                poly_c10, poly_d1 = map(float, poly_values)
+
+            if poly_n == 2:
+                i += 1
+                poly_line = input_lines[i].strip()
+                poly_values = poly_line.split(',')[0:4]
+                poly_c10, poly_c20, poly_d1, poly_d2 = map(float, poly_values)
+
+            if poly_n == 3:
+                i += 1
+                poly_line = input_lines[i].strip()
+                poly_values = poly_line.split(',')[0:6]
+                poly_c10, poly_c20, poly_c30, poly_d1, poly_d2, poly_d3 = map(float, poly_values)
+
+            elif poly_n > 3:
+                print ("")
+                print(f"### WARNING ###: for Material: Cannot convert material '{current_material_name}' automatically")
+                print ("### INFO ###")
+                print (f"inp2rad cannot fit more than 3 polynomial terms yet, please define material '{current_material_name}' manually")
+                if not or_gui:
+                    input("Press Enter to continue...") # Wait for user input before continuing
+                print ("")
+
+            # Assign to the material properties dictionary
+            material_names[current_material_name]['poly_c10'] = poly_c10
+            material_names[current_material_name]['poly_c01'] = poly_c01
+            material_names[current_material_name]['poly_c20'] = poly_c20
+            material_names[current_material_name]['poly_c11'] = poly_c11
+            material_names[current_material_name]['poly_c02'] = poly_c02
+            material_names[current_material_name]['poly_c30'] = poly_c30
+            material_names[current_material_name]['poly_c21'] = poly_c21
+            material_names[current_material_name]['poly_c12'] = poly_c12
+            material_names[current_material_name]['poly_c03'] = poly_c03
+            material_names[current_material_name]['poly_d1'] = poly_d1
+            material_names[current_material_name]['poly_d2'] = poly_d2
+            material_names[current_material_name]['poly_d3'] = poly_d3
 
         # mooney-rivlin
         elif current_material_name and mooney_rivlin_line_match:
@@ -1023,7 +1231,7 @@ def convert_materials(input_lines):
 
         i += 1  # Move to the next line
 
-    return material_names, extra_material_names, fct_id # return material names to main convert def
+    return material_names, extra_material_names, fct_id, nset_counter # return material names to main convert def
 
 
 ###############################################################################################
@@ -1078,9 +1286,18 @@ def check_if_mr(properties):
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
+# checks variables for polynomial material and returns them to the material write section
+def check_if_poly(properties):
+    desired_mps = ['material_id', 'rho', 'poly_c10', 'poly_c01', 'poly_c20', 'poly_c11',
+        'poly_c02', 'poly_c30', 'poly_c21', 'poly_c12', 'poly_c03', 'poly_d1', 'poly_d2',
+        'poly_d3'
+        ]
+    return all(
+        prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
+        )
 # checks variables for superealstic material and returns them to the material write section
 def check_if_se(properties):
-    desired_mps = ['material_id', 'rho', 'emodulus', 'poissrat', 'se_mm', 'se_mpr', 'se_uts',
+    desired_mps = ['material_id', 'rho', 'emodulus', 'se_mm', 'se_mpr', 'se_uts',
         'se_tbt', 'se_tet', 'se_trbt', 'se_tret', 'se_tbc', 'se_reftemp', 'se_slope_load',
         'se_slope_unload'
         ]
@@ -1100,7 +1317,7 @@ def check_if_hypfmua(properties):
     for i in range(1, n + 1):
         desired_mps.extend([f'mu{i}', f'alpha{i}', f'pr{i}'])
     return all(prop in properties for prop in desired_mps)
-    
+
 # checks variables for rigid material and returns them to the material write section
 def check_if_rigid(properties):
     desired_mps = ['material_id', 'rigid']
@@ -1115,6 +1332,12 @@ def check_if_prony(properties):
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
 
+# checks variables for damping and returns them to the material write section
+def check_if_damping(properties):
+    desired_mps = ['material_id', 'material_nset', 'dampalpha', 'dampbeta']
+    return all(
+        prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
+        )
 
 ###############################################################################################
 # Functions to write new materials,  called in write section                                  #
@@ -1248,7 +1471,7 @@ def write_coh_material(
 # writes law62 foam material
 def write_hypfmua_material(material_id, material_name, rho, n, mu_values,
                             alpha_values, pr_values, output_file):
-    
+
     output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
     output_file.write(f"/MAT/LAW62/{material_id}\n")
     output_file.write(material_name + "\n")
@@ -1342,7 +1565,7 @@ def write_hypfua_material(
 # MAT LAW71
 # writes law71 superelastic material
 def write_supere_material(
-    material_id, material_name, rho, emodulus, poissrat, se_mm, se_mpr, se_uts, se_tbt, se_tet, se_trbt, se_tret, se_tbc,
+    material_id, material_name, rho, emodulus, se_mm, se_mpr, se_uts, se_tbt, se_tet, se_trbt, se_tret, se_tbc,
     se_reftemp, se_slope_load, se_slope_unload, output_file
     ):
     output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
@@ -1375,7 +1598,7 @@ def write_ogden_material(
     output_file.write(f"/MAT/LAW82/{material_id}\n")
     output_file.write(material_name + "\n")
     output_file.write("#              RHO_I\n")
-    output_file.write(f"{rho:>20.15g}                   0\n")
+    output_file.write(f"{rho:>20.15g}\n")
     output_file.write("#        N                            nu\n")
     output_file.write("         1                             0\n")
     output_file.write("#               Mu_i\n")
@@ -1385,6 +1608,29 @@ def write_ogden_material(
     output_file.write("#                D_i\n")
     output_file.write(f"{ogden_D:>20.15g}\n")
 
+# MAT LAW95
+# writes law95 bergstrom boyce material
+def write_poly_material(
+    material_id, material_name, rho, poly_c10, poly_c01, poly_c20, poly_c11,
+    poly_c02, poly_c30, poly_c21, poly_c12, poly_c03, poly_d1, poly_d2, poly_d3,
+    output_file
+    ):
+    output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
+    output_file.write(f"/MAT/LAW95/{material_id}\n")
+    output_file.write(material_name + "\n")
+    output_file.write("#              RHO_I\n")
+    output_file.write(f"{rho:>20.15g}\n")
+    output_file.write("#                C10                 C01                 C20                 C11                 C02\n")
+    output_file.write(f"{poly_c10:>20.15g}{poly_c01:>20.15g}{poly_c20:>20.15g}{poly_c11:>20.15g}{poly_c02:>20.15g}\n")
+    output_file.write("#                C30                 C21                 C12                 C03                  Sb\n")
+    output_file.write(f"{poly_c30:>20.15g}{poly_c21:>20.15g}{poly_c12:>20.15g}{poly_c03:>20.15g}                 0.0\n")
+    output_file.write("#                 D1                  D2                  D3                  NU     Iform\n")
+    output_file.write(f"{poly_d1:>20.15g}{poly_d2:>20.15g}{poly_d3:>20.15g}               0.495         1\n")
+    output_file.write("#                  A                   C                   M                 ksi              TauRef\n")
+    output_file.write("                 0.0                -0.7                 1.0                0.01                 1.0\n")
+
+# PRONY SERIES
+# writes prony series for material
 def write_prony_series(
     material_id, prony_data, output_file
     ):
@@ -1402,6 +1648,23 @@ def write_prony_series(
         g, k, b = item
         output_file.write(f"{g:>20.15g}{b:>20.15g}{k:>20.15g}{b:>20.15g}\n")
 
+#DAMPING
+# writes damping for materials
+def write_damping(material_id, material_nset, dampalpha, dampbeta, output_file):
+    output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
+    output_file.write(f"# Rayleigh Damping for material ID {material_id}\n")
+    output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
+    output_file.write(f"/DAMP/{material_id}\n")
+    output_file.write(f"Damping for material ID {material_id}\n")
+    output_file.write("#              ALPHA                BETA   Grnd_ID   Skew_ID              TStart               TStop\n")
+    output_file.write(f"{dampalpha:>20}{dampbeta:>20}{material_nset:>10}         0                 0.0                1e30\n")
+    output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
+    output_file.write(f"# GRNOD for nodes of material ID {material_id} for Damping\n")
+    output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
+    output_file.write(f"/GRNOD/MAT/{material_nset}\n")
+    output_file.write(f"Damping GRNOD for material ID {material_id}\n")
+    output_file.write(f"{material_id:>10}\n")
+
 # RIGIDS
 # writes void material for rigid parts
 def write_rigid_material(
@@ -1413,7 +1676,7 @@ def write_rigid_material(
     output_file.write(material_name + "\n")
     #print(f"name: {material_name}")
     output_file.write("#                RHO                   E                  NU\n")
-    output_file.write(f"              7.8E-9              210000                 0.3\n")
+    output_file.write("              7.8E-9              210000                 0.3\n")
 
 # MASSES
 # writes admas cards
@@ -1479,6 +1742,8 @@ def convert_props(input_lines, material_names):
         massdef_line_match = re.search(massdef_line_pattern, line, re.IGNORECASE)
         dcoup_line_pattern = r'^\s*\*ELEMENT\s*,?\s*TYPE\s*=\s*DCOUP3D\b.*$'
         dcoup_line_match = re.search(dcoup_line_pattern, line, re.IGNORECASE)
+        spring_line_pattern = r'^\s*\*SPRING\s*,\s*ELSET\s*=\s*[^,]+\s*,?.*$'
+        spring_line_match = re.search(spring_line_pattern, line, re.IGNORECASE)
 
         if shell_line_match:
             section_type = 'shell'
@@ -1548,6 +1813,18 @@ def convert_props(input_lines, material_names):
                 next_line = input_lines[i].strip()
                 conntype = next_line.split(',')[0].strip()
 
+        elif spring_line_match:
+            section_type = 'spring'
+            # regular expression to find 'elset =' or 'elset='
+            elset_match = re.search(elset_pattern, line, re.IGNORECASE)
+            if elset_match:
+                property_name = elset_match.group(1).strip()
+                material_name = elset_match.group(1).strip()
+            i += 2 # Move on 2 lines
+            if i < len(input_lines):
+                next_line = input_lines[i].strip()
+                spring_stiffness = next_line.split(',')[0].strip()
+
         elif massdef_line_match:
             section_type = 'massdef'
             # regular expression to find 'elset =' or 'elset='
@@ -1607,6 +1884,14 @@ def convert_props(input_lines, material_names):
             # Increment the property ID
             prop_id += 1
 
+        elif section_type == 'spring':
+            # Assign a property ID to the property
+            property_names[property_name] = {'prop_id': prop_id}
+            property_names[property_name]['nint'] = '666'
+            property_names[property_name]['spring_stiffness'] = spring_stiffness
+            property_names[property_name]['material_id'] = 0
+            # Increment the property ID
+            prop_id += 1
 
         elif section_type == 'solid':
             # Assign a property ID to the property
@@ -1753,7 +2038,7 @@ def write_props(property_names, output_file):
                 output_file.write("                             1\n")
 
 ####################################################################################################
-# Function to convert CONN3D2 of type BEAM to Type13 Springs                                       #
+# Function to convert CONN3D2 of type BEAM and SpringA to Type13 Springs                           #
 ####################################################################################################
 def convert_connbeams(property_names):
     spring_k = e_magnitude * 5                       #
@@ -1812,6 +2097,61 @@ def convert_connbeams(property_names):
             conn_beams.append("                   0                   0                   0                   0")
             conn_beams.append("#                 K6                  C6                  A6                  B6                  D6")
             conn_beams.append(f"{spring_rk:>20.4e}                   0                   0                   0                   0")
+            conn_beams.append("# fct_ID16        H6  fct_ID26  fct_ID36  fct_ID46                    delta_min6          delta_max6")
+            conn_beams.append("         0         0         0         0         0                             0                   0")
+            conn_beams.append("#                 F6                  E6             Ascale6             Hscale6")
+            conn_beams.append("                   0                   0                   0                   0")
+            conn_beams.append("#                 V0              Omega0               F_cut   Fsmooth")
+            conn_beams.append("                   0                   0                   0         0")
+            conn_beams.append("#                  C                   n               alpha                beta")
+            conn_beams.append("                   0                   0                   0                   0")
+            conn_beams.append("                   0                   0                   0                   0")
+            conn_beams.append("                   0                   0                   0                   0")
+            conn_beams.append("                   0                   0                   0                   0")
+            conn_beams.append("                   0                   0                   0                   0")
+            conn_beams.append("                   0                   0                   0                   0")
+
+        if prop_type == '666': #666 is code for SpringA type Springs
+            spring_stiffness = float(property_data['spring_stiffness'])  # Get the 'spring_stiffness' value from property_data
+
+            conn_beams.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+            conn_beams.append(f"#Spring PROP for connection definition: {property_name}: for .inp SPRINGA Elements")
+            conn_beams.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+            conn_beams.append(f"/PROP/TYPE13/{property_id}\n{property_name}")
+            conn_beams.append("#               Mass             Inertia   skew_ID   sens_ID    Isflag     Ifail     Ileng    Ifail2")
+            conn_beams.append(f"{spring_mass:>20.4e}{spring_inertia:>20.4e}         0         0         0         0         0         0")
+            conn_beams.append("#                 K1                  C1                  A1                  B1                  D1")
+            conn_beams.append(f"{spring_stiffness:>20.4e}                   0                   0                   0                   0")
+            conn_beams.append("# fct_ID11        H1  fct_ID21  fct_ID31  fct_ID41                    delta_min1          delta_max1")
+            conn_beams.append("         0         0         0         0         0                             0                   0")
+            conn_beams.append("#                 F1                  E1             Ascale1             Hscale1")
+            conn_beams.append("                   0                   0                   0                   0")
+            conn_beams.append("#                 K2                  C2                  A2                  B2                  D2")
+            conn_beams.append(f"{spring_stiffness:>20.4e}                   0                   0                   0                   0")
+            conn_beams.append("# fct_ID12        H2  fct_ID22  fct_ID32  fct_ID42                    delta_min2          delta_max2")
+            conn_beams.append("         0         0         0         0         0                             0                   0")
+            conn_beams.append("#                 F2                  E2             Ascale2             Hscale2")
+            conn_beams.append("                   0                   0                   0                   0")
+            conn_beams.append("#                 K3                  C3                  A3                  B3                  D3")
+            conn_beams.append(f"{spring_stiffness:>20.4e}                   0                   0                   0                   0")
+            conn_beams.append("# fct_ID13        H3  fct_ID23  fct_ID33  fct_ID43                    delta_min3          delta_max3")
+            conn_beams.append("         0         0         0         0         0                             0                   0")
+            conn_beams.append("#                 F3                  E3             Ascale3             Hscale3")
+            conn_beams.append("                   0                   0                   0                   0")
+            conn_beams.append("#                 K4                  C4                  A4                  B4                  D4")
+            conn_beams.append("                   0                   0                   0                   0                   0")
+            conn_beams.append("# fct_ID14        H4  fct_ID24  fct_ID34  fct_ID44                    delta_min4          delta_max4")
+            conn_beams.append("         0         0         0         0         0                             0                   0")
+            conn_beams.append("#                 F4                  E4             Ascale4             Hscale4")
+            conn_beams.append("                   0                   0                   0                   0")
+            conn_beams.append("#                 K5                  C5                  A5                  B5                  D5")
+            conn_beams.append("                   0                   0                   0                   0                   0")
+            conn_beams.append("# fct_ID15        H5  fct_ID25  fct_ID35  fct_ID45                    delta_min5          delta_max5")
+            conn_beams.append("         0         0         0         0         0                             0                   0")
+            conn_beams.append("#                 F5                  E5             Ascale5             Hscale5")
+            conn_beams.append("                   0                   0                   0                   0")
+            conn_beams.append("#                 K6                  C6                  A6                  B6                  D6")
+            conn_beams.append("                   0                   0                   0                   0                   0")
             conn_beams.append("# fct_ID16        H6  fct_ID26  fct_ID36  fct_ID46                    delta_min6          delta_max6")
             conn_beams.append("         0         0         0         0         0                             0                   0")
             conn_beams.append("#                 F6                  E6             Ascale6             Hscale6")
@@ -1957,9 +2297,9 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
                         current_element_dicts.append(
                             {"ELSET": elset, "PROP_ID": 0, "elements": element_dict}
                             )
-                        print ("Warning: No Property Found for Element,")
-                        print ("         if using PrePoMax, please use PART NAME as Region Type") 
-                        print ("         for shell parts Section assignment, not 'Selection'")
+                        print ("### WARNING ###: No Property Found for Element,")
+                        print ("                 if using PrePoMax, please use PART NAME as Region Type")
+                        print ("                 for shell parts Section assignment, not 'Selection'")
                         ppmselect = True
                     element_dicts[current_element_type] = current_element_dicts
                     if current_element_type.lower() == 'sc8r':
@@ -2033,9 +2373,9 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
                     current_element_dicts.append(
                         {"ELSET": elset, "PROP_ID": 0, "elements": element_dict}
                         )
-                    print ("Warning: No Property Found for Element,")
-                    print ("         if using PrePoMax, please use PART NAME as Region Type") 
-                    print ("         for shell parts Section assignment, not 'Selection'")
+                    print ("### WARNING ###: No Property Found for Element,")
+                    print ("                 if using PrePoMax, please use PART NAME as Region Type")
+                    print ("                 for shell parts Section assignment, not 'Selection'")
                     ppmselect = True
                 element_dicts[current_element_type] = current_element_dicts
                 if current_element_type.lower() == 'sc8r':
@@ -2088,7 +2428,7 @@ def process_element_block(current_element_block, current_element_type, max_elem_
 
     # Determine the number of nodes based on the element_type
     element_type_nodes = {
-        'MASS': 1, 'DCOUP3D': 1, 'CONN3D2': 2, 'S3': 3, 'S3R': 3, 'M3D3': 3,
+        'MASS': 1, 'DCOUP3D': 1, 'CONN3D2': 2, 'SPRINGA': 2, 'S3': 3, 'S3R': 3, 'M3D3': 3,
         'R3D3': 3, 'S4': 4, 'S4R': 4, 'R3D4': 4, 'M3D4R': 4, 'C3D4': 4,
         'C3D6': 6, 'COH3D6': 6, 'SC6R': 6, 'SC8R': 8, 'C3D8': 8,
         'C3D8I': 8, 'COH3D8': 8,'C3D8R': 8, 'C3D10': 10, 'C3D10M': 10
@@ -2097,7 +2437,8 @@ def process_element_block(current_element_block, current_element_type, max_elem_
     num_nodes = element_type_nodes.get(current_element_type, 0)
 
     if num_nodes == 0:
-        print(f"Warning: Unknown element type {current_element_type}")
+        print("")
+        print(f"### WARNING ###: Unknown element type {current_element_type}")
 
         if or_gui:
             print("### INFO ###")
@@ -2111,8 +2452,8 @@ def process_element_block(current_element_block, current_element_type, max_elem_
             print(f"element type {current_element_type} is not yet supported by inp2rad")
             print("please try to use an alternative")
             print("process will attempt to continue the best it can")
-            print("")
-            input("press enter to continue")
+            input("Press Enter to continue...")
+            print ("")
 
         return [element_list, max_elem_id]
 
@@ -2134,7 +2475,7 @@ def process_element_block(current_element_block, current_element_type, max_elem_
         # If we can't get the full set of element ID + nodes, mark it as incomplete
         if i + num_nodes + 1 > len(elements):
             incomplete_element = elements[i:]
-            print(f"Warning: Incomplete element definition at index {i}")
+            print(f"### WARNING ###: Incomplete element definition at index {i}")
             print(f"Incomplete element data: {incomplete_element}")
             continue
 
@@ -2145,7 +2486,7 @@ def process_element_block(current_element_block, current_element_type, max_elem_
         # Extract nodes and validate their count
         nodes = elements[i + 1: i + num_nodes + 1]
         if len(nodes) != num_nodes:
-            print(f"Warning: Element {element_id} has an incorrect number of nodes ({len(nodes)} instead of {num_nodes})")
+            print(f"### WARNING ###: Element {element_id} has an incorrect number of nodes ({len(nodes)} instead of {num_nodes})")
             print(f"Element data: ID = {element_id}, Nodes = {nodes}")
             continue  # Skip malformed elements
 
@@ -2193,14 +2534,14 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, nsets, 
                 all_nodes = []  # Collect all nodes
                 for element in element_dict["elements"]:
                     all_nodes.extend(element.get('nodes', []))  # Flatten node lists
-            
+
                 # Format output with 10 nodes per line
                 for i in range(0, len(all_nodes), 10):
                     chunk = all_nodes[i:i+10]  # Take 10 nodes at a time
                     formatted_nodes = ''.join(value.rjust(10) for value in chunk)  # Format as fixed-width
                     element_lines.append(formatted_nodes)  # Append to output
 
-            elif element_type.lower() == "conn3d2":
+            elif element_type.lower() == "conn3d2" or element_type.lower() == "springa":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"# Spring Elements for PART: {part_name}, PID: {property_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
@@ -2453,7 +2794,7 @@ def write_element_groups(nset_counter, nsets, sh3n_list, shell_list, brick_list,
                 numeric_values.append(int(value))
 
             else:
-                print(f"Warning: Skipping non-integer value '{value}' in elset '{elset_name}'") # For debug
+                print(f"### WARNING ###: Skipping non-integer value '{value}' in elset '{elset_name}'") # For debug
                 continue
 
         elset_values_sh3n = list(set(numeric_values) & set(sh3n_list))
@@ -2845,7 +3186,44 @@ def parse_surface_data(input_lines, elset_dicts, nset_counter, nsets,
                 surface_lines.append(f"/SURF/SEG/{surf_id}\n{surface_name}")
                 surf_already_processed = True
 
-            if surface_el_byname and not surf_already_processed and not allsurf:
+            if surface_el_byname is not None and allsurf is False and not surface_side:
+                # Look up the property IDs for the names in surf_el_byname
+                prop_id_list = []
+                for property_name, property_data in property_names.items():
+                   # Check if the property name matches the surface_el
+                    if property_name.lower() == surface_el_byname.lower():
+                        # Extract the property_id and add it to the list
+                        property_id = int(property_data['prop_id'])
+                        prop_id_list.append(property_id)
+
+                # Create a /SURF/PART/EXT entry
+                props_per_line = []
+
+                for property_id in prop_id_list:
+                    props_per_line.append(f"{property_id:10d}")
+
+                    # Check if we have collected 10 elements
+                    if len(props_per_line) == 10:
+                        prop_lines.append("".join(props_per_line))
+                        props_per_line = []
+
+                # If there are remaining elements, add them to the last line
+                if props_per_line:
+                    prop_lines.append("".join(props_per_line))
+
+                if prop_lines:
+                    surface_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                    surface_lines.append(f"#SURF PART EXT for all parts from .inp surf:\n#{current_surface_name}")
+                    surface_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                    surface_lines.append(f"/SURF/PART/EXT/{surf_id}\n{current_surface_name}")
+                    surface_lines.extend(prop_lines)
+                    prop_id_list = []
+                    props_per_line = []
+                    prop_lines = []
+                else:
+                    surface_side = all
+
+            if surface_el_byname and not surf_already_processed and surface_side and not allsurf:
                 nset_name = f"{current_surface_name}___nodes"
                 nset_counter += 1
                 nsets[nset_name] = {'id': nset_counter} # Store the name/ID relationship
@@ -2868,19 +3246,28 @@ def parse_surface_data(input_lines, elset_dicts, nset_counter, nsets,
                     segment_nodes = ''.join([f"{node:>10}" for node in nodes])
                     surf_holder.append(f"          {segment_nodes}")
 
-            if surface_el_byname is not None and allsurf is False:
+            if surface_el_byname is not None and allsurf is False and surface_side:
                 for elset_name, surface_els in elset_dicts.items():
                     if elset_name == surface_el_byname:
                         try:
                             surface_els = [int(surface_els) for surface_els in surface_els]
                         except ValueError:
-                            print(f"Warning: Unable to convert value '{surface_els}' to numeric surf set. It will be skipped.")
+                            print(f"### WARNING ###: Unable to convert value '{surface_els}' to numeric surf set. It will be skipped.")
 
                         for surface_el in surface_els:
                             if surface_side:
-                                nodes = segment_dictionary[surface_el].get(surface_side, [])
-                                segment_nodes = ''.join([f"{node:>10}" for node in nodes])
-                                surf_holder.append(f"          {segment_nodes}")
+                                if surface_side == all:
+                                    # Iterate over all possible surface sides and create a separate line for each side
+                                    surface_sides = ['s1', 's2', 's3', 's4', 's5', 's6', 'spos', 'sneg']
+                                    for surf_iter in surface_sides:
+                                        nodes = segment_dictionary[surface_el].get(surf_iter, [])
+                                        if nodes:  # Check if nodes exist (i.e., not an empty list)
+                                            segment_nodes = ''.join([f"{node:>10}" for node in nodes])
+                                            surf_holder.append(f"          {segment_nodes}")
+                                else:
+                                    nodes = segment_dictionary[surface_el].get(surface_side, [])
+                                    segment_nodes = ''.join([f"{node:>10}" for node in nodes])
+                                    surf_holder.append(f"          {segment_nodes}")
                             else:
                             # Iterate over all possible surface sides and create a separate line for each side
                                 surface_sides = ['s1', 's2', 's3', 's4', 's5', 's6', 'spos', 'sneg']
@@ -2941,12 +3328,12 @@ def parse_surface_data(input_lines, elset_dicts, nset_counter, nsets,
 # Function to parse surface_interaction data for friction                                                               #
 #########################################################################################################################
 def parse_surface_interaction_data(input_lines):
-    friction_dict = {} # Initialize friction dictionary
+    friction_dict = {}  # Initialize friction dictionary
     friction_name = None
     friction_line = False
 
     for line in input_lines:
-        fric_pattern = r'^\s*\*SURFACE INTERACTION\s*,\s*NAME\s*=' # Regular expression to find '*SURFACE INTERACTION'
+        fric_pattern = r'^\s*\*SURFACE INTERACTION\s*,\s*NAME\s*='  # Regular expression to find '*SURFACE INTERACTION'
         matchfric = re.search(fric_pattern, line, re.IGNORECASE)
 
         if matchfric:
@@ -2955,10 +3342,19 @@ def parse_surface_interaction_data(input_lines):
             friction_name = friction_name_match.group(1).strip()
 
         elif friction_name and (line.lower().strip().startswith('*friction')):
+            # Check for '*FRICTION, ROUGH' pattern
+            rough_pattern = r'^\s*\*FRICTION\s*,\s*ROUGH\s*$'
+            if re.search(rough_pattern, line, re.IGNORECASE):
+                # Assign a friction value of 1.0 for ROUGH
+                friction_dict[friction_name] = 1.0
+                friction_line = False
+                continue
+
             friction_line = True
             continue
 
         elif friction_name and friction_line is True and not line.startswith('*'):
+            # Handle standard friction data
             friction_data = line.split(",")  # Split the line by comma
             friction_value = friction_data[0].strip().rstrip(",")
             friction_dict[friction_name] = friction_value
@@ -2989,11 +3385,13 @@ def convert_contacts(input_lines, property_names, surf_id, friction_dict, surf_n
     #this section checks for contact attributes and stores them as variables
     while i < len(input_lines):
         line = input_lines[i].strip()
-        conpair_pattern = r'^\s*\*CONTACT PAIR\s*(,.*)?$' # Regular expression to find '*CONTACT' contact entry section
+        conpair_pattern = r'^\s*\*CONTACT PAIR\s*(,.*)?$' # Regular expression to find '*CONTACT PAIR' contact entry section
         contype_pattern = r'^\s*\*CONTACT\s*(,.*)?$' # Regular expression to find '*CONTACT' contact entry section
+        conexc_pattern = r'^\s*\*CONTACT\s+EXCLUSIONS\s*' # Regular expression to find '*CONTACT EXCLUSIONS' contact entry section
         ppmtype_pattern = r'^\s*\*Surface interaction\s*,\s*Name\s*=\s*RADIOSS_GENERAL\s*(,.*)?$' # Regular expression to find special ppm input for general contact entry section
         matchconpair = re.search(conpair_pattern, line, re.IGNORECASE)
         matchcont = re.search(contype_pattern, line, re.IGNORECASE)
+        matchconexc = re.search(conexc_pattern, line, re.IGNORECASE)
         matchppm = re.search(ppmtype_pattern, line, re.IGNORECASE)
 
         if matchcont or matchppm:
@@ -3040,7 +3438,8 @@ def convert_contacts(input_lines, property_names, surf_id, friction_dict, surf_n
                 # Extract the property_id from the sub-dictionary and convert it to an integer
                 property_id = int(property_data['prop_id'])
                 # Append the integer 'property_id' to the list (excluding springs and dummy property for masses)
-                if not property_data['nint'] == '777' and not property_data['nint'] == '555' and property_id not in prop_id_list:
+                if (not property_data['nint'] == '777' and not property_data['nint'] == '555' and not property_data['nint'] == '666'
+                and property_id not in prop_id_list):
                     prop_id_list.append(property_id)
 
             surf_id += 1
@@ -3080,14 +3479,26 @@ def convert_contacts(input_lines, property_names, surf_id, friction_dict, surf_n
                 contact_properties_exist = True
                 friction_ref = "RADIOSS_GENERAL"
                 friction_value = float(friction_dict.get(friction_ref.strip(), 0))
-                contacts.append(f"                   0          {friction_value:>10.8g}                                       0                   0")
+                contacts.append(f"                   0          {friction_value:>10}                                       0                   0")
                 contacts.append("#      IBC                        Inacti               ViscS                             ")
                 contacts.append("       000                             5                   0")
                 contacts.append("#    Ifric    Ifiltr               Xfreq             sens_ID                                 fric_ID")
                 contacts.append("         0         0                   0                   0                                       0")
                 contact_name = None
                 ppmcontact = False
-            i += 1
+            i += 1 # move to next line
+
+        elif matchconexc:
+            print ("")
+            print(f"### WARNING ###: for Contact: {contact_name}")
+            print("### INFO ###")
+            print("contact exclusions are not converted by the inp2rad script")
+            print("please define contact pairs or include all exterior surfaces")
+            print("or make corrections to Radioss contact definitions manually if necessary")
+            if not or_gui:
+                input("Press Enter to continue...")
+            print ("")
+            i += 1 # move to next line
 
         elif contact_name and line.lower().startswith('*contact property assignment'):
             contact_properties_exist = True
@@ -3096,7 +3507,7 @@ def convert_contacts(input_lines, property_names, surf_id, friction_dict, surf_n
             property_line = input_lines[i].strip()
             friction_ref = property_line.split(',')[2]
             friction_value = float(friction_dict.get(friction_ref.strip(), 0))
-            contacts.append(f"                   0          {friction_value:>10.8g}                                       0                   0")
+            contacts.append(f"                   0          {friction_value:>10}                                       0                   0")
             contacts.append("#      IBC                        Inacti               ViscS                             ")
             contacts.append("       000                             5                   0")
             contacts.append("#    Ifric    Ifiltr               Xfreq             sens_ID                                 fric_ID")
@@ -3107,7 +3518,7 @@ def convert_contacts(input_lines, property_names, surf_id, friction_dict, surf_n
             contact_properties_exist = True
             friction_ref = interaction_name
             friction_value = float(friction_dict.get(friction_ref.strip(), 0))
-            contacts.append(f"                   0          {friction_value:>10.8g}                                       0                   0")
+            contacts.append(f"                   0          {friction_value:>10}                                       0                   0")
             contacts.append("#      IBC                        Inacti               ViscS                             ")
             contacts.append("       000                             5                   0")
             contacts.append("#    Ifric    Ifiltr               Xfreq             sens_ID                                 fric_ID")
@@ -3288,7 +3699,7 @@ def read_amplitudes(input_lines, fct_id):
         values = [float(v) for v in re.split(r"[,\s]+", data) if v]  # Split and convert to float
 
         if len(values) % 2 != 0:
-            print("Warning: Uneven data in block, ignoring the last value.")
+            print("### WARNING ###: Uneven data in block, ignoring the last value.")
             values = values[:-1]
 
         functs_dict[amplitude_name] = {
@@ -3905,21 +4316,21 @@ def convert_initial(input_lines, nset_counter, nsets):
                 iniv_mag_y = iniv_mags.get('iniv_mag_y')
                 iniv_mag_z = iniv_mags.get('iniv_mag_z')
                 if radversion == 2025:
-                     iniv_block = (
-                     "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
-                     f"/INIVEL/TRA/{ref_nset_counter}\n{iniv_name}\n"
-                     "#                 Vx                  Vy                  Vz   Gnod_id   Skew_id\n"
-                     f"{iniv_mag_x:>20.15g}{iniv_mag_y:>20.15g}{iniv_mag_z:>20.15g}{ref_nset_counter:>10}\n"
-                     "#   Tstart   sens_ID\n"
-                     "       0.0         0"
-                     )
+                    iniv_block = (
+                    "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
+                    f"/INIVEL/TRA/{ref_nset_counter}\n{iniv_name}\n"
+                    "#                 Vx                  Vy                  Vz   Gnod_id   Skew_id\n"
+                    f"{iniv_mag_x:>20.15g}{iniv_mag_y:>20.15g}{iniv_mag_z:>20.15g}{ref_nset_counter:>10}\n"
+                    "#   Tstart   sens_ID\n"
+                    "       0.0         0"
+                    )
                 elif radversion ==2023:
-                     iniv_block = (
-                     "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
-                     f"/INIVEL/TRA/{ref_nset_counter}\n{iniv_name}\n"
-                     "#                 Vx                  Vy                  Vz   Gnod_id   Skew_id\n"
-                     f"{iniv_mag_x:>20.15g}{iniv_mag_y:>20.15g}{iniv_mag_z:>20.15g}{ref_nset_counter:>10}"
-                     )
+                    iniv_block = (
+                    "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
+                    f"/INIVEL/TRA/{ref_nset_counter}\n{iniv_name}\n"
+                    "#                 Vx                  Vy                  Vz   Gnod_id   Skew_id\n"
+                    f"{iniv_mag_x:>20.15g}{iniv_mag_y:>20.15g}{iniv_mag_z:>20.15g}{ref_nset_counter:>10}"
+                    )
                 initial_blocks.append(iniv_block)
             continue
 
@@ -4032,7 +4443,7 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
                         property_id = property_names[values]['prop_id']
                         prop_ids.append(property_id)
 
-            if not dload_name or dload_set_exists == False:
+            if not dload_name or dload_set_exists is False:
                 if skipgrav:
                     continue
                 prop_ids = []
@@ -4081,7 +4492,7 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
             if dload_name:
                 nset_counter += 1
             ref_nset_counter = nset_counter if dload_name else 0
-            if dload_set_exists == False:
+            if dload_set_exists is False:
                 ref_nset_counter = 0
         skewandgravid = nset_counter
         dgrav_block = "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
@@ -4105,7 +4516,7 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
         dgrav_block += "#funct_IDT       DIR   skew_ID   Isensor  Grnod_id                      Ascale_X            Fscale_Y\n"
         dgrav_block += f"{funct_id:>10}         X{skewandgravid:>10}         0{ref_nset_counter:>10}                             0{dload_mag:>20.15g}\n"
 
-        if not already_set and not property_id == 'all':
+        if not already_set and property_id != 'all':
             dgrav_block += "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
             dgrav_block += f"/GRNOD/PART/{nset_counter}\n"
             dgrav_block += f"{dload_name} secondary nodes\n"
@@ -4335,11 +4746,11 @@ def convert_coupling(input_lines, nsets, max_elem_id):
             if coupling_surf_match:
                 coupling_surf = coupling_surf_match.group(1).strip()
                 if debug_mode:
-                     print(f"coupling surf is {coupling_surf}")
+                    print(f"coupling surf is {coupling_surf}")
             if coupling_rbodyid_match:
                 rbody_id = coupling_rbodyid_match.group(1).strip()
                 if debug_mode:
-                     print(f"ref node is {rbody_id}")
+                    print(f"ref node is {rbody_id}")
         if kcoupling:
             couplingk = False
             # Extract data from coupling line
@@ -4560,7 +4971,7 @@ def parse_control_data(input_lines, simple_file_name):
         fst_match = re.search(fst_pattern, line, re.IGNORECASE)
 
         # Define a regular expression pattern to match the line starting with '*DYNAMIC, EXPLICIT'
-        runtime_pattern = runtime_pattern = r'^\s*\*DYNAMIC\s*,\s*EXPLICIT(?:\s*,\s*[\w\s-]+)?\s*$'
+        runtime_pattern = r'^\s*\*DYNAMIC\s*,\s*EXPLICIT(?:\s*,\s*[\w\s-]+)?\s*$'
 
         # Use re.search to find the first match (case-insensitive)
         runtime_match = re.search(runtime_pattern, line, re.IGNORECASE)
@@ -4925,7 +5336,7 @@ def main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
         elapsed_time = time.time() - start_time
         print(f"Nsets Done:            {elapsed_time:8.3f} seconds")
 
-    material_names, extra_material_names, fct_id = convert_materials(input_lines)
+    material_names, extra_material_names, fct_id, nset_counter = convert_materials(input_lines, nset_counter)
     if run_timer:
         elapsed_time = time.time() - start_time
         print(f"Materials Done:        {elapsed_time:8.3f} seconds")
@@ -5250,7 +5661,6 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 material_id = properties['material_id']
                 rho = properties['rho']
                 emodulus = properties['emodulus']
-                poissrat = properties['poissrat']
                 se_mm = properties['se_mm']
                 se_mpr = properties['se_mpr']
                 se_uts = properties['se_uts']
@@ -5264,7 +5674,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 se_slope_unload = properties['se_slope_unload']
 
     # Write the card format for materials with superelastic properties
-                write_supere_material(material_id, material_name, rho, emodulus, poissrat, se_mm, se_mpr,
+                write_supere_material(material_id, material_name, rho, emodulus, se_mm, se_mpr,
                     se_uts, se_tbt, se_tet, se_trbt, se_tret, se_tbc, se_reftemp, se_slope_load,
                     se_slope_unload, output_file
                     )
@@ -5282,6 +5692,29 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                     ogden_D, output_file
                     )
 
+        #MAT LAW95
+        for material_name, properties in material_names.items():
+            if check_if_poly(properties):
+                material_id = properties['material_id']
+                rho = properties['rho']
+                poly_c10 = properties['poly_c10']
+                poly_c01 = properties['poly_c01']
+                poly_c20 = properties['poly_c20']
+                poly_c11 = properties['poly_c11']
+                poly_c02 = properties['poly_c02']
+                poly_c30 = properties['poly_c30']
+                poly_c21 = properties['poly_c21']
+                poly_c12 = properties['poly_c12']
+                poly_c03 = properties['poly_c03']
+                poly_d1 = properties['poly_d1']
+                poly_d2 = properties['poly_d2']
+                poly_d3 = properties['poly_d3']
+   # Write the card format for materials with polynomial properties
+                write_poly_material(material_id, material_name, rho, poly_c10, poly_c01, poly_c20,
+                    poly_c11, poly_c02, poly_c30, poly_c21, poly_c12, poly_c03,
+                    poly_d1, poly_d2, poly_d3, output_file
+                    )
+
         #PRONY SERIES
         for material_name, properties in extra_material_names.items():
             if check_if_prony(properties):
@@ -5289,6 +5722,17 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 prony_data = properties['prony_data']
    # Write the card format for prony series
                 write_prony_series(material_id, prony_data, output_file)
+
+        #DAMPING
+        for material_name, properties in extra_material_names.items():
+            if check_if_damping(properties):
+                material_id = properties['material_id']
+                material_nset = properties['material_nset']
+                dampalpha = properties['dampalpha']
+                dampbeta = properties['dampbeta']
+
+    # Write the card format for damping properties
+                write_damping(material_id, material_nset, dampalpha, dampbeta, output_file)
 
         #MAT VOID
         for material_name, properties in material_names.items():
@@ -5505,7 +5949,6 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
         print("INFO: PrePoMax Internal Select detected, part/prop assignment incomplete")
         print("      please correct PART IDs for elements in rad file or return to PPM")
         print("      and assign properties by Part instead of 'Selection'")
-    
 
     if not or_gui:
         input("Press Enter to exit...")
@@ -5568,7 +6011,7 @@ def input_read(input_file_path):
 ####################################################################################################
 # Check for INCLUDE files and process contents                                                     #
 ####################################################################################################
-            
+
     expanded_lines = []
     include_pattern = re.compile(r'\*INCLUDE\s*,\s*INPUT\s*=\s*(.+)', re.IGNORECASE)
 
@@ -5582,15 +6025,15 @@ def input_read(input_file_path):
                 with open(include_path, "r") as include_file:
                     expanded_lines.extend(include_file.readlines())
             else:
-                print(f"Warning: Included file {include_path} not found. Keeping original reference.")
+                print(f"### WARNING ###: Included file {include_path} not found. Keeping original reference.")
                 expanded_lines.append(line)
         else:
             expanded_lines.append(line)
 
-    return (expanded_lines, input_file_name, simple_file_name, output_file_name, 
+    return (expanded_lines, input_file_name, simple_file_name, output_file_name,
             output_file_path, engine_file_name, engine_file_path)
-            
-            
+
+
 ####################################################################################################
 # Line pre-processor, strips comment lines, special characters etc                                 #
 ####################################################################################################
@@ -5737,6 +6180,8 @@ def create_part_elsets(input_lines):
             if element_type == 'MASS':
                 num_nodes = 1
             elif element_type == 'CONN3D2':
+                num_nodes = 2
+            elif element_type == 'SPRINGA':
                 num_nodes = 2
             elif element_type == 'S3':
                 num_nodes = 3
@@ -5977,6 +6422,8 @@ def create_rigid_elsets(input_lines, elset_references):
                 num_nodes = 1
             elif element_type == 'CONN3D2':
                 num_nodes = 2
+            elif element_type == 'SPRINGA':
+                num_nodes = 2
             elif element_type == 'S3':
                 num_nodes = 3
             elif element_type == 'S3R':
@@ -6088,7 +6535,7 @@ def create_rigid_elsets(input_lines, elset_references):
                     i += 1
                     rigid_elset_sets[elset_name] = set(str(el) for el in element_ids)
                     #print (rigid_elset_sets)
-                else:     
+                else:
                     # Read the following lines to collect element IDs
                     i += 1
                     while i < len(input_lines) and not input_lines[i].strip().startswith('*'):
@@ -6541,7 +6988,7 @@ if __name__ == "__main__":
             sys.exit()
         or_gui = False
         run_timer = True
-        
+
         # Ask the user if they want a rad file compatible with HM
         if messagebox.askyesno("Compatibility Question", "Do you want latest Radioss format (2025)?\n 'No' will return 2023 format for legacy compatibility"):
             radversion = 2025
