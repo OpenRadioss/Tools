@@ -71,8 +71,6 @@ Supported keywords: (not all sub-options necessarily supported):
 
 *COUPLING, *DISTRIBUTING or *KINEMATIC
 
-*DAMPING,( with ALPHA =, BETA =, for material damping)
-
 *DENSITY
 
 *DISTRIBUTING
@@ -86,8 +84,6 @@ Supported keywords: (not all sub-options necessarily supported):
          DCOUP3D
        
          CONN3D2, (RIGID or HINGE)
-
-         SPRINGA
   
          S3
          
@@ -129,13 +125,11 @@ Supported keywords: (not all sub-options necessarily supported):
 
 *ELSET, ELSET (GENERATE supported)
 
-*FRICTION (with coefficient on next line)
+*FRICTION
 
-*FRICTION, ROUGH
+*HYPERELASTIC (MOONEY-RIVLIN, OGDEN, NEO HOOKE forms only)
 
-*HYPERELASTIC (MOONEY-RIVLIN, OGDEN, NEO HOOKE, POLYNOMIAL, REDUCED POLYNOMIAL forms only)
-
-*HYPERFOAM, (with either TEST DATA or MU ALPHA PR parameters)
+*HYPERFOAM
 
 *INCLUDE (include files supported for input, the output .rad file will be a single merged file)
 
@@ -175,8 +169,6 @@ Supported keywords: (not all sub-options necessarily supported):
 
 *SYSTEM
 
-*TIE (TYPE = NODE TO SURFACE or TYPE = SURFACE TO SURFACE)
+*TIE
 
 *UNIAXIAL TEST DATA
-
-*VISCOELASTIC, TIME = PRONY
