@@ -61,11 +61,23 @@ jobs:
 
     steps:
 
+      # Set the working (we do this because images are not using the same user, for the moment, this is to prevent permission issues when checking out files and removeing previous ones)
+      - name: Set workdir 
+        run: |
+          echo "WORKDIR=build_root" >> $GITHUB_ENV
+
+      - name: Create branch oriented WS directory & integration WS
+        run: |
+          mkdir -p ${{ env.WORKDIR }}
+
       # Get sources
       - name: Checkout git sources
         uses: actions/checkout@v4
+        with:
+          path: ${{ env.WORKDIR }}
 
       - name: Build userlib_sdk
+        working-directory: ${{ env.WORKDIR }}
         run: |
           cd userlib_sdk
           chmod 755 ./build_script.bash    
@@ -145,7 +157,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: userlib_sdk-${{ matrix.os }}-${{ matrix.precision }}
-          path: userlib_sdk/userlib_sdk
+          path: ${{ env.WORKDIR }}/userlib_sdk/userlib_sdk
 
 
   build_userlib_sdk_win:
@@ -238,7 +250,17 @@ jobs:
 
     steps:
 
+      # Set the working (we do this because images are not using the same user, for the moment, this is to prevent permission issues when checking out files and removeing previous ones)
+      - name: Set workdir 
+        run: |
+          echo "WORKDIR=build_user" >> $GITHUB_ENV
+
+      - name: Create branch oriented WS directory & integration WS
+        run: |
+          mkdir -p ${{ env.WORKDIR }}
+
       - name: Clean local exe dir
+        working-directory: ${{ env.WORKDIR }}
         run: |
           rm -rf exec
           md5sum exec/* || echo "Nothing in exec/" 
@@ -247,9 +269,11 @@ jobs:
       - name: Checkout git sources
         uses: actions/checkout@v4
         with:
+          path: ${{ env.WORKDIR }}
           lfs: 'true'
 
       - name: Running builds
+        working-directory: ${{ env.WORKDIR }}
         run: |
           mkdir exec
           source /home/adminqa/.bashrc
@@ -309,7 +333,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: output-converters-${{ env.os }}
-          path: exec
+          path: ${{ env.WORKDIR }}/exec
 
   build_output_converters_windows_no_container:
     if: ${{ github.repository_owner == 'OpenRadioss' }}
