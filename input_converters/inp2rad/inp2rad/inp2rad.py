@@ -6954,8 +6954,21 @@ def start(input_file_path):
 
     except Exception as e:
         # Log the error and return failure
-        print("------------------------------------------------------------")
-        print(f"Error in inp2rad: {e}")
+        if or_gui:
+        # Provide a simple error message for GUI usage      
+            print("------------------------------------------------------------")
+            print("### ERROR ###: An error occurred during inp2rad conversion.")
+            print(f"Error in inp2rad: {e}")
+            print("run inp2rad in command line for more details")
+            print("------------------------------------------------------------")
+
+        else:
+            # Provide full traceback for command-line usage
+            print("------------------------------------------------------------")
+            print("### ERROR ###: Full traceback below:")
+            import traceback
+            traceback.print_exc()
+
         return False
 
 
