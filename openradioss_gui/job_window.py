@@ -363,6 +363,34 @@ class JobWindow():
                 self.job_process(engine_command_line,custom_env,self.exec_dir)
                 self.run_number = self.run_number + 1
 
+            th_to_csh=self.command[5]
+            if th_to_csh=='yes':
+                # Execute TH to CSV
+                # --------------------
+                th_list=self.runOpenRadioss.get_th_list()
+                if self.debug==1:print("TH List: ",th_list)
+                if len(th_list)>0:
+                    self.print("")
+                    self.print("")
+                    self.print(" ------------------------------------------------------")
+                    self.print(" TH-csv option selected, Converting TH Files to csv")
+                    self.print(" ------------------------------------------------------")
+                    self.print("")
+
+                    for th_file in th_list:
+                        self.print(" Time History File Being Converted is "+th_file)
+                        self.runOpenRadioss.convert_th_to_csv(th_file)
+                    self.print("")
+                    self.print(" ------------------------------------")
+                    self.print(" TH file conversion to csv complete")
+                    self.print(" ------------------------------------")
+                else:
+                    self.print("")
+                    self.print("")
+                    self.print(" -------------------------------------------------------------")
+                    self.print(" NB: TH-csv option selected, but no TH files found to convert")
+                    self.print(" -------------------------------------------------------------")
+
             anim_to_vtk=self.command[4]
             if anim_to_vtk=='yes':
                 # Execute Anim to VTK
@@ -391,34 +419,6 @@ class JobWindow():
                     self.print(" ----------------------------------------------------------------")
                     self.print(" NB: Anim-vtk option selected, but no Anim files found to convert")
                     self.print(" ----------------------------------------------------------------")
-
-            th_to_csh=self.command[5]
-            if th_to_csh=='yes':
-                # Execute Anim to VTK
-                # --------------------
-                th_list=self.runOpenRadioss.get_th_list()
-                if self.debug==1:print("TH List: ",th_list)
-                if len(th_list)>0:
-                    self.print("")
-                    self.print("")
-                    self.print(" ------------------------------------------------------")
-                    self.print(" TH-csv option selected, Converting TH Files to csv")
-                    self.print(" ------------------------------------------------------")
-                    self.print("")
-
-                    for th_file in th_list:
-                        self.print(" Time History File Being Converted is "+th_file)
-                        self.runOpenRadioss.convert_th_to_csv(th_file)
-                    self.print("")
-                    self.print(" ------------------------------------")
-                    self.print(" TH file conversion to csv complete")
-                    self.print(" ------------------------------------")
-                else:
-                    self.print("")
-                    self.print("")
-                    self.print(" -------------------------------------------------------------")
-                    self.print(" NB: TH-csv option selected, but no TH files found to convert")
-                    self.print(" -------------------------------------------------------------")
 
             anim_to_d3plot=self.command[7]
             if anim_to_d3plot=='yes':
