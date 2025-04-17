@@ -260,7 +260,7 @@ class RunOpenRadioss():
 # Get Time History files list
 # --------------------------------------------------------------
     def get_th_list(self):
-        th_pattern = self.jobname + "T[0-9][0-9]"  # Define the pattern
+        th_pattern = self.jobname + "T[0-9][0-9]$"  # Define the pattern
         prov_th_to_convert = [ file for file in os.listdir(self.running_directory) if re.match(th_pattern, file) ]
         th_to_convert = []
         # It is possible that .csv files are in the directory
