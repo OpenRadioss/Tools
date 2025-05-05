@@ -9,5 +9,5 @@ then
 fi
 
 
- g++ -DLINUX -o ../../../exec/anim_to_vtk_linuxa64_gf ../src/anim_to_vtk.cpp
+ g++ -DLINUX -o ../../../exec/anim_to_vtk_linuxa64 ../src/anim_to_vtk.cpp
 

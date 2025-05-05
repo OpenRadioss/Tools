@@ -233,20 +233,32 @@ jobs:
   build_output_converters_linux:
     if: ${{ github.repository_owner == 'OpenRadioss' }}
     # DEV ONLY # runs-on: ["linux64","dev"] 
-    runs-on: ["linux64","build","prod"]
+    runs-on: ["${{ matrix.os }}","build","prod"]
+  
+    env:
+      STATUS_BUILD: 0
+      ANIM_TO_VTK_DIR: output_converters/anim_to_vtk
+      TH_TO_CSV: output_converters/th_to_csv
+
+    strategy:
+      # If one job fails others are canceled
+      fail-fast: true
+      matrix:
+        include:
+          ### LINUX64 ###
+          - os: linux64
+            image_name: build-linux64_gf:cos8-ompi411-devts11
+          ### LINUXA64 ###
+          - os: linuxa64
+            image_name: linuxa64-rl8.9-bld:armfl24.04-ompi4.1.2-ts11
+
     container: 
-      image: fr-qafactorydev.europe.altair.com/build-linux64_gf:cos8-ompi411-devts11
+      image: fr-qafactorydev.europe.altair.com/${{ matrix.image_name }}
       credentials: 
         username: ${{secrets.DOCKER_REGISTRY_USER}}
         password: ${{secrets.DOCKER_REGISTRY_PASSWD}}
       volumes: 
         - /etc/localtime:/etc/localtime:ro
-  
-    env:
-      STATUS_BUILD: 0
-      os: linux64
-      ANIM_TO_VTK_DIR: output_converters/anim_to_vtk
-      TH_TO_CSV: output_converters/th_to_csv
 
     steps:
 
@@ -276,25 +288,38 @@ jobs:
         working-directory: ${{ env.WORKDIR }}
         run: |
           mkdir exec
-          source /home/adminqa/.bashrc
 
+          if [ "${{ matrix.os }}" = "linux64" ]
+          then
+            echo "Running BUILD for linux GF"
+            source /home/adminqa/.bashrc
+          else
+            echo "Running BUILD for arm"
+            export MODULEPATH=$MODULEPATH:/opt/arm/modulefiles
+            source /etc/profile.d/modules.sh
+            module load binutils/13.2.0 gnu/13.2.0 acfl/24.04
+            export LD_LIBRARY_PATH=/opt/openmpi/lib:$LD_LIBRARY_PATH           
+          fi
+                    
           cmd="./build.bash"
           echo "========================================="
-          echo "--  BUILD tools for anim_to_vtk (${{ env.os }}) --"   
+          echo "--  BUILD tools for anim_to_vtk (${{ matrix.os }}) --"   
           echo "--  $cmd --"   
           echo "========================================="
 
-          cd ${{ env.ANIM_TO_VTK_DIR }}/${{ env.os }}
+          cd ${{ env.ANIM_TO_VTK_DIR }}/${{ matrix.os }}
+          chmod 755 build.bash
           eval $cmd
 
           cmd="./build.bash"
           echo "========================================="
-          echo "--  BUILD tools for th_to_csv (${{ env.os }}) --"   
+          echo "--  BUILD tools for th_to_csv (${{ matrix.os }}) --"   
           echo "--  $cmd --"   
           echo "========================================="
 
           cd -
-          cd ${{ env.TH_TO_CSV }}/${{ env.os }}
+          cd ${{ env.TH_TO_CSV }}/${{ matrix.os }}
+          chmod 755 build.bash
           eval $cmd
 
           # Set correct end of step status (if not an email will be sent)
@@ -305,11 +330,11 @@ jobs:
         run: |
 
           MAILMSG="Some error(s) has(ve) been raised during workflow execution:\n\n"
-          echo -e "\n#### STATUS_STEP_BUILD ${{ env.os }} ###"
+          echo -e "\n#### STATUS_STEP_BUILD ${{ matrix.os }} ###"
           if [ "$STATUS_BUILD" = 0 ]
           then
             echo -e "Status\t[ \033[31;2;1mFAILED\033[0m ]" 
-            MAILMSG="The build of output converter tools ${{ env.os }} has failed \n"
+            MAILMSG="The build of output converter tools ${{ matrix.os }} has failed \n"
 
             # Send email 
 
@@ -332,7 +357,7 @@ jobs:
       - name: Upload built artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: output-converters-${{ env.os }}
+          name: output-converters-${{ matrix.os }}
           path: ${{ env.WORKDIR }}/exec
 
   build_output_converters_windows_no_container:
@@ -474,6 +499,9 @@ jobs:
           - artifact: output-converters-linux64
             path: exec
             os: linux64
+          - artifact: output-converters-linuxa64
+            path: exec
+            os: linuxa64
           - artifact: output-converters-win64
             path: exec
             os: win64
