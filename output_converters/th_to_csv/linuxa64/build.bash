@@ -9,5 +9,5 @@ then
 fi
 
 
- gcc -DLINUX -o ../../../exec/th_to_csv_linuxa64_gf ../src/th_to_csv.c
+ gcc -DLINUX -o ../../../exec/th_to_csv_linuxa64 ../src/th_to_csv.c
 
