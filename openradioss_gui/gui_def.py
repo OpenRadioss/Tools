@@ -16,11 +16,13 @@
 # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 # IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+import os
 
 import tkinter as tk
 from tkinter import messagebox
 import platform
 import webbrowser
+
 from button_with_highlight import ButtonWithHighlight
 from placeholder_entry import PlaceholderEntry
 
@@ -30,6 +32,9 @@ if arch=='Windows':
     button_width=7
 elif arch=='Linux':
     button_width=8
+
+# Establish common path for all resources, e.g. icons need an absolute path for them to work correctly in packaging the application
+OPENRADIOSS_GUI_PATH = os.path.dirname(os.path.abspath(__file__))
 
 class window:
     def __init__(self, vd3penabled, vtkhdfenabled):
@@ -48,12 +53,12 @@ class window:
 
         # Icons
         if arch == 'Windows':
-             self.root.iconbitmap('./icon/ross.ico')
-             self.icon_folder = tk.PhotoImage(file='./icon/or_folder.png')
+             self.root.iconbitmap(OPENRADIOSS_GUI_PATH + '\\icon\\ross.ico')
+             self.icon_folder = tk.PhotoImage(file=OPENRADIOSS_GUI_PATH + '\\icon/or_folder.png')
         elif arch == 'Linux':
-             icon_image = tk.PhotoImage(file='./icon/ross.png')
+             icon_image = tk.PhotoImage(file=OPENRADIOSS_GUI_PATH + '\\icon/ross.png')
              self.root.iconphoto(True, icon_image)
-             self.icon_folder = tk.PhotoImage(file='./icon/or_folder.png')
+             self.icon_folder = tk.PhotoImage(file=OPENRADIOSS_GUI_PATH + '\\icon/or_folder.png')
 
         # Dropdown Variables
         self.variables = {
