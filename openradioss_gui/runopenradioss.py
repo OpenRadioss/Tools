@@ -26,7 +26,7 @@ import re
 # --------------------------------------------------------------
 # Determine the platform (Windows or Linux)
 current_platform = platform.system()
-
+cpu=platform.machine()
 
 # Tiny tool to get the runid from the file name
 def get_deck_runid(file):
@@ -66,8 +66,12 @@ class RunOpenRadioss():
             self.arch="win64"
             self.bin_extension=".exe"
        else:
-            self.arch="linux64_gf"
-            self.bin_extension=""
+            if cpu =='aarch64':
+                self.arch="linuxa64"
+                self.bin_extension=""
+            else:
+                self.arch="linux64_gf"
+                self.bin_extension=""
 
        self.file              = file
        self.nt                = command[1]
@@ -109,7 +113,7 @@ class RunOpenRadioss():
         I_MPI_PIN_DOMAIN = "auto"
 
         # Create a custom environment with all the variables you want to pass
-        if current_platform == "Linux":
+        if current_platform == "Linux" and cpu != 'aarch64':
              KMP_AFFINITY = "scatter"
              LD_LIBRARY_PATH = ":".join([
                     os.path.join(OPENRADIOSS_PATH, "extlib", "h3d", "lib", "linux64"),
@@ -132,6 +136,27 @@ class RunOpenRadioss():
 
              # Add any additional paths to the existing PATH variable
              custom_env["PATH"] = os.pathsep.join([custom_env["PATH"]] + additional_paths_linux)
+
+        if current_platform == "Linux" and cpu == 'aarch64':
+             LD_LIBRARY_PATH = ":".join([
+                    os.path.join(OPENRADIOSS_PATH, "extlib", "h3d", "lib", "linuxa64"),
+                    os.path.join(OPENRADIOSS_PATH, "extlib", "hm_reader", "linuxa64"),
+                    os.path.join(OPENRADIOSS_PATH, "extlib", "ArmFlang_runtime", "linuxa64"),
+                    os.path.join("/", "opt", "openmpi", "lib")   ])
+
+             additional_paths_linux = [
+                    os.path.join("/", "opt", "openmpi", "bin") ]
+
+             custom_env = os.environ.copy()  # Start with a copy of the current environment
+             custom_env["OPENRADIOSS_PATH"] = OPENRADIOSS_PATH
+             custom_env["RAD_CFG_PATH"] = RAD_CFG_PATH
+             custom_env["RAD_H3D_PATH"] = RAD_H3D_PATH
+             custom_env["OMP_NUM_THREADS"] = OMP_NUM_THREADS
+             custom_env["LD_LIBRARY_PATH"] = LD_LIBRARY_PATH
+
+             # Add any additional paths to the existing PATH variable
+             custom_env["PATH"] = os.pathsep.join([custom_env["PATH"]] + additional_paths_linux)
+
 
         if current_platform == "Windows":
              KMP_AFFINITY = "disabled"
