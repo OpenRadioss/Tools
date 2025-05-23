@@ -70,6 +70,7 @@ class JobWindow():
         self.job_dir = os.path.dirname(command[0])
         self.stop_after_starter=False
         jnm1 = command[0]
+        mpi_path= command[9]
 
         # Create an instance of RunOpenRadioss
         self.runOpenRadioss = RunOpenRadioss(self.command,self.debug)
