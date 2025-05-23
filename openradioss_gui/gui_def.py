@@ -18,7 +18,7 @@
 # IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog
 import platform
 import webbrowser
 from button_with_highlight import ButtonWithHighlight
@@ -32,11 +32,13 @@ elif arch=='Linux':
     button_width=8
 
 class window:
-    def __init__(self, vd3penabled, vtkhdfenabled):
+    def __init__(self, vd3penabled, vtkhdfenabled,mpi_path,sp_status,starter_status,vtk_status,csv_status,vtkhdf_status,d3plot_status):
+
         self.root = tk.Tk()
         self.root.title('OpenRadioss')
         self.vd3penabled = vd3penabled
         self.vtkhdfenabled = vtkhdfenabled
+        self.mpi_path = mpi_path
 
         if arch == 'Windows':
             self.root.geometry('700x105')
@@ -57,12 +59,12 @@ class window:
 
         # Dropdown Variables
         self.variables = {
-            'Single Precision': tk.BooleanVar(),
-            'Run Starter Only': tk.BooleanVar(),
-            'Anim - vtk': tk.BooleanVar(),
-            'Anim - vtkhdf': tk.BooleanVar(),
-            'Anim - d3plot': tk.BooleanVar(),
-            'TH - csv': tk.BooleanVar(),
+            'Single Precision': tk.BooleanVar(value=sp_status),
+            'Run Starter Only': tk.BooleanVar(value=starter_status),
+            'Anim - vtk': tk.BooleanVar(value=vtk_status),
+            'Anim - vtkhdf': tk.BooleanVar(value=vtkhdf_status),
+            'Anim - d3plot': tk.BooleanVar(value=d3plot_status),
+            'TH - csv': tk.BooleanVar(value=csv_status),
         }
 
         self.variable_flags = {
@@ -115,19 +117,26 @@ class window:
         # Return the current state of the dropdown variables
         return self.variables
 
-    def menubar(self,title):
+
+    def menubar(self):
         self.menubar = tk.Menu(self.root)
         self.root.config(menu=self.menubar)
+        #
+        self.config_menu = tk.Menu(self.menubar, tearoff=False)        
+        self.menubar.add_cascade(label="Config", menu=self.config_menu)
+        #
+        self.about_menu = tk.Menu(self.menubar, tearoff=False)
+        self.menubar.add_cascade(label="Info", menu=self.about_menu)
+        #
+        self.config_menu.add_command(label="MPI Path", command=self._set_mpi_path_dialog)
+        #
+        self.about_menu.add_command(label="Get the latest version of OpenRadioss (github link)", command=self._latestv_dialog)
+        self.about_menu.add_command(label="Documentation and Latest Version of this gui (github_link)", command=self._latestgui_dialog)
+        self.about_menu.add_command(label="Get the latest version of the VortexRadioss d3plot python module (github link)", command=self._latestvrad_dialog)
+        self.about_menu.add_command(label="Get the latest version of the kitware animtovtkhdf python module (gitlab link)", command=self._latestvtkh_dialog)
+        self.about_menu.add_command(label="Visit the OpenRadioss web page", command=self._orweb_dialog)
+        self.about_menu.add_command(label="About this gui", command=self._about_dialog)
 
-        if title=='Info':
-            self.about_menu = tk.Menu(self.menubar, tearoff=False)
-            self.menubar.add_cascade(label="Info", menu=self.about_menu)
-            self.about_menu.add_command(label="Get the latest version of OpenRadioss (github link)", command=self._latestv_dialog)
-            self.about_menu.add_command(label="Documentation and Latest Version of this gui (github_link)", command=self._latestgui_dialog)
-            self.about_menu.add_command(label="Get the latest version of the VortexRadioss d3plot python module (github link)", command=self._latestvrad_dialog)
-            self.about_menu.add_command(label="Get the latest version of the kitware animtovtkhdf python module (gitlab link)", command=self._latestvtkh_dialog)
-            self.about_menu.add_command(label="Visit the OpenRadioss web page", command=self._orweb_dialog)
-            self.about_menu.add_command(label="About this gui", command=self._about_dialog)
 
     def file(self,text,command,icon_folder):
         job_file_entry = PlaceholderEntry(self.frame_file, placeholder_text=text, entry_width=83)
@@ -161,4 +170,7 @@ class window:
           webbrowser.open("https://openradioss.org")
     def _about_dialog(self):
           messagebox.showinfo("About", "this job submission gui is from OpenRadioss tools" )
-
+    def _set_mpi_path_dialog(self):
+        value = simpledialog.askstring("MPI Path", "Enter the ROOT directory of MPI installation:                      ", initialvalue=self.mpi_path)
+        if value is not None:
+            self.mpi_path = value

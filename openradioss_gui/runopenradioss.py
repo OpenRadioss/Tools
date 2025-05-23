@@ -83,6 +83,7 @@ class RunOpenRadioss():
        self.running_directory = running_directory
        self.openradioss_path  = openradioss_path
        self.starter_only      = command[6]
+       self.mpi_path          = command[9]
        self.debug             = debug
 
        #print("RunOpenRadioss Class Initialized")
@@ -101,6 +102,37 @@ class RunOpenRadioss():
     # --------------------------------------------------------------
     def environment(self):
 
+        custom_env = os.environ.copy()  # Start with a copy of the current environment
+        try:
+            np=int (self.np)
+        except:
+            np=1
+
+        if np > 1 and self.mpi_path != "":
+            if self.arch == "win64":
+                impi_root=self.mpi_path
+                mpi_binpath = self.mpi_path + "\\bin"
+                mpi_libpath = self.mpi_path + "\\lib"
+                mpi_libfabric = self.mpi_path + "\\opt\\mpi\\libfabric\\bin"
+                a_libfabric = self.mpi_path + "\\libfabric\\bin"
+                custom_env["I_MPI_ROOT"] = impi_root
+                custom_env["PATH"] = os.pathsep.join([mpi_binpath ,mpi_libpath, mpi_libfabric, a_libfabric, custom_env["PATH"] ] )
+                custom_env["I_MPI_OFI_LIBRARY_INTERNAL"] = "1"
+                # print("PATH=", custom_env["PATH"])
+                
+            else:
+                ompi_root=self.mpi_path
+                opal_prefix = ompi_root
+                ompi_bin = ompi_root + "/bin"
+                ompi_lib = ompi_root + "/lib"
+                custom_env["PATH"] = os.pathsep.join([ompi_bin,custom_env["PATH"] ] )
+                custom_env["OPAL_PREFIX"] = opal_prefix
+
+                if "LD_LIBRARY_PATH" in custom_env : 
+                   custom_env["LD_LIBRARY_PATH"] = os.pathsep.join([ompi_lib,custom_env["LD_LIBRARY_PATH"] ] )
+                else:
+                   custom_env["LD_LIBRARY_PATH"] = ompi_lib
+
         nt = self.nt
         OPENRADIOSS_PATH = self.openradioss_path
         RAD_H3D_PATH =  os.path.join(OPENRADIOSS_PATH, "extlib", "h3d", "lib", "win64")
@@ -114,48 +146,46 @@ class RunOpenRadioss():
 
         # Create a custom environment with all the variables you want to pass
         if current_platform == "Linux" and cpu != 'aarch64':
-             KMP_AFFINITY = "scatter"
+             # linux64_gf / X86-64
              LD_LIBRARY_PATH = ":".join([
                     os.path.join(OPENRADIOSS_PATH, "extlib", "h3d", "lib", "linux64"),
-                    os.path.join(OPENRADIOSS_PATH, "extlib", "hm_reader", "linux64"),
-                    os.path.join("/", "opt", "openmpi", "lib")   ])
+                    os.path.join(OPENRADIOSS_PATH, "extlib", "hm_reader", "linux64") ])
 
              additional_paths_linux = [
                     os.path.join(OPENRADIOSS_PATH, "extlib", "hm_reader", "linux64"),
-                    os.path.join(OPENRADIOSS_PATH, "extlib", "intelOneAPI_runtime", "linux64"),
                     os.path.join("/", "opt", "openmpi", "bin") ]
 
-             custom_env = os.environ.copy()  # Start with a copy of the current environment
              custom_env["OPENRADIOSS_PATH"] = OPENRADIOSS_PATH
              custom_env["RAD_CFG_PATH"] = RAD_CFG_PATH
              custom_env["RAD_H3D_PATH"] = RAD_H3D_PATH
              custom_env["OMP_STACKSIZE"] = KMP_STACKSIZE
              custom_env["OMP_NUM_THREADS"] = OMP_NUM_THREADS
-             custom_env["KMP_AFFINITY"] = KMP_AFFINITY
-             custom_env["LD_LIBRARY_PATH"] = LD_LIBRARY_PATH
+
+             if "LD_LIBRARY_PATH" in custom_env :
+                   custom_env["LD_LIBRARY_PATH"] = os.pathsep.join([LD_LIBRARY_PATH , custom_env["LD_LIBRARY_PATH"] ] )
+             else:
+                   custom_env["LD_LIBRARY_PATH"] = LD_LIBRARY_PATH
 
              # Add any additional paths to the existing PATH variable
              custom_env["PATH"] = os.pathsep.join([custom_env["PATH"]] + additional_paths_linux)
 
         if current_platform == "Linux" and cpu == 'aarch64':
+             # linuxa64 / ARM64
              LD_LIBRARY_PATH = ":".join([
                     os.path.join(OPENRADIOSS_PATH, "extlib", "h3d", "lib", "linuxa64"),
                     os.path.join(OPENRADIOSS_PATH, "extlib", "hm_reader", "linuxa64"),
-                    os.path.join(OPENRADIOSS_PATH, "extlib", "ArmFlang_runtime", "linuxa64"),
-                    os.path.join("/", "opt", "openmpi", "lib")   ])
+                    os.path.join(OPENRADIOSS_PATH, "extlib", "ArmFlang_runtime", "linuxa64") ])
 
-             additional_paths_linux = [
-                    os.path.join("/", "opt", "openmpi", "bin") ]
 
-             custom_env = os.environ.copy()  # Start with a copy of the current environment
              custom_env["OPENRADIOSS_PATH"] = OPENRADIOSS_PATH
              custom_env["RAD_CFG_PATH"] = RAD_CFG_PATH
              custom_env["RAD_H3D_PATH"] = RAD_H3D_PATH
              custom_env["OMP_NUM_THREADS"] = OMP_NUM_THREADS
-             custom_env["LD_LIBRARY_PATH"] = LD_LIBRARY_PATH
 
-             # Add any additional paths to the existing PATH variable
-             custom_env["PATH"] = os.pathsep.join([custom_env["PATH"]] + additional_paths_linux)
+             if "LD_LIBRARY_PATH" in custom_env :
+                   custom_env["LD_LIBRARY_PATH"] = os.pathsep.join([LD_LIBRARY_PATH , custom_env["LD_LIBRARY_PATH"] ] )
+             else:
+                   custom_env["LD_LIBRARY_PATH"] = LD_LIBRARY_PATH
 
 
         if current_platform == "Windows":
@@ -165,7 +195,6 @@ class RunOpenRadioss():
                    os.path.join(OPENRADIOSS_PATH, "extlib", "hm_reader", "win64"),
                    os.path.join(OPENRADIOSS_PATH, "extlib", "intelOneAPI_runtime", "win64") ]
 
-             custom_env = os.environ.copy()  # Start with a copy of the current environment
              custom_env["OPENRADIOSS_PATH"] = OPENRADIOSS_PATH
              custom_env["RAD_CFG_PATH"] = RAD_CFG_PATH
              custom_env["RAD_H3D_PATH"] = RAD_H3D_PATH

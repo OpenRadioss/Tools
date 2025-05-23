@@ -35,7 +35,7 @@ The D3plot converter can be found at: [Vortex-CAE GitHub repository](https://git
 * Launch the **OpenRadioss_gui.vbs** on Windows
 * Launch the **OpenRadioss_gui.bash** on Linux
 
-![image](./icon/OpenRadioss_gui.png)
+![image](./icon/OpenRadioss_gui.jpg)
 
 ### Launch a job
 
@@ -49,7 +49,31 @@ The D3plot converter can be found at: [Vortex-CAE GitHub repository](https://git
 * **Enter the number of MPI Domains for the job** in the -np field
 * **Click "Add Job"** Run Window apprears.
 
-### Notes
+### Menus
+
+### Config
+
+* ***MPI Path***: Set the ROOT directory to MPI installation. Leave it blank to use system default variables
+
+  * ***Windows (win64)***: ROOT directory to INTEL MPI. Usual IntelMPI installation is located at :
+
+        C:\Program Files (x86)\Intel\oneAPI\mpi\latest
+
+  * ***Linux X86-64 (linux64_gf)***: Path to OpenMPI. OpenRadioss guidelines for OpenMPI locates it in:
+
+        /opt/openmpi
+
+  * ***Linux ARM64 (linuxa64)***: Path to OpenMPI. OpenRadioss guidelines for OpenMPI locates it in:
+
+        /opt/openmpi
+
+### Info
+
+* Menu with usefull informations about OpenRadioss
+
+#### Run Options
+
+Set optional execution options
 
 * **Single Precision**  in Run Options dropdown enables the OpenRadioss single precision version
 * **Run Starter Only** in Run Options dropdown executes Starter only.
@@ -57,7 +81,6 @@ The D3plot converter can be found at: [Vortex-CAE GitHub repository](https://git
 * **TH - csv** in Run Options dropdown invokes the TH to CSV converter at the end of OpenRadioss Engine simulation.
 * **Show Queue** and **Clear Queue** buttons manage the run queue.
 * The **info** menu has links to the downloads section of github and an ‘About’ credit to the script creators
-* **In Windows version only**: On first attempt to submit an mpi run (-np > 1) you will be prompted to locate a suitable vars.bat file on your machine, once selected, this is remembered (to reset, delete the created ‘path_to_mpi_vars.txt’ file from the install directory, or edit its contents)
 * ***Anim - d3plot** in Run Options dropdown appears only if Vortex-CAE D3plot converter is detected.
 * ***Anim - vtkhdf** in Run Options dropdown appears only if Kitware animtovtkhdf converter is detected.
 

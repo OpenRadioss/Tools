@@ -49,15 +49,21 @@ class openradioss_gui:
       def __init__(self,debug):
         # Global Variables
         self.debug=debug
-        self.current_platform = platform.system() 
+        self.mpi_path = ''
+        self.current_platform = platform.system()
+
+        self.load_config()
+
         self.job_holder = JobHolder(self.debug)
-        self.Window     = gui_def.window(vd3penabled, vtkhdfenabled)
+        # Check if the user has selected a valid MPI path
+        self.Window     = gui_def.window(vd3penabled, vtkhdfenabled,self.mpi_path,self.single_status,self.starter_status,self.vtk_status,self.csv_status,self.vtkhdf_status,self.d3plot_status)
      
         self.job_file_entry=self.Window.file('Job file (.rad, .key, or .k, or .inp)', self.select_file, self.Window.icon_folder)
      
         # Dropdown to set variables
         selected_flags = self.Window.get_selected_options()
     
+        print("single precision: ", self.single_status)
         # Assign tk.BooleanVar objects
         self.single_status = selected_flags['Single Precision']
         self.starter_status = selected_flags['Run Starter Only']
@@ -65,7 +71,7 @@ class openradioss_gui:
         self.vtkhdf_status = selected_flags['Anim - vtkhdf']
         self.d3plot_status = selected_flags['Anim - d3plot']
         self.csv_status = selected_flags['TH - csv']
-    
+
         # Create checkboxes
         self.nt_entry = self.Window.thread_mpi('-nt', 5, 0, 2)
         self.np_entry = self.Window.thread_mpi('-np', 5, 5, 2)
@@ -77,11 +83,11 @@ class openradioss_gui:
         self.Window.button('Close', self.close_window, (5, 0))
 
         # Create a menu bar
-        self.Window.menubar('Info')
+        self.Window.menubar()
 
-        self.load_config()
         self.Window.root.protocol("WM_DELETE_WINDOW", self.close_window)
         self.Window.root.after(1000, self.run_job)
+    
         self.Window.root.mainloop()
 
         
@@ -100,6 +106,7 @@ class openradioss_gui:
       #----------------------------------------------------------------------------
       def add_job(self):
            self.check_install()
+     
 
            if self.job_file_entry.is_placeholder_active() or not os.path.exists(self.job_file_entry.get_user_input()):
                messagebox.showerror('', 'Select job.')
@@ -122,7 +129,10 @@ class openradioss_gui:
            else:
                d3plot = 'no'
 
-           allcommand = [os.path.normpath(file), nt, np, precision, anim_to_vtk, th_to_csv, starter_only, d3plot, anim_to_vtkhdf]
+           self.mpi_path = self.Window.mpi_path
+           # print('mpi_path='+self.mpi_path)
+
+           allcommand = [os.path.normpath(file), nt, np, precision, anim_to_vtk, th_to_csv, starter_only, d3plot, anim_to_vtkhdf,self.mpi_path]
 
            # Add Job in Queue
            if messagebox.askokcancel('Add job', 'Add job?'):
@@ -149,20 +159,6 @@ class openradioss_gui:
            self.job_file_entry.on_focus_gain()
            self.job_file_entry.delete(0, tk.END)
            self.job_file_entry.insert(0, file_path)
-
-      def check_mpi_path(self):
-           mpi_path_file = "path_to_intel-mpi.txt"
-           if self.np_entry.get_user_input() > '1' and not os.path.exists(mpi_path_file):
-               messagebox.showinfo('', 'Running MPI requires intel mpi installation. Please browse to an intel-mpi location. Or select np = 1')
-               directory_path = filedialog.askdirectory(
-                   title='Select intel-mpi directory'            
-               )
-               if directory_path:
-                   with open(mpi_path_file, 'w') as file:
-                       file.write('"' + directory_path + '"')
-           else:
-               # MPI path file exists or np <= 1, continue with the script
-               pass
 
       def check_sp_exes(self):
            if platform.system() == 'Windows':
@@ -198,6 +194,7 @@ class openradioss_gui:
                config['d3plot'] = self.d3plot_status.get()
            config['np'] = self.np_entry.get_user_input()
            config['nt'] = self.nt_entry.get_user_input()
+           config['mpi_path'] = self.mpi_path
 
            # Open File & Write Json file
            if self.current_platform == 'Windows': 
@@ -228,20 +225,46 @@ class openradioss_gui:
 
 
            json_file=os.path.join(directory, 'config.json')
-           print('Json File:',json_file)
+           # print('Json File:',json_file)
            try:
                with open(json_file, mode='r') as file:
                    config_file=json.load(file)
                    file.close()
 
-                   self.starter_status.set(config_file['starter_only'])
-                   self.vtk_status.set(config_file['vtk'])
-                   self.single_status.set(config_file['sp'])
-                   self.csv_status.set(config_file['csv'])
+                   if "mpi_path" in config_file:
+                     self.mpi_path = config_file['mpi_path']
+                   else:
+                      self.mpi_path = ''
+                   #
+                   if "sp" in config_file:
+                        self.single_status=config_file['sp']
+                   else:
+                        self.single_status="false"
+                   #
+                   if 'starter_only' in config_file:
+                       self.starter_status=config_file['starter_only']
+                   else:
+                       self.starter_status=False
+                   #
+                   if 'vtk' in config_file:
+                          self.vtk_status=config_file['vtk']
+                   else:
+                          self.vtk_status=False
+                   #
+                   if 'csv' in config_file:
+                          self.csv_status=config_file['csv']
+                   else:
+                          self.csv_status=False
+                   #
+                   self.vtkhdf_status=False
                    if vtkhdfenabled:
-                      self.vtkhdf_status.set(config_file['vtkhdf'])
+                        if 'vtkhdf' in config_file:
+                            self.vtkhdf_status=config_file['vtkhdf']
+
+                   self.d3plot_status=False
                    if vd3penabled:
-                      self.d3plot_status.set(config_file['d3plot'])
+                      if 'd3plot' in config_file:
+                          self.d3plot_status=config_file['d3plot']
 
            except:
                config_file={}
