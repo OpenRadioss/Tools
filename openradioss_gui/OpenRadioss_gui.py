@@ -63,7 +63,6 @@ class openradioss_gui:
         # Dropdown to set variables
         selected_flags = self.Window.get_selected_options()
     
-        print("single precision: ", self.single_status)
         # Assign tk.BooleanVar objects
         self.single_status = selected_flags['Single Precision']
         self.starter_status = selected_flags['Run Starter Only']
@@ -213,6 +212,14 @@ class openradioss_gui:
                    file.close()
 
       def load_config(self):
+           
+           self.single_status = False
+           self.starter_status = False
+           self.vtk_status = False
+           self.csv_status = False   
+           self.vtkhdf_status = False
+           self.d3plot_status = False
+           
            if self.current_platform == 'Windows':
               username = os.environ.get('USERNAME')
               directory = os.path.join('C:\\Users', username, 'AppData','Local','OpenRadioss_GUI')
