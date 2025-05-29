@@ -796,6 +796,9 @@ def convert_materials(input_lines, nset_counter):
             # Default value for Poisson's ratio in case one is not defined in data
             poissrat = 0.1
 
+            # Default value for long-term moduli in case one is not defined in data
+            longterm = 1
+
             # Use regular expressions to extract relevant information
             matchpr = re.search(
                 r'POISSON\s*=\s*([-+]?\d*\.\d+|\d+(?:[eE][-+]?\d+)?)', hyperfoam_line, re.IGNORECASE
@@ -813,9 +816,17 @@ def convert_materials(input_lines, nset_counter):
                 r'testdata\s*,?', hyperfoam_line, re.IGNORECASE
             )
 
+            matchlt = re.search(
+                r'moduli\s*=\s*long\s*term', hyperfoam_line, re.IGNORECASE
+            )
+
             if matchpr:
                 poissrat = float(matchpr.group(1))
                 material_names[current_material_name]['poissrat'] = poissrat
+
+            if matchlt:
+                longterm = 2
+            material_names[current_material_name]['longterm'] = longterm    
 
             if matchtdi or matchtd:
                 material_names[current_material_name]['poissrat'] = poissrat
@@ -1306,13 +1317,13 @@ def check_if_se(properties):
         )
 # checks variables for hyperfoam uniaxial material and returns them to the material write section
 def check_if_hypfua(properties):
-    desired_mps = ['material_id', 'rho', 'poissrat', 'uniaxial_data']
+    desired_mps = ['material_id', 'rho', 'poissrat', 'longterm', 'uniaxial_data']
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
 # checks variables for hyperfoam mu alpha material and returns them to the material write section
 def check_if_hypfmua(properties):
-    desired_mps = ['material_id', 'rho', 'n']
+    desired_mps = ['material_id', 'rho', 'n', 'longterm']
     n = properties.get('n', 0)
     for i in range(1, n + 1):
         desired_mps.extend([f'mu{i}', f'alpha{i}', f'pr{i}'])
@@ -1469,7 +1480,7 @@ def write_coh_material(
 
 # MAT LAW62
 # writes law62 foam material
-def write_hypfmua_material(material_id, material_name, rho, n, mu_values,
+def write_hypfmua_material(material_id, material_name, rho, n, longterm, mu_values,
                             alpha_values, pr_values, output_file):
 
     output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
@@ -1480,7 +1491,7 @@ def write_hypfmua_material(material_id, material_name, rho, n, mu_values,
     output_file.write("#                 Nu         N         M              mu_max Flag_Visc      form\n")
     # Use the first value from pr_values
     pr1 = pr_values[0]
-    output_file.write(f"{pr1:>20.15g}{n:>10}         0\n")
+    output_file.write(f"{pr1:>20.15g}{n:>10}         0                                       {longterm}\n")
     # Write mu values, 5 per line
     output_file.write("#               mu_i\n")
     for i in range(0, len(mu_values), 5):
@@ -1527,7 +1538,7 @@ def write_ogden_c_material(
 # MAT LAW70
 # writes law70 foam material
 def write_hypfua_material(
-    material_id, material_name, rho, poissrat, uniaxial_data, output_file
+    material_id, material_name, rho, poissrat, longterm, uniaxial_data, output_file
     ):
     output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
     output_file.write(f"/MAT/LAW70/{material_id}\n")
@@ -2297,9 +2308,11 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
                         current_element_dicts.append(
                             {"ELSET": elset, "PROP_ID": 0, "elements": element_dict}
                             )
-                        print ("### WARNING ###: No Property Found for Element,")
+                        print (f"### WARNING ###: No Property Found for Elements in Elset: {elset}")
+                        print ("                 Property may not have been recognised, or:")
                         print ("                 if using PrePoMax, please use PART NAME as Region Type")
                         print ("                 for shell parts Section assignment, not 'Selection'")
+                        print ("")
                         ppmselect = True
                     element_dicts[current_element_type] = current_element_dicts
                     if current_element_type.lower() == 'sc8r':
@@ -2373,9 +2386,11 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
                     current_element_dicts.append(
                         {"ELSET": elset, "PROP_ID": 0, "elements": element_dict}
                         )
-                    print ("### WARNING ###: No Property Found for Element,")
+                    print (f"### WARNING ###: No Property Found for Elements in Elset: {elset}")
+                    print ("                 Property may not have been recognised, or:")
                     print ("                 if using PrePoMax, please use PART NAME as Region Type")
                     print ("                 for shell parts Section assignment, not 'Selection'")
+                    print ("")
                     ppmselect = True
                 element_dicts[current_element_type] = current_element_dicts
                 if current_element_type.lower() == 'sc8r':
@@ -2434,7 +2449,7 @@ def process_element_block(current_element_block, current_element_type, max_elem_
         'C3D8I': 8, 'COH3D8': 8,'C3D8R': 8, 'C3D10': 10, 'C3D10M': 10
     }
 
-    num_nodes = element_type_nodes.get(current_element_type, 0)
+    num_nodes = element_type_nodes.get(current_element_type.upper(), 0)
 
     if num_nodes == 0:
         print("")
@@ -4089,7 +4104,6 @@ def convert_boundary(input_lines, nset_counter, nsets, functs_dict, fct_id):
         for impd_dir, impd_val, amplitude_name in impd_entries:
             # Increment nset_counter for each subsequent entry
             if not impd_first_entry:
-                grnod_nset_counter = ref_nset_counter
                 nset_counter += 1
                 ref_nset_counter = nset_counter
                 impd_grnod = None
@@ -5621,14 +5635,15 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 material_id = properties['material_id']
                 rho = properties['rho']
                 n = properties['n']
+                longterm = properties['longterm']
                 # Collect all mu, alpha, and pr values
                 mu_values = [properties[key] for key in properties if key.startswith('mu')]
                 alpha_values = [properties[key] for key in properties if key.startswith('alpha')]
                 pr_values = [properties[key] for key in properties if key.startswith('pr')]
 
                 # Write the card format for materials with foam mu a properties
-                write_hypfmua_material(material_id, material_name, rho, n, mu_values, alpha_values,
-                                       pr_values, output_file)
+                write_hypfmua_material(material_id, material_name, rho, n, longterm, mu_values, 
+                                       alpha_values, pr_values, output_file)
 
         #MAT LAW69
         for material_name, properties in material_names.items():
@@ -5650,9 +5665,10 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 rho = properties['rho']
                 poissrat = properties['poissrat']
                 uniaxial_data = properties['uniaxial_data']
+                longterm = properties['longterm']
     # Write the card format for materials with foam uniaxial properties
-                write_hypfua_material(material_id, material_name, rho, poissrat, uniaxial_data,
-                    output_file
+                write_hypfua_material(material_id, material_name, rho, poissrat, longterm,
+                     uniaxial_data, output_file
                     )
 
         #MAT LAW71
@@ -5946,7 +5962,8 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
         print(f"Total Processing time: {elapsed_time:8.3f} seconds")
 
     if ppmselect:
-        print("INFO: PrePoMax Internal Select detected, part/prop assignment incomplete")
+        print("INFO: Some properties not recognised or assigned, part/prop assignment incomplete")
+        print("      If using PrePoMax 'Internal Select':")
         print("      please correct PART IDs for elements in rad file or return to PPM")
         print("      and assign properties by Part instead of 'Selection'")
 
