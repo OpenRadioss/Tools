@@ -712,6 +712,7 @@ def convert_materials(input_lines, nset_counter):
                     material_names[material_name] = {'material_id': material_id}
                     current_material_name = material_name  # Set the current material name
                     material_names[current_material_name]['rigid'] = "yes"
+                    material_names[current_material_name]['rho'] = 7.8e-9  # Default density for rigid materials
 
                     material_id += 1  # Increment the material ID
                     other_rigid_mats_processed_list.append(material_name)
@@ -826,7 +827,7 @@ def convert_materials(input_lines, nset_counter):
 
             if matchlt:
                 longterm = 2
-            material_names[current_material_name]['longterm'] = longterm    
+            material_names[current_material_name]['longterm'] = longterm
 
             if matchtdi or matchtd:
                 material_names[current_material_name]['poissrat'] = poissrat
@@ -2029,8 +2030,10 @@ def write_props(property_names, output_file):
                 output_file.write("#     Ndir sphpartID  Icontrol\n")
                 output_file.write("                             1\n")
         elif prop_type == '998': #998 is code for Void
-            shthk = float(property_data['shthk'])  # Get the 'shthk' value from property_data (hardcoded as 0.01 for void if not defined)
-            # If rgdthk is defined ar Rigid Body Level, it is used here as shthk, otherwise use the default 0.01 value
+            shthk = 0.01  # Default thickness for voids
+            if 'shthk' in property_data:
+                shthk = float(property_data['shthk'])  # Get the 'shthk' value from property_data (hardcoded as 0.01 for void if not defined)
+                # If rgdthk is defined ar Rigid Body Level, it is used here as shthk, otherwise use the default 0.01 value
             output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
             output_file.write(f"/PROP/VOID/{property_id}\n")
             output_file.write(property_name + "\n")
@@ -4581,7 +4584,7 @@ def convert_rigids(
         for nodeset, refnode in mpc_rigids:
             input_lines.append (f"*rigid body, ref node = {refnode}, nset = {nodeset}")
             if debug_mode:
-                print (f"*rigid body, ref node = {refnode}, elset = {nodeset}")
+                print (f"*rigid body, ref node = {refnode}, nset = {nodeset}")
 
     i = 0
     while i < len(input_lines):
@@ -4591,6 +4594,8 @@ def convert_rigids(
             propmatch = re.search(prop_pattern, line, re.IGNORECASE)
             if propmatch:
                 property_name = propmatch.group(1).strip()
+                if debug_mode:
+                    print(f"Found *RIGID BODY with property: {property_name}") # for info
 
             rigidnsetmatch = re.search(rigidnset_pattern, line, re.IGNORECASE)
             if rigidnsetmatch:
@@ -4621,7 +4626,7 @@ def convert_rigids(
 
             else:
                 rbody_id = None  # or handle the case where the pattern is not found
-            
+
             rgdrho = 7.8E-9  # default density for rigid bodies if not specified
             # Check for density field in the *RIGID BODY line
             densitymatch = re.search(density_pattern, line, re.IGNORECASE)
@@ -4632,7 +4637,7 @@ def convert_rigids(
                         print(f"Captured density value: {rgdrho} for rigid body with property: {property_name}")
                 except ValueError:
                     print(f"Could not convert density value '{densitymatch.group(1).strip()}' to float, using default")
-            
+
             # Check if the next line exists and doesn't start with '*' indicating a thickness for rbody part
             rgdthk = 0.01  # Initialize thickness variable for rigids, will be overwritten if thickness is defined on *RIGID BODY line 2
             if i + 1 < len(input_lines):
@@ -4673,7 +4678,7 @@ def convert_rigids(
                 nset_data = nsets.get(nset_name)
                 ref_nset_counter = nset_data['id'] if nset_data else 0
 
-            else: continue
+            else: i += 1; continue  # skip to next line if no property found
 
             if rigid_part is True:
 
@@ -4705,12 +4710,15 @@ def convert_rigids(
                 rigid_part = False
 
             elif rigid_nset is True:
-
+                if ref_nset_counter == 0:
+                    nset_counter += 1
+                    ref_nset_counter = nset_counter  # Use the new nset_counter as the reference set ID
+                    property_id = "with secondary node"  # Set property_id for the nset
                 rigid_bodies.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 rigid_bodies.append(f"# RBODY {property_id} {nset_name}")
                 rigid_bodies.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 rigid_bodies.append(f"/RBODY/{max_elem_id}")
-                rigid_bodies.append(f"{nset_name}")
+                rigid_bodies.append(f"MPC Rbody {nset_name} to main node {rbody_id}")
                 rigid_bodies.append("#     RBID     ISENS     NSKEW    ISPHER                MASS   Gnod_id     IKREM      ICOG   Surf_id")
                 rigid_bodies.append(f"{rbody_id:>10}         0         0         0                   0{ref_nset_counter:>10}         0         3         0")
                 rigid_bodies.append("#                Jxx                 Jyy                 Jzz")
@@ -4720,9 +4728,15 @@ def convert_rigids(
                 rigid_bodies.append("#  Ioptoff   Iexpams")
                 rigid_bodies.append("         0         0")
                 rigid_bodies.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                if property_id  == "with secondary node":
+                    rigid_bodies.append(f"/GRNOD/NODE/{nset_counter}")
+                    rigid_bodies.append(f"RBODY {max_elem_id} secondary node")
+                    rigid_bodies.append("#   NODEID")
+                    rigid_bodies.append(f"{nset_name:>10}")
+                    rigid_bodies.append(f"#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 nset_counter += 1
                 rigid_bodies.append(f"/GRNOD/NODE/{nset_counter}")
-                rigid_bodies.append(f"RBODY {nset_name} main node")
+                rigid_bodies.append(f"RBODY {max_elem_id} main node")
                 rigid_bodies.append("#   NODEID")
                 rigid_bodies.append(f"{rbody_id:>10}")
 
@@ -4751,7 +4765,7 @@ def convert_rigids(
                 rigid_bodies.append(f"{rbody_id:>10}")
 
                 rigid_elset = False
-        
+
         i += 1  # Increment the counter to move to the next line
 
     return rigid_bodies, nset_counter, max_elem_id, property_names, material_names
@@ -5517,7 +5531,7 @@ def main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
             initial_blocks, dload_blocks, rigid_bodies, couplings, discoups, mpc_ties,
             conn_beams, engine_file
            )
-           
+
 
 ####################################################################################################
 # Define Text Blocks for headers of each Radioss deck section                                      #
@@ -5679,7 +5693,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 pr_values = [properties[key] for key in properties if key.startswith('pr')]
 
                 # Write the card format for materials with foam mu a properties
-                write_hypfmua_material(material_id, material_name, rho, n, longterm, mu_values, 
+                write_hypfmua_material(material_id, material_name, rho, n, longterm, mu_values,
                                        alpha_values, pr_values, output_file)
 
         #MAT LAW69
@@ -7010,7 +7024,7 @@ def start(input_file_path):
     except Exception as e:
         # Log the error and return failure
         if or_gui:
-        # Provide a simple error message for GUI usage      
+        # Provide a simple error message for GUI usage
             print("------------------------------------------------------------")
             print("### ERROR ###: An error occurred during inp2rad conversion.")
             print(f"Error in inp2rad: {e}")
