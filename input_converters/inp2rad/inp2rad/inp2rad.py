@@ -670,6 +670,9 @@ def convert_materials(input_lines, nset_counter):
         ogden_pattern = r'^\*\s*hyperelastic\b.*,\s*ogden'
         ogden_line_match = re.search(ogden_pattern, line, re.IGNORECASE)
 
+        marlow_pattern = r'^\*\s*hyperelastic\b.*,\s*marlow'
+        marlow_line_match = re.search(marlow_pattern, line, re.IGNORECASE)
+
         reducedpoly_pattern = r'^\*\s*hyperelastic\b.*,\s*reduced polynomial'
         reducedpoly_line_match = re.search(reducedpoly_pattern, line, re.IGNORECASE)
 
@@ -872,12 +875,15 @@ def convert_materials(input_lines, nset_counter):
                 # Extract the first two fields
                 data_values = [float(val) for val in data_line.split(',')[:2]]
                 # Swap x and y values
-                uniaxial_data.append((abs(data_values[1]), abs(data_values[0])))
+                uniaxial_data.append(((data_values[1]), (data_values[0])))
                 i += 1
- # Check if the first uniaxial data pair starts with a non-zero value, and if so, insert 0,0 pair
-                uniaxial_data.sort(key=lambda pair: abs(pair[0]))
-            if uniaxial_data and uniaxial_data[0][0] != 0.0:
+ # Check if any uniaxial data pair has an abscissa of 0, and if not, insert 0,0 pair
+            if uniaxial_data and not any(pair[0] == 0.0 for pair in uniaxial_data):
                 uniaxial_data.insert(0, (0.0, 0.0))
+            # Sort the uniaxial data by the first value (abscissa)
+            # This ensures that the data is in ascending order of abscissa
+                uniaxial_data.sort(key=lambda pair: (pair[0]))
+
             fct_id += 1  # Increment the fct_id
             material_names[current_material_name]['uniaxial_data'] = {
                  'fct_id': fct_id,
@@ -1002,7 +1008,6 @@ def convert_materials(input_lines, nset_counter):
             i += 1
             neohooke_line = input_lines[i].strip()
             neohooke_mu = float(neohooke_line.split(',')[0])
-            #neohooke_mu = map(float, neohooke_values)
             material_names[current_material_name]['neohooke_mu'] = neohooke_mu
 
         # ogden test_data
@@ -1024,6 +1029,24 @@ def convert_materials(input_lines, nset_counter):
             # Assign to the material properties dictionary
             material_names[current_material_name]['ogden_n'] = ogden_n
             material_names[current_material_name]['poissrat'] = poissrat
+
+        # marlow
+        elif current_material_name and marlow_line_match:
+            # Set default values
+            poissrat = 0.45
+            marlow = 1.0
+
+            # Search for POISSON= in the line, ignoring spaces around the equals sign
+            poisson_match = re.search(r'\bPOISSON\s*=\s*([\d.]+)', line, re.IGNORECASE)
+
+            # If matches found, convert to float and update the values
+            if poisson_match:
+                poissrat = float(poisson_match.group(1))
+
+            # Assign to the material properties dictionary
+            material_names[current_material_name]['poissrat'] = poissrat
+            material_names[current_material_name]['marlow'] = marlow
+
 
         # reduced_polynomial test_data (converts to ogden)
         elif current_material_name and reducedpoly_line_match and 'test data input' in line.lower():
@@ -1262,42 +1285,56 @@ def check_if_elast(properties):
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
+
 # checks variables for cohesive material and returns them to the material write section
 def check_if_cohesive(properties):
     desired_mps = ['material_id', 'rho', 'emodulus', 'gmodulus']
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
+
 # checks variables for plastic material and returns them to the material write section
 def check_if_plast(properties):
     desired_mps = ['material_id', 'rho', 'emodulus', 'poissrat', 'plastic_data']
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
+
 # checks variables for neo-hooke material and returns them to the material write section
 def check_if_neohooke(properties):
     desired_mps = ['material_id', 'rho', 'neohooke_mu']
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
+
+# checks variables for marlow material and returns them to the material write section
+def check_if_marlow(properties):
+    desired_mps = ['material_id', 'rho', 'marlow', 'poissrat', 'uniaxial_data']
+    return all(
+        prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
+        )
+
 # checks variables for ogden material and returns them to the material write section
 def check_if_ogden(properties):
     desired_mps = ['material_id', 'rho', 'ogden_mu', 'ogden_alpha', 'ogden_D']
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
+
 # checks variables for ogden material and returns them to the material write section
 def check_if_ogden_c(properties):
     desired_mps = ['material_id', 'rho', 'ogden_n', 'poissrat', 'uniaxial_data']
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
+
 # checks variables for mooney-rivlin material and returns them to the material write section
 def check_if_mr(properties):
     desired_mps = ['material_id', 'rho', 'mr_mu1', 'mr_mu2']
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
+
 # checks variables for polynomial material and returns them to the material write section
 def check_if_poly(properties):
     desired_mps = ['material_id', 'rho', 'poly_c10', 'poly_c01', 'poly_c20', 'poly_c11',
@@ -1307,7 +1344,8 @@ def check_if_poly(properties):
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
-# checks variables for superealstic material and returns them to the material write section
+
+# checks variables for superelastic material and returns them to the material write section
 def check_if_se(properties):
     desired_mps = ['material_id', 'rho', 'emodulus', 'se_mm', 'se_mpr', 'se_uts',
         'se_tbt', 'se_tet', 'se_trbt', 'se_tret', 'se_tbc', 'se_reftemp', 'se_slope_load',
@@ -1316,12 +1354,14 @@ def check_if_se(properties):
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
+
 # checks variables for hyperfoam uniaxial material and returns them to the material write section
 def check_if_hypfua(properties):
     desired_mps = ['material_id', 'rho', 'poissrat', 'longterm', 'uniaxial_data']
     return all(
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
+
 # checks variables for hyperfoam mu alpha material and returns them to the material write section
 def check_if_hypfmua(properties):
     desired_mps = ['material_id', 'rho', 'n', 'longterm']
@@ -1549,6 +1589,10 @@ def write_hypfua_material(
     output_file.write("#                 EO                  NU               E_max             EPS_max     Itens\n")
     #extract the function data pairs from the uniaxial_data dictionary
     xy_data = uniaxial_data['xy_data']
+    # Multiply all abscissa and ordinate values by -1, ensuring -0.0 becomes 0.0
+    xy_data = [(0.0 if -x == 0.0 else -x, 0.0 if -y == 0.0 else -y) for x, y in xy_data]
+    # Sort by new abscissa
+    xy_data.sort(key=lambda pair: pair[0])
     #calculate EO from xy data
     x2, y2 = xy_data[1]  # Take Second data point in uniaxial data to calculate EO
     hypf_EO = 2 * y2 / x2
@@ -1640,6 +1684,31 @@ def write_poly_material(
     output_file.write(f"{poly_d1:>20.15g}{poly_d2:>20.15g}{poly_d3:>20.15g}               0.495         1\n")
     output_file.write("#                  A                   C                   M                 ksi              TauRef\n")
     output_file.write("                 0.0                -0.7                 1.0                0.01                 1.0\n")
+
+# MAT LAW111
+# writes law111 marlow material
+def write_marlow_material(
+    material_id, material_name, rho, poissrat, uniaxial_data, output_file
+    ):
+    output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
+    output_file.write(f"/MAT/LAW111/{material_id}\n")
+    output_file.write(material_name + "\n")
+    output_file.write("#              RHO_I\n")
+    output_file.write(f"{rho:>20.15g}\n")
+    function_id = uniaxial_data['fct_id']  # Extract the function_id from the uniaxial_data dictionary
+    output_file.write("#    Itype    fct_ID              Fscale                  NU\n")
+    output_file.write(f"         1{function_id:>10}                 1.0{poissrat:>20.15g}\n")
+    #write the asssociated material function
+    #extract the function data pairs from the uniaxial_data dictionary
+    xy_data = uniaxial_data['xy_data']
+    output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
+    output_file.write(f"/FUNCT/{function_id}\n")
+    output_file.write(material_name + "\n")
+    output_file.write("#                  X                   Y\n")
+    #write the function x y pairs
+    for item in xy_data:
+        x, y = item
+        output_file.write(f"{x:>20.15g}{y:>20.15g}\n")
 
 # PRONY SERIES
 # writes prony series for material
@@ -5178,6 +5247,7 @@ def convert_mpc_ties(input_lines, prop_id, max_elem_id):
     global rho_magnitude
     global e_magnitude
     processing_mpcs = False
+    some_ties = False
 
     spring_k = e_magnitude * 5                       #
     spring_rk = e_magnitude * 7                      #    Spring Stiffnesses and densities are based
@@ -5187,6 +5257,70 @@ def convert_mpc_ties(input_lines, prop_id, max_elem_id):
     mpc_ties = []
     mpc_rigids = []
 
+    spring_prop_name = f"SpringBeams_for_Connections_{prop_id}"
+    mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+    mpc_ties.append(f"#Spring PART for connection definition: {spring_prop_name}: for .inp *MPC TIE")
+    mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+    mpc_ties.append(f"/PART/{prop_id}\n{spring_prop_name}")
+    mpc_ties.append("#     prop       mat    subset")
+    mpc_ties.append(f"{prop_id:>10}         0         0")
+    mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+    mpc_ties.append(f"#Spring PROP for connection definition: {spring_prop_name}: for .inp *MPC TIE")
+    mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+    mpc_ties.append(f"/PROP/TYPE13/{prop_id}\n{spring_prop_name}")
+    mpc_ties.append("#               Mass             Inertia   skew_ID   sens_ID    Isflag     Ifail     Ileng    Ifail2")
+    mpc_ties.append(f"{spring_mass:>20.4e}{spring_inertia:>20.4e}         0         0         0         0         0         0")
+    mpc_ties.append("#                 K1                  C1                  A1                  B1                  D1")
+    mpc_ties.append(f"{spring_k:>20.4e}                   0                   0                   0                   0")
+    mpc_ties.append("# fct_ID11        H1  fct_ID21  fct_ID31  fct_ID41                    delta_min1          delta_max1")
+    mpc_ties.append("         0         0         0         0         0                             0                   0")
+    mpc_ties.append("#                 F1                  E1             Ascale1             Hscale1")
+    mpc_ties.append("                   0                   0                   0                   0")
+    mpc_ties.append("#                 K2                  C2                  A2                  B2                  D2")
+    mpc_ties.append(f"{spring_k:>20.4e}                   0                   0                   0                   0")
+    mpc_ties.append("# fct_ID12        H2  fct_ID22  fct_ID32  fct_ID42                    delta_min2          delta_max2")
+    mpc_ties.append("         0         0         0         0         0                             0                   0")
+    mpc_ties.append("#                 F2                  E2             Ascale2             Hscale2")
+    mpc_ties.append("                   0                   0                   0                   0")
+    mpc_ties.append("#                 K3                  C3                  A3                  B3                  D3")
+    mpc_ties.append(f"{spring_k:>20.4e}                   0                   0                   0                   0")
+    mpc_ties.append("# fct_ID13        H3  fct_ID23  fct_ID33  fct_ID43                    delta_min3          delta_max3")
+    mpc_ties.append("         0         0         0         0         0                             0                   0")
+    mpc_ties.append("#                 F3                  E3             Ascale3             Hscale3")
+    mpc_ties.append("                   0                   0                   0                   0")
+    mpc_ties.append("#                 K4                  C4                  A4                  B4                  D4")
+    mpc_ties.append(f"{spring_rk:>20.4e}                   0                   0                   0                   0")
+    mpc_ties.append("# fct_ID14        H4  fct_ID24  fct_ID34  fct_ID44                    delta_min4          delta_max4")
+    mpc_ties.append("         0         0         0         0         0                             0                   0")
+    mpc_ties.append("#                 F4                  E4             Ascale4             Hscale4")
+    mpc_ties.append("                   0                   0                   0                   0")
+    mpc_ties.append("#                 K5                  C5                  A5                  B5                  D5")
+    mpc_ties.append(f"{spring_rk:>20.4e}                   0                   0                   0                   0")
+    mpc_ties.append("# fct_ID15        H5  fct_ID25  fct_ID35  fct_ID45                    delta_min5          delta_max5")
+    mpc_ties.append("         0         0         0         0         0                             0                   0")
+    mpc_ties.append("#                 F5                  E5             Ascale5             Hscale5")
+    mpc_ties.append("                   0                   0                   0                   0")
+    mpc_ties.append("#                 K6                  C6                  A6                  B6                  D6")
+    mpc_ties.append(f"{spring_rk:>20.4e}                   0                   0                   0                   0")
+    mpc_ties.append("# fct_ID16        H6  fct_ID26  fct_ID36  fct_ID46                    delta_min6          delta_max6")
+    mpc_ties.append("         0         0         0         0         0                             0                   0")
+    mpc_ties.append("#                 F6                  E6             Ascale6             Hscale6")
+    mpc_ties.append("                   0                   0                   0                   0")
+    mpc_ties.append("#                 V0              Omega0               F_cut   Fsmooth")
+    mpc_ties.append("                   0                   0                   0         0")
+    mpc_ties.append("#                  C                   n               alpha                beta")
+    mpc_ties.append("                   0                   0                   0                   0")
+    mpc_ties.append("                   0                   0                   0                   0")
+    mpc_ties.append("                   0                   0                   0                   0")
+    mpc_ties.append("                   0                   0                   0                   0")
+    mpc_ties.append("                   0                   0                   0                   0")
+    mpc_ties.append("                   0                   0                   0                   0")
+    mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+    mpc_ties.append(f"#Spring Elements for connection definition: {spring_prop_name}: for .inp *MPC TIE")
+    mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+    mpc_ties.append(f"/SPRING/{prop_id}")
+    mpc_ties.append("#  Sprg_ID  NodeID_1  NodeID_2")
+
     for line in input_lines:
         mpc_type_pattern = r'^\s*\*MPC?' # Regular expression to find '*MPC' contact entry
         matchmpc = re.search(mpc_type_pattern, line, re.IGNORECASE)
@@ -5194,72 +5328,6 @@ def convert_mpc_ties(input_lines, prop_id, max_elem_id):
         if matchmpc:
             # Extract tied contact name from the current line
             processing_mpcs = True
-
-            prop_id += 1 #increment the global prop_id
-            spring_prop_name = f"SpringBeams_for_Connections_{prop_id}"
-            mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            mpc_ties.append(f"#Spring PART for connection definition: {spring_prop_name}: for .inp *MPC TIE")
-            mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            mpc_ties.append(f"/PART/{prop_id}\n{spring_prop_name}")
-            mpc_ties.append("#     prop       mat    subset")
-            mpc_ties.append(f"{prop_id:>10}         0         0")
-            mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            mpc_ties.append(f"#Spring PROP for connection definition: {spring_prop_name}: for .inp *MPC TIE")
-            mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            mpc_ties.append(f"/PROP/TYPE13/{prop_id}\n{spring_prop_name}")
-            mpc_ties.append("#               Mass             Inertia   skew_ID   sens_ID    Isflag     Ifail     Ileng    Ifail2")
-            mpc_ties.append(f"{spring_mass:>20.4e}{spring_inertia:>20.4e}         0         0         0         0         0         0")
-            mpc_ties.append("#                 K1                  C1                  A1                  B1                  D1")
-            mpc_ties.append(f"{spring_k:>20.4e}                   0                   0                   0                   0")
-            mpc_ties.append("# fct_ID11        H1  fct_ID21  fct_ID31  fct_ID41                    delta_min1          delta_max1")
-            mpc_ties.append("         0         0         0         0         0                             0                   0")
-            mpc_ties.append("#                 F1                  E1             Ascale1             Hscale1")
-            mpc_ties.append("                   0                   0                   0                   0")
-            mpc_ties.append("#                 K2                  C2                  A2                  B2                  D2")
-            mpc_ties.append(f"{spring_k:>20.4e}                   0                   0                   0                   0")
-            mpc_ties.append("# fct_ID12        H2  fct_ID22  fct_ID32  fct_ID42                    delta_min2          delta_max2")
-            mpc_ties.append("         0         0         0         0         0                             0                   0")
-            mpc_ties.append("#                 F2                  E2             Ascale2             Hscale2")
-            mpc_ties.append("                   0                   0                   0                   0")
-            mpc_ties.append("#                 K3                  C3                  A3                  B3                  D3")
-            mpc_ties.append(f"{spring_k:>20.4e}                   0                   0                   0                   0")
-            mpc_ties.append("# fct_ID13        H3  fct_ID23  fct_ID33  fct_ID43                    delta_min3          delta_max3")
-            mpc_ties.append("         0         0         0         0         0                             0                   0")
-            mpc_ties.append("#                 F3                  E3             Ascale3             Hscale3")
-            mpc_ties.append("                   0                   0                   0                   0")
-            mpc_ties.append("#                 K4                  C4                  A4                  B4                  D4")
-            mpc_ties.append(f"{spring_rk:>20.4e}                   0                   0                   0                   0")
-            mpc_ties.append("# fct_ID14        H4  fct_ID24  fct_ID34  fct_ID44                    delta_min4          delta_max4")
-            mpc_ties.append("         0         0         0         0         0                             0                   0")
-            mpc_ties.append("#                 F4                  E4             Ascale4             Hscale4")
-            mpc_ties.append("                   0                   0                   0                   0")
-            mpc_ties.append("#                 K5                  C5                  A5                  B5                  D5")
-            mpc_ties.append(f"{spring_rk:>20.4e}                   0                   0                   0                   0")
-            mpc_ties.append("# fct_ID15        H5  fct_ID25  fct_ID35  fct_ID45                    delta_min5          delta_max5")
-            mpc_ties.append("         0         0         0         0         0                             0                   0")
-            mpc_ties.append("#                 F5                  E5             Ascale5             Hscale5")
-            mpc_ties.append("                   0                   0                   0                   0")
-            mpc_ties.append("#                 K6                  C6                  A6                  B6                  D6")
-            mpc_ties.append(f"{spring_rk:>20.4e}                   0                   0                   0                   0")
-            mpc_ties.append("# fct_ID16        H6  fct_ID26  fct_ID36  fct_ID46                    delta_min6          delta_max6")
-            mpc_ties.append("         0         0         0         0         0                             0                   0")
-            mpc_ties.append("#                 F6                  E6             Ascale6             Hscale6")
-            mpc_ties.append("                   0                   0                   0                   0")
-            mpc_ties.append("#                 V0              Omega0               F_cut   Fsmooth")
-            mpc_ties.append("                   0                   0                   0         0")
-            mpc_ties.append("#                  C                   n               alpha                beta")
-            mpc_ties.append("                   0                   0                   0                   0")
-            mpc_ties.append("                   0                   0                   0                   0")
-            mpc_ties.append("                   0                   0                   0                   0")
-            mpc_ties.append("                   0                   0                   0                   0")
-            mpc_ties.append("                   0                   0                   0                   0")
-            mpc_ties.append("                   0                   0                   0                   0")
-            mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            mpc_ties.append(f"#Spring Elements for connection definition: {spring_prop_name}: for .inp *MPC TIE")
-            mpc_ties.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            mpc_ties.append(f"/SPRING/{prop_id}")
-            mpc_ties.append("#  Sprg_ID  NodeID_1  NodeID_2")
-
             continue #(skip the *MPC line itself)
 
         if processing_mpcs and line.startswith('*'):
@@ -5275,15 +5343,15 @@ def convert_mpc_ties(input_lines, prop_id, max_elem_id):
             #create a spring for each .inp TIE *MPC)
             if mpc_type.lower() == 'tie':
                 mpc_ties.append(f"{max_elem_id:>10}{mpc_node_1:>10}{mpc_node_2:>10}")
+                some_ties = True
 
             elif mpc_type.lower() == 'beam':
-                prop_id -= 1  #de-increment the global prop_id
-                mpc_ties = []
+                # Create a rigid body for each .inp BEAM *MPC)
                 mpc_rigids.append((mpc_node_1, mpc_node_2))
 
-            else:
-                prop_id -= 1  #de-increment the global prop_id
-                mpc_ties = []
+    if not some_ties:
+        # If no MPC ties were found, data block for spring ties is cleared
+        mpc_ties = []
 
     return mpc_ties, mpc_rigids, prop_id, max_elem_id
 
@@ -5632,7 +5700,8 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 rho = properties['rho']
                 emodulus = properties['emodulus']
                 poissrat = properties['poissrat']
-    # Write the card format for materials elastic properties
+
+                # Write the card format for materials elastic properties
                 write_elastic_material(material_id, material_name, rho,
                     emodulus, poissrat, output_file
                     )
@@ -5645,7 +5714,8 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 emodulus = properties['emodulus']
                 poissrat = properties['poissrat']
                 plastic_data = properties['plastic_data']
-    # Write the card format for materials with elasto-plastic properties
+
+                # Write the card format for materials with elasto-plastic properties
                 write_plastic_material(material_id, material_name, rho, emodulus, poissrat,
                     plastic_data, output_file
                     )
@@ -5656,7 +5726,8 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 material_id = properties['material_id']
                 rho = properties['rho']
                 neohooke_mu = properties['neohooke_mu']
-    # Write the card format for materials with mooney-rivlin properties
+
+                # Write the card format for materials with mooney-rivlin properties
                 write_neohooke_material(material_id, material_name, rho, neohooke_mu, output_file)
 
         #MAT LAW42
@@ -5666,7 +5737,8 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 rho = properties['rho']
                 mr_mu1 = properties['mr_mu1']
                 mr_mu2 = properties['mr_mu2']
-    # Write the card format for materials with mooney-rivlin properties
+
+                # Write the card format for materials with mooney-rivlin properties
                 write_mr_material(material_id, material_name, rho, mr_mu1, mr_mu2, output_file)
 
         #MAT LAW59
@@ -5676,10 +5748,12 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 rho = properties['rho']
                 emodulus = properties['emodulus']
                 gmodulus = properties['gmodulus']
-    # Write the card format for materials with cohesive properties
+
+                # Write the card format for materials with cohesive properties
                 write_coh_material(material_id, material_name, rho, emodulus,
                     gmodulus, output_file
                     )
+
         #MAT LAW62
         for material_name, properties in material_names.items():
             if check_if_hypfmua(properties):
@@ -5704,7 +5778,8 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 ogden_n = properties['ogden_n']
                 poissrat = properties['poissrat']
                 uniaxial_data = properties['uniaxial_data']
-    # Write the card format for materials with ogden properties
+
+                # Write the card format for materials with ogden properties
                 write_ogden_c_material(material_id, material_name, rho, ogden_n,
                     poissrat, uniaxial_data, output_file
                     )
@@ -5717,7 +5792,8 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 poissrat = properties['poissrat']
                 uniaxial_data = properties['uniaxial_data']
                 longterm = properties['longterm']
-    # Write the card format for materials with foam uniaxial properties
+
+                # Write the card format for materials with foam uniaxial properties
                 write_hypfua_material(material_id, material_name, rho, poissrat, longterm,
                      uniaxial_data, output_file
                     )
@@ -5740,7 +5816,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 se_slope_load = properties['se_slope_load']
                 se_slope_unload = properties['se_slope_unload']
 
-    # Write the card format for materials with superelastic properties
+                # Write the card format for materials with superelastic properties
                 write_supere_material(material_id, material_name, rho, emodulus, se_mm, se_mpr,
                     se_uts, se_tbt, se_tet, se_trbt, se_tret, se_tbc, se_reftemp, se_slope_load,
                     se_slope_unload, output_file
@@ -5754,7 +5830,8 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 ogden_mu = properties['ogden_mu']
                 ogden_alpha = properties['ogden_alpha']
                 ogden_D = properties['ogden_D']
-    # Write the card format for materials with ogden properties
+
+                # Write the card format for materials with ogden properties
                 write_ogden_material(material_id, material_name, rho, ogden_mu, ogden_alpha,
                     ogden_D, output_file
                     )
@@ -5776,18 +5853,34 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 poly_d1 = properties['poly_d1']
                 poly_d2 = properties['poly_d2']
                 poly_d3 = properties['poly_d3']
-   # Write the card format for materials with polynomial properties
+
+                # Write the card format for materials with polynomial properties
                 write_poly_material(material_id, material_name, rho, poly_c10, poly_c01, poly_c20,
                     poly_c11, poly_c02, poly_c30, poly_c21, poly_c12, poly_c03,
                     poly_d1, poly_d2, poly_d3, output_file
                     )
+
+        #MAT LAW111
+        for material_name, properties in material_names.items():
+            if check_if_marlow(properties):
+                material_id = properties['material_id']
+                rho = properties['rho']
+                poissrat = properties['poissrat']
+                uniaxial_data = properties['uniaxial_data']
+
+                # Write the card format for materials with marlow properties
+                write_marlow_material(material_id, material_name, rho, poissrat, uniaxial_data,
+                    output_file
+                    )
+
 
         #PRONY SERIES
         for material_name, properties in extra_material_names.items():
             if check_if_prony(properties):
                 material_id = properties['material_id']
                 prony_data = properties['prony_data']
-   # Write the card format for prony series
+
+                # Write the card format for prony series
                 write_prony_series(material_id, prony_data, output_file)
 
         #DAMPING
@@ -5798,7 +5891,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 dampalpha = properties['dampalpha']
                 dampbeta = properties['dampbeta']
 
-    # Write the card format for damping properties
+                # Write the card format for damping properties
                 write_damping(material_id, material_nset, dampalpha, dampbeta, output_file)
 
         #MAT VOID
@@ -5806,6 +5899,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
             if check_if_rigid(properties):
                 material_id = properties['material_id']
                 rho = properties['rho']
+
                 # Write the card format for materials with rigid properties
                 write_rigid_material(material_id, material_name, rho, output_file)
 
@@ -5819,7 +5913,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 mass = properties['mass']
                 #input(f"mass is {mass}")
 
-    # Write the card format for /ADMAS masses
+                # Write the card format for /ADMAS masses
                 write_admas(material_name, nsets, mass, output_file)
 
         if run_timer:
@@ -5827,7 +5921,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
             print(f"ADMAS Written:         {elapsed_time:8.3f} seconds")
 
 
-    # Write parts and properties
+        # Write parts and properties
         output_file.write(part_header)  # Write the part/el/prop section header
         write_parts(property_names, non_numeric_references, output_file)
         output_file.write(prop_header)  # Write the part/el/prop section header
