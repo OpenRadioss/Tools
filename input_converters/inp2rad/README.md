@@ -133,7 +133,7 @@ Supported keywords: (not all sub-options necessarily supported):
 
 *FRICTION, ROUGH
 
-*HYPERELASTIC (MOONEY-RIVLIN, OGDEN, NEO HOOKE, POLYNOMIAL, REDUCED POLYNOMIAL forms only)
+*HYPERELASTIC (MOONEY-RIVLIN, OGDEN, NEO HOOKE, POLYNOMIAL, REDUCED POLYNOMIAL and MARLOW (only with *UNIAXIAL TEST DATA version) forms only)
 
 *HYPERFOAM, (with either TEST DATA or MU ALPHA PR parameters)
 
