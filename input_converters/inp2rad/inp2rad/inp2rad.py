@@ -351,10 +351,8 @@ def convert_nsets(input_lines, nset_references):
             # Get the next line with start, end, and (optional) step values for the range
             next_line = input_lines[i + 1].strip()
             if next_line.endswith(','):
-            # Remove trailing comma
+                # Remove trailing comma
                 next_line = next_line.rstrip(',')
-            else:
-                next_line = next_line
 
             parts = list(map(int, next_line.split(',')))  # Convert to integers
 
@@ -755,6 +753,7 @@ def convert_materials(input_lines, nset_counter):
                 current_material_name
                 and line.strip().lower().startswith('*elastic')
                 and not 'traction' in line.strip().lower()
+                and not 'engineering constants' in line.strip().lower()
             ):
             i += 1
             elastic_line = input_lines[i].strip()
@@ -764,10 +763,37 @@ def convert_materials(input_lines, nset_counter):
             e_magnitude = max(e_magnitude, emodulus)
             material_names[current_material_name]['poissrat'] = poissrat
 
+        # elastic with engineering constants:
+        # NB: Today we look at 1st direction elastic constants only, and convert to /MAT/LAW1
+        # orthotropy is not implemented
+        # in future we may look to implement orthotropy along with orthotropic property
+        elif (
+                current_material_name
+                and line.strip().lower().startswith('*elastic')
+                and not 'traction' in line.strip().lower()
+                and 'engineering constants' in line.strip().lower()
+             ):
+            print("**************************************************************************")
+            print("WARNING: Engineering Constants (Orthotropy) Defined In Material:")
+            print(f"         {current_material_name}")
+            print("         Currently Only The First Direction Values are Used")
+            print("         And Orthotropy is not considered")
+            print("**************************************************************************")
+
+            i += 1
+            elastic_line = input_lines[i].strip()
+            elastic_values = elastic_line.split(',')
+            emodulus = float(elastic_values[0].strip())
+            poissrat = float(elastic_values[3].strip())
+            material_names[current_material_name]['emodulus'] = emodulus
+            e_magnitude = max(e_magnitude, emodulus)
+            material_names[current_material_name]['poissrat'] = poissrat
+
         # connect/cohesive
         elif (
                 current_material_name
                 and line.strip().lower().startswith('*elastic')
+                and not 'engineering constants' in line.strip().lower()
                 and 'traction' in line.strip().lower()
              ):
             i += 1
@@ -1793,13 +1819,18 @@ def write_admas(material_name, nsets, mass, output_file):
 #   Other unreferenced ELSETS are retained in the model                                            #
 #                                                                                                  #
 ####################################################################################################
-def convert_props(input_lines, material_names):
+def convert_props(input_lines, material_names, non_numeric_references=None, elset_element_types=None):
     prop_id = 1  # Initialize the property ID
+    part_id_counter = 1  # Initialize the part ID counter
     property_names = {}  # initializes a dictionary of Property name relationships
     other_rigid_props_processed_list = []
     i = 0  # Initialize an index for iterating through input_lines
     # Regular expression pattern for ELSET matching
     elset_pattern = r'\bELSET\s*=\s*("([\w\-+/ ]+)"|[\w\-+/ ]+)'
+
+    # Set default for non_numeric_references if not provided (for backwards compatibility)
+    if non_numeric_references is None:
+        non_numeric_references = {}
 
     #this section checks for property attributes
     #and stores them against the dictionary of property names
@@ -1939,52 +1970,186 @@ def convert_props(input_lines, material_names):
             section_type = None
 
         # Extract property/part name and create a dictionary entry, rigids are special case
+        # Helper function to assign properties (supports scenario where there are grouping ELSETs)
+        def assign_property_to_elsets(target_property_name, section_type, current_prop_id, current_part_id_counter):
+            # Check if this is a 'grouping' ELSET (ELSET serves to assign properties, but is not a 'Part')
+            if target_property_name in non_numeric_references and non_numeric_references[target_property_name]:
+                referenced_elsets = non_numeric_references[target_property_name]
+
+                # Analyze element types in referenced ELSETs to make better decisions
+                element_types_in_group = {}
+                for elset in referenced_elsets:
+                    if elset_element_types and elset in elset_element_types:
+                        for elem_type in elset_element_types[elset]:
+                            if elem_type not in element_types_in_group:
+                                element_types_in_group[elem_type] = []
+                            element_types_in_group[elem_type].append(elset)
+
+                num_referenced_elsets = len(referenced_elsets)
+
+                # Enhanced heuristic using element type information
+                is_property_grouping = False
+                if element_types_in_group:
+                    # If we have multiple ELSETs of the same element type, likely property grouping
+                    for elem_type, elset_list in element_types_in_group.items():
+                        if len(elset_list) > 1:
+                            is_property_grouping = True
+                            break
+
+                    if debug_mode:
+                        print(f"### INFO ###: Element types in '{target_property_name}': {element_types_in_group}")
+                else:
+                    # No element type information available - default to consolidation
+                    if debug_mode:
+                        print(f"### INFO ###: No element type information for '{target_property_name}' - defaulting to consolidation")
+
+                # Create a property signature for sharing
+                property_signature = f"{section_type}_{material_name}_{shthk if section_type in ['shell', 'membrane'] else 'bulk'}"
+
+                if is_property_grouping:
+                    # Scenario B1: Property Grouping - individual ELSETs are parts, shared property
+                    if debug_mode:
+                        print(f"### INFO ###: Treating '{target_property_name}' as property grouping (keeps {num_referenced_elsets} separate parts)")
+
+                    # Check if we already have this property signature - reuse if so
+                    shared_prop_id = None
+                    for props in property_names.values():
+                        if props.get('property_signature') == property_signature:
+                            shared_prop_id = props['prop_id']
+                            print(f"### INFO ###: Reusing existing property ID {shared_prop_id} for shared material/section")
+                            break
+
+                    if shared_prop_id is None:
+                        # New property - use current prop_id
+                        shared_prop_id = current_prop_id
+                        current_prop_id += 1
+
+                    # Assign the shared property to each referenced ELSET (each becomes a separate part)
+                    for referenced_elset in referenced_elsets:
+                        if section_type == 'shell':
+                            property_names[referenced_elset] = {
+                                'prop_id': shared_prop_id, 'part_id': current_part_id_counter,
+                                'nint': '5', 'shthk': shthk, 'property_signature': property_signature,
+                                'collecting_elset_name': target_property_name  # Store the collecting ELSET name
+                            }
+                        elif section_type == 'membrane':
+                            property_names[referenced_elset] = {
+                                'prop_id': shared_prop_id, 'part_id': current_part_id_counter,
+                                'nint': '1', 'shthk': shthk, 'property_signature': property_signature,
+                                'collecting_elset_name': target_property_name  # Store the collecting ELSET name
+                            }
+                        elif section_type == 'solid':
+                            property_names[referenced_elset] = {
+                                'prop_id': shared_prop_id, 'part_id': current_part_id_counter,
+                                'nint': '999', 'property_signature': property_signature,
+                                'collecting_elset_name': target_property_name  # Store the collecting ELSET name
+                            }
+                        elif section_type == 'cohesive':
+                            property_names[referenced_elset] = {
+                                'prop_id': shared_prop_id, 'part_id': current_part_id_counter,
+                                'nint': '888', 'property_signature': property_signature,
+                                'collecting_elset_name': target_property_name  # Store the collecting ELSET name
+                            }
+                        current_part_id_counter += 1
+
+                    return current_prop_id, current_part_id_counter
+                else:
+                    # Scenario B2: Part Consolidation - grouping ELSET is both part and property
+                    if debug_mode:
+                        print(f"### INFO ###: Treating '{target_property_name}' as part consolidation (combines {num_referenced_elsets} ELSETs into 1 part)")
+                    if section_type == 'shell':
+                        property_names[target_property_name] = {
+                            'prop_id': current_prop_id, 'part_id': current_part_id_counter,
+                            'nint': '5', 'shthk': shthk, 'property_signature': property_signature
+                        }
+                    elif section_type == 'membrane':
+                        property_names[target_property_name] = {
+                            'prop_id': current_prop_id, 'part_id': current_part_id_counter,
+                            'nint': '1', 'shthk': shthk, 'property_signature': property_signature
+                        }
+                    elif section_type == 'solid':
+                        property_names[target_property_name] = {
+                            'prop_id': current_prop_id, 'part_id': current_part_id_counter,
+                            'nint': '999', 'property_signature': property_signature
+                        }
+                    elif section_type == 'cohesive':
+                        property_names[target_property_name] = {
+                            'prop_id': current_prop_id, 'part_id': current_part_id_counter,
+                            'nint': '888', 'property_signature': property_signature
+                        }
+                    return current_prop_id + 1, current_part_id_counter + 1
+            else:
+                # This is a directly assigned ELSET - assign property normally
+                property_signature = f"{section_type}_{material_name}_{shthk if section_type in ['shell', 'membrane'] else 'bulk'}"
+
+                if section_type == 'shell':
+                    property_names[target_property_name] = {
+                        'prop_id': current_prop_id, 'part_id': current_part_id_counter,
+                        'nint': '5', 'shthk': shthk, 'property_signature': property_signature
+                    }
+                elif section_type == 'membrane':
+                    property_names[target_property_name] = {
+                        'prop_id': current_prop_id, 'part_id': current_part_id_counter,
+                        'nint': '1', 'shthk': shthk, 'property_signature': property_signature
+                    }
+                elif section_type == 'solid':
+                    property_names[target_property_name] = {
+                        'prop_id': current_prop_id, 'part_id': current_part_id_counter,
+                        'nint': '999', 'property_signature': property_signature
+                    }
+                elif section_type == 'cohesive':
+                    property_names[target_property_name] = {
+                        'prop_id': current_prop_id, 'part_id': current_part_id_counter,
+                        'nint': '888', 'property_signature': property_signature
+                    }
+                return current_prop_id + 1, current_part_id_counter + 1
+
+        # Track if we used the helper function (which already increments prop_id)
+        used_helper_function = False
+
         if section_type == 'shell':
-            # Assign a property ID to the property
-            property_names[property_name] = {'prop_id': prop_id}
-            property_names[property_name]['nint'] = '5'
-            property_names[property_name]['shthk'] = shthk
+            prop_id, part_id_counter = assign_property_to_elsets(property_name, section_type, prop_id, part_id_counter)
+            used_helper_function = True
 
         elif section_type == 'membrane':
-            # Assign a property ID to the property
-            property_names[property_name] = {'prop_id': prop_id}
-            property_names[property_name]['nint'] = '1'
-            property_names[property_name]['shthk'] = shthk
+            prop_id, part_id_counter = assign_property_to_elsets(property_name, section_type, prop_id, part_id_counter)
+            used_helper_function = True
 
         elif section_type == 'cohesive':
-            # Assign a property ID to the property
-            property_names[property_name] = {'prop_id': prop_id}
-            property_names[property_name]['nint'] = '888'
+            prop_id, part_id_counter = assign_property_to_elsets(property_name, section_type, prop_id, part_id_counter)
+            used_helper_function = True
 
         elif section_type == 'connector':
             # Assign a property ID to the property
-            property_names[property_name] = {'prop_id': prop_id}
+            property_names[property_name] = {'prop_id': prop_id, 'part_id': part_id_counter}
             property_names[property_name]['nint'] = '555'
             property_names[property_name]['conntype'] = conntype
             property_names[property_name]['material_id'] = 0
-            # Increment the property ID
+            # Increment the property ID and part ID
             prop_id += 1
+            part_id_counter += 1
 
         elif section_type == 'spring':
             # Assign a property ID to the property
-            property_names[property_name] = {'prop_id': prop_id}
+            property_names[property_name] = {'prop_id': prop_id, 'part_id': part_id_counter}
             property_names[property_name]['nint'] = '666'
             property_names[property_name]['spring_stiffness'] = spring_stiffness
             property_names[property_name]['material_id'] = 0
-            # Increment the property ID
+            # Increment the property ID and part ID
             prop_id += 1
+            part_id_counter += 1
 
         elif section_type == 'solid':
-            # Assign a property ID to the property
-            property_names[property_name] = {'prop_id': prop_id}
-            property_names[property_name]['nint'] = '999'
+            prop_id, part_id_counter = assign_property_to_elsets(property_name, section_type, prop_id, part_id_counter)
+            used_helper_function = True
 
         elif section_type == 'dcoup':
             if property_name not in other_rigid_props_processed_list:
                 # Assign a property ID to the property
-                property_names[property_name] = {'prop_id': prop_id}
+                property_names[property_name] = {'prop_id': prop_id, 'part_id': part_id_counter}
                 other_rigid_props_processed_list.append(property_name)
                 property_names[property_name]['nint'] = '333'
+                part_id_counter += 1
             section_type = None
             property_name = None
 
@@ -1992,25 +2157,47 @@ def convert_props(input_lines, material_names):
             property_name = elset_match.group(1).strip()
             if property_name not in other_rigid_props_processed_list:
                 # Assign a property ID to the property
-                property_names[property_name] = {'prop_id': prop_id}
+                property_names[property_name] = {'prop_id': prop_id, 'part_id': part_id_counter}
                 other_rigid_props_processed_list.append(property_name)
                 property_names[property_name]['nint'] = '998'
                 if debug_mode:
                     print("setting a rigid up for property name: ", property_name)
+                part_id_counter += 1
 
         elif section_type == 'massdef':
             # Assign a property ID to the property
-            property_names[property_name] = {'prop_id': prop_id}
+            property_names[property_name] = {'prop_id': prop_id, 'part_id': part_id_counter}
             property_names[property_name]['nint'] = '777'
+            part_id_counter += 1
 
         if section_type and material_name in material_names:
             material_id = material_names[material_name]['material_id']
-            property_names[property_name]['material_id'] = material_id
+
+            # Handle material assignment for both scenarios
+            if property_name in non_numeric_references and non_numeric_references[property_name]:
+                referenced_elsets = non_numeric_references[property_name]
+
+                # Check if we're doing property grouping or consolidation
+                # In consolidation, the grouping ELSET (property_name) gets the material
+                # In property grouping, the individual ELSETs get the material
+                if property_name in property_names:
+                    # Consolidation scenario - assign to grouping ELSET
+                    property_names[property_name]['material_id'] = material_id
+                else:
+                    # Property grouping scenario - assign to all referenced ELSETs
+                    for referenced_elset in referenced_elsets:
+                        if referenced_elset in property_names:
+                            property_names[referenced_elset]['material_id'] = material_id
+            else:
+                # Scenario 1: Assign material to the direct ELSET
+                if property_name in property_names:
+                    property_names[property_name]['material_id'] = material_id
 
             section_type = None
             property_name = None
-            # Increment the property ID
-            prop_id += 1
+            # Only increment the property ID if we didn't use the helper function
+            if not used_helper_function:
+                prop_id += 1
 
             i += 1
         else:
@@ -2031,23 +2218,46 @@ def write_parts(property_names, non_numeric_references, output_file):
         )
 
         if not property_data['nint'] == '777' and not property_data['nint'] == '333':
-            #extract the property_id from dictionary and use as part_id
-            part_id = property_data['prop_id']
+            # Use separate part_id and prop_id
+            part_id = property_data.get('part_id', property_data['prop_id'])  # Fallback to prop_id if no part_id
+            prop_id = property_data['prop_id']
             #extract the material_id from dictionary
             material_id = property_data['material_id']
             output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
             output_file.write(f"/PART/{part_id}\n")
             output_file.write(part_name + "\n")
             output_file.write("#     prop       mat    subset\n")
-            output_file.write(f"{part_id:>10}{material_id:>10}         0\n")
+            output_file.write(f"{prop_id:>10}{material_id:>10}         0\n")
 
 
 ####################################################################################################
 # Def to write properties                                                                          #
 ####################################################################################################
 def write_props(property_names, output_file):
+    written_prop_ids = set()  # Track which property IDs have been written
+    prop_id_to_name = {}  # Track which name to use for each property ID
+
+    # First pass: determine the best name for each property ID
+    for property_name, property_data in property_names.items():
+        property_id = property_data['prop_id']
+        collecting_name = property_data.get('collecting_elset_name')
+
+        if property_id not in prop_id_to_name:
+            # Use collecting ELSET name if available, otherwise use the individual ELSET name
+            prop_id_to_name[property_id] = collecting_name if collecting_name else property_name
+
     for property_name, property_data in property_names.items():
         property_id = property_data['prop_id'] #generate property_id for this def
+
+        # Skip if this property ID has already been written (shared property)
+        if property_id in written_prop_ids:
+            continue
+
+        written_prop_ids.add(property_id)
+
+        # Use the determined name for this property ID
+        property_display_name = prop_id_to_name[property_id]
+
         #print(property_data)
         prop_type = property_data['nint']  # Get the 'type' value from property_data (nint value)
         # Check prop_type and write different cards based on its value
@@ -2055,7 +2265,7 @@ def write_props(property_names, output_file):
             shthk = float(property_data['shthk'])  # Get the 'shthk' value from property_data
             output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
             output_file.write(f"/PROP/SHELL/{property_id}\n")
-            output_file.write(property_name + "\n")
+            output_file.write(property_display_name + "\n")
             output_file.write("#   Ishell    Ismstr     Ish3n    Idrill                            P_thick_fail\n")
             output_file.write("        24        -1         1         0                                       0\n")
             output_file.write("#                 hm                  hf                  hr                  dm                  dn\n")
@@ -2069,7 +2279,7 @@ def write_props(property_names, output_file):
             shthk = float(property_data['shthk'])  # Get the 'shthk' value from property_data
             output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
             output_file.write(f"/PROP/SHELL/{property_id}\n")
-            output_file.write(property_name + "\n")
+            output_file.write(property_display_name + "\n")
             output_file.write("#   Ishell    Ismstr     Ish3n    Idrill                            P_thick_fail\n")
             output_file.write("        24        -1         1         0                                       0\n")
             output_file.write("#                 hm                  hf                  hr                  dm                  dn\n")
@@ -2082,13 +2292,13 @@ def write_props(property_names, output_file):
         elif prop_type == '888': #888 is code for Cohesives
             output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
             output_file.write(f"/PROP/TYPE43/{property_id}\n")
-            output_file.write(property_name + "\n")
+            output_file.write(property_display_name + "\n")
             output_file.write("#   Ismstr                                                                            True_Thickness\n")
             output_file.write("        -1                                                                                          \n")
         elif prop_type == '999': #999 is code for Solids
             output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
             output_file.write(f"/PROP/SOLID/{property_id}\n")
-            output_file.write(property_name + "\n")
+            output_file.write(property_display_name + "\n")
             output_file.write("#   Isolid    Ismstr               Icpre  Itetra10     Inpts   Itetra4    Iframe                  dn\n")
             output_file.write("        24        -1                  -1         2         0         3        -1                  .1\n")
             output_file.write("#                q_a                 q_b                   h            LAMBDA_V                MU_V\n")
@@ -2105,13 +2315,13 @@ def write_props(property_names, output_file):
                 # If rgdthk is defined ar Rigid Body Level, it is used here as shthk, otherwise use the default 0.01 value
             output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
             output_file.write(f"/PROP/VOID/{property_id}\n")
-            output_file.write(property_name + "\n")
+            output_file.write(property_display_name + "\n")
             output_file.write("#              Thick\n")
             output_file.write(f"{shthk:>20.15g}\n")
         elif prop_type == '997': #997 is code for Thk Shells
             output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
             output_file.write(f"/PROP/TYPE20/{property_id}\n")
-            output_file.write(property_name + "\n")
+            output_file.write(property_display_name + "\n")
             output_file.write("#   Isolid    Ismstr                                   Inpts      Iint                            dn\n")
             output_file.write("        15        -1                                       5         0                            .1\n")
             output_file.write("#                q_a                 q_b                   h\n")
@@ -2140,11 +2350,14 @@ def convert_connbeams(property_names):
 
         if prop_type == '555': #555 is code for Beam type Springs
             conntype = property_data['conntype']  # Get the 'conntype' value from property_data
+            # Determine the display name for this property
+            collecting_name = property_data.get('collecting_elset_name')
+            spring_display_name = collecting_name if collecting_name else property_name
 
             conn_beams.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            conn_beams.append(f"#Spring PROP for connection definition: {property_name}: for .inp CONN3D2 Beams")
+            conn_beams.append(f"#Spring PROP for connection definition: {spring_display_name}: for .inp CONN3D2 Beams")
             conn_beams.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-            conn_beams.append(f"/PROP/TYPE13/{property_id}\n{property_name}")
+            conn_beams.append(f"/PROP/TYPE13/{property_id}\n{spring_display_name}")
             conn_beams.append("#               Mass             Inertia   skew_ID   sens_ID    Isflag     Ifail     Ileng    Ifail2")
             conn_beams.append(f"{spring_mass:>20.4e}{spring_inertia:>20.4e}         0         0         0         0         0         0")
             conn_beams.append("#                 K1                  C1                  A1                  B1                  D1")
@@ -2320,7 +2533,7 @@ def prepare_elsets(input_lines, elsets_for_expansion_dict, relsets_for_expansion
         elset_found = False
         if run_timer and elset_name:
             elapsed_time = time.time() - start_time
-            print(f"Elsets being built:    {elapsed_time:8.3f} seconds: ({elset_name} done)")
+            print(f"Elsets being built:      {elapsed_time:8.3f} seconds: ({elset_name} done)")
 
         for line in input_lines:
             elset_line_match = re.search(elset_line_pattern, line, re.IGNORECASE)
@@ -2356,7 +2569,6 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
     current_element_type = None
     current_element_block = []
     remaining_lines = []
-    ppmselect = False
 
     for line in input_lines:
         # Regular expression to find '*ELEMENT,TYPE='
@@ -2375,19 +2587,17 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
                     #print(current_element_type)
                     try:
                         property_id = property_names[prop_match]['prop_id']
+                        part_id = property_names[prop_match].get('part_id', property_id)  # Get part_id or fallback to prop_id
                         current_element_dicts.append(
-                            {"ELSET": elset, "PROP_ID": property_id, "elements": element_dict}
+                            {"ELSET": elset, "PROP_ID": property_id, "PART_ID": part_id, "elements": element_dict}
                             )
                     except:
                         current_element_dicts.append(
-                            {"ELSET": elset, "PROP_ID": 0, "elements": element_dict}
+                            {"ELSET": elset, "PROP_ID": 0, "PART_ID": 0, "elements": element_dict}
                             )
                         print (f"### WARNING ###: No Property Found for Elements in Elset: {elset}")
-                        print ("                 Property may not have been recognised, or:")
-                        print ("                 if using PrePoMax, please use PART NAME as Region Type")
-                        print ("                 for shell parts Section assignment, not 'Selection'")
+                        print ("                 Property may not have been recognised")
                         print ("")
-                        ppmselect = True
                     element_dicts[current_element_type] = current_element_dicts
                     if current_element_type.lower() == 'sc8r':
                         property_names[prop_match]['nint'] = '997'
@@ -2453,19 +2663,17 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
                 current_element_dicts = element_dicts.get(current_element_type, [])
                 try:
                     property_id = property_names[prop_match]['prop_id']
+                    part_id = property_names[prop_match].get('part_id', property_id)  # Get part_id or fallback to prop_id
                     current_element_dicts.append(
-                        {"ELSET": elset, "PROP_ID": property_id, "elements": element_dict}
+                        {"ELSET": elset, "PROP_ID": property_id, "PART_ID": part_id, "elements": element_dict}
                         )
                 except:
                     current_element_dicts.append(
-                        {"ELSET": elset, "PROP_ID": 0, "elements": element_dict}
+                        {"ELSET": elset, "PROP_ID": 0, "PART_ID": 0, "elements": element_dict}
                         )
                     print (f"### WARNING ###: No Property Found for Elements in Elset: {elset}")
-                    print ("                 Property may not have been recognised, or:")
-                    print ("                 if using PrePoMax, please use PART NAME as Region Type")
-                    print ("                 for shell parts Section assignment, not 'Selection'")
+                    print ("                 Property may not have been recognised")
                     print ("")
-                    ppmselect = True
                 element_dicts[current_element_type] = current_element_dicts
                 if current_element_type.lower() == 'sc8r':
                     property_names[elset]['nint'] = '997'
@@ -2478,13 +2686,13 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
     #calls the 'convert elements' subdef below (format for output)
     (elset_dicts, element_lines, sh3n_list, shell_list, brick_list,
      nsets, nset_counter) = convert_elements(non_numeric_references, elset_dicts,
-     element_dicts, nsets, nset_counter
+     element_dicts, property_names, nsets, nset_counter
      )
 
     if not debug_mode:
         return (
             elset_dicts, element_lines, element_dicts, sh3n_list, shell_list, brick_list,
-            property_names, max_elem_id, input_lines, nsets, nset_counter, ppmselect
+            property_names, max_elem_id, input_lines, nsets, nset_counter
             )
 
 
@@ -2501,7 +2709,7 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
     print("postelements written")
     return (
         elset_dicts, element_lines, element_dicts, sh3n_list, shell_list, brick_list,
-        property_names, max_elem_id, input_lines, nsets, nset_counter, ppmselect
+        property_names, max_elem_id, input_lines, nsets, nset_counter
         )
 
 
@@ -2591,7 +2799,7 @@ def process_element_block(current_element_block, current_element_type, max_elem_
 ####################################################################################################
 # Function to convert elements data dictionary for output                                          #
 ####################################################################################################
-def convert_elements(non_numeric_references, elset_dicts, element_dicts, nsets, nset_counter):
+def convert_elements(non_numeric_references, elset_dicts, element_dicts, property_names, nsets, nset_counter):
     element_lines = []
     sh3n_list = []
     shell_list = []
@@ -2602,13 +2810,20 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, nsets, 
 
         for element_dict in element_list:
             elset = element_dict["ELSET"]
-            part_name = next(
-            #(values[0] for key, values in non_numeric_references.items() if key == property_name),
-            (key for key, values in non_numeric_references.items() if elset in values),
-            elset  # Default to elset name if no match
-            )
 
-            property_id = element_dict ["PROP_ID"]
+            # Determine the correct part name for comments
+            # For consolidated parts, find the grouping ELSET that contains this elset
+            part_name = elset  # Default to individual ELSET name
+            for grouping_elset, referenced_elsets in non_numeric_references.items():
+                if elset in referenced_elsets:
+                    # This elset is part of a grouping - check if it's consolidation
+                    if grouping_elset in property_names:
+                        # This is consolidation - use the grouping ELSET name
+                        part_name = grouping_elset
+                        break
+
+            property_id = element_dict["PROP_ID"]
+            part_id = element_dict.get("PART_ID", property_id)  # Get part_id or fallback to prop_id
 
             if element_type.lower() == "mass":
                 nset_counter += 1
@@ -2632,9 +2847,9 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, nsets, 
 
             elif element_type.lower() == "conn3d2" or element_type.lower() == "springa":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# Spring Elements for PART: {part_name}, PID: {property_id}")
+                element_lines.append(f"# Spring Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"/SPRING/{property_id}")  # Output section header
+                element_lines.append(f"/SPRING/{part_id}")  # Output section header - use part_id
                 for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to spring_list
@@ -2650,9 +2865,9 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, nsets, 
                 or element_type.lower() == "m3d3"
                 ):
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 3 Noded Shell Elements for PART: {part_name}, PID: {property_id}")
+                element_lines.append(f"# 3 Noded Shell Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"/SH3N/{property_id}")  # Output section header
+                element_lines.append(f"/SH3N/{part_id}")  # Output section header - use part_id
                 for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to sh3n_list
@@ -2673,9 +2888,9 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, nsets, 
                 or element_type.lower() == "m3d4r"
                 ):
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 4 Noded Shell Elements for PART: {part_name}, PID: {property_id}")
+                element_lines.append(f"# 4 Noded Shell Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"/SHELL/{property_id}")  # Output section header
+                element_lines.append(f"/SHELL/{part_id}")  # Output section header - use part_id
                 for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to shell_list
@@ -2692,9 +2907,9 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, nsets, 
 
             elif element_type.lower() == "c3d4":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 4 Noded Tetrahedral Elements for PART: {part_name}, PID: {property_id}")
+                element_lines.append(f"# 4 Noded Tetrahedral Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"/TETRA4/{property_id}")  # Output section header
+                element_lines.append(f"/TETRA4/{part_id}")  # Output section header - use part_id
                 for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to brick_list
@@ -2712,9 +2927,9 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, nsets, 
 
             elif element_type.lower() == "c3d6":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 6 Noded Degenerated Penta Elements for PART: {part_name}, PID: {property_id}")
+                element_lines.append(f"# 6 Noded Degenerated Penta Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"/BRICK/{property_id}")  # Output section header
+                element_lines.append(f"/BRICK/{part_id}")  # Output section header - use part_id
                 for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to brick_list
@@ -2732,9 +2947,9 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, nsets, 
 
             elif element_type.lower() == "coh3d6":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 6 Noded Degenerated Penta Cohesive Elements for PART: {part_name}, PID: {property_id}")
+                element_lines.append(f"# 6 Noded Degenerated Penta Cohesive Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"/BRICK/{property_id}")  # Output section header
+                element_lines.append(f"/BRICK/{part_id}")  # Output section header - use part_id
                 for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to brick_list
@@ -2752,9 +2967,9 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, nsets, 
 
             elif element_type.lower() == "sc6r":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 6 Noded Degenerated Penta Elements for PART: {part_name}, PID: {property_id}")
+                element_lines.append(f"# 6 Noded Degenerated Penta Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"/BRICK/{property_id}")  # Output section header
+                element_lines.append(f"/BRICK/{part_id}")  # Output section header - use part_id
                 for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to brick_list
@@ -2775,9 +2990,9 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, nsets, 
                 or element_type.lower() == "c3d8r"
                 ):
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 8 Noded Brick Elements for PART: {part_name}, PID: {property_id}")
+                element_lines.append(f"# 8 Noded Brick Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"/BRICK/{property_id}")  # Output section header
+                element_lines.append(f"/BRICK/{part_id}")  # Output section header - use part_id
                 for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to brick_list
@@ -2794,9 +3009,9 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, nsets, 
 
             elif element_type.lower() == "coh3d8":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 8 Noded Cohesive Elements for PART: {part_name}, PID: {property_id}")
+                element_lines.append(f"# 8 Noded Cohesive Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"/BRICK/{property_id}")  # Output section header
+                element_lines.append(f"/BRICK/{part_id}")  # Output section header - use part_id
                 for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to brick_list
@@ -2813,9 +3028,9 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, nsets, 
 
             elif element_type.lower() == "sc8r":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 8 Noded Thick Shell Elements for PART: {part_name}, PID: {property_id}")
+                element_lines.append(f"# 8 Noded Thick Shell Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"/BRICK/{property_id}")  # Output section header
+                element_lines.append(f"/BRICK/{part_id}")  # Output section header - use part_id
                 for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to brick_list
@@ -2834,9 +3049,9 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, nsets, 
                 or element_type.lower() == "c3d10m"
                 ):
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 10 Noded Tetrahedral Elements for PART: {part_name}, PID: {property_id}")
+                element_lines.append(f"# 10 Noded Tetrahedral Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"/TETRA10/{property_id}")  # Output section header
+                element_lines.append(f"/TETRA10/{part_id}")  # Output section header - use part_id
                 for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
                     element_id = element.get('element_id', '')
                     # Add element_id to brick_list
@@ -3198,7 +3413,7 @@ def parse_surface_data(input_lines, elset_dicts, nset_counter, nsets,
     current_node_surface_name = None
     surf_already_processed = False
     allsurf = False
-    prop_id_list = []  # Initialize an empty list
+    part_id_list = []  # Initialize an empty list for part IDs
     prop_lines = []
 
     remaining_lines = []
@@ -3281,9 +3496,10 @@ def parse_surface_data(input_lines, elset_dicts, nset_counter, nsets,
                 for property_name, property_data in property_names.items():
                    # Check if the property name matches the surface_el
                     if property_name.lower() == surface_el_byname.lower():
-                        # Extract the property_id and add it to the list
+                        # Extract the part_id and add it to the list
                         property_id = int(property_data['prop_id'])
-                        prop_id_list.append(property_id)
+                        part_id = property_data.get('part_id', property_id)  # Use part_id for surface definition
+                        prop_id_list.append(part_id)
 
                 # Create a /SURF/PART/EXT entry
                 props_per_line = []
@@ -3344,35 +3560,45 @@ def parse_surface_data(input_lines, elset_dicts, nset_counter, nsets,
                             print(f"### WARNING ###: Unable to convert value '{surface_els}' to numeric surf set. It will be skipped.")
 
                         for surface_el in surface_els:
-                            if surface_side:
-                                if surface_side == all:
-                                    # Iterate over all possible surface sides and create a separate line for each side
+                            try:
+                                if surface_el not in segment_dictionary:
+                                    print(f"### WARNING ###: Element {surface_el} referenced in surface '{surface_el_byname}' not found in segment dictionary. Skipping.")
+                                    continue
+
+                                if surface_side:
+                                    if surface_side == all:
+                                        # Iterate over all possible surface sides and create a separate line for each side
+                                        surface_sides = ['s1', 's2', 's3', 's4', 's5', 's6', 'spos', 'sneg']
+                                        for surf_iter in surface_sides:
+                                            nodes = segment_dictionary[surface_el].get(surf_iter, [])
+                                            if nodes:  # Check if nodes exist (i.e., not an empty list)
+                                                segment_nodes = ''.join([f"{node:>10}" for node in nodes])
+                                                surf_holder.append(f"          {segment_nodes}")
+                                    else:
+                                        nodes = segment_dictionary[surface_el].get(surface_side, [])
+                                        segment_nodes = ''.join([f"{node:>10}" for node in nodes])
+                                        surf_holder.append(f"          {segment_nodes}")
+                                else:
+                                # Iterate over all possible surface sides and create a separate line for each side
                                     surface_sides = ['s1', 's2', 's3', 's4', 's5', 's6', 'spos', 'sneg']
                                     for surf_iter in surface_sides:
                                         nodes = segment_dictionary[surface_el].get(surf_iter, [])
                                         if nodes:  # Check if nodes exist (i.e., not an empty list)
                                             segment_nodes = ''.join([f"{node:>10}" for node in nodes])
                                             surf_holder.append(f"          {segment_nodes}")
-                                else:
-                                    nodes = segment_dictionary[surface_el].get(surface_side, [])
-                                    segment_nodes = ''.join([f"{node:>10}" for node in nodes])
-                                    surf_holder.append(f"          {segment_nodes}")
-                            else:
-                            # Iterate over all possible surface sides and create a separate line for each side
-                                surface_sides = ['s1', 's2', 's3', 's4', 's5', 's6', 'spos', 'sneg']
-                                for surf_iter in surface_sides:
-                                    nodes = segment_dictionary[surface_el].get(surf_iter, [])
-                                    if nodes:  # Check if nodes exist (i.e., not an empty list)
-                                        segment_nodes = ''.join([f"{node:>10}" for node in nodes])
-                                        surf_holder.append(f"          {segment_nodes}")
+                            except (KeyError, TypeError, ValueError) as e:
+                                print(f"### WARNING ###: Error processing surface element {surface_el} in surface '{surface_el_byname}': {e}. Skipping this element.")
+                                continue
 
 
             if surface_el_byname is not None and allsurf is True:
+                prop_id_list = []
                 for property_name, property_data in property_names.items():
                     # Extract the property_id from the sub-dictionary and convert it to an integer
                     property_id = int(property_data['prop_id'])
-                    # Append the integer 'property_id' to the list
-                    prop_id_list.append(property_id)
+                    part_id = property_data.get('part_id', property_id)  # Use part_id for surface definition
+                    # Append the integer 'part_id' to the list
+                    prop_id_list.append(part_id)
 
                 surf_id += 1
                 props_per_line = []
@@ -3526,10 +3752,11 @@ def convert_contacts(input_lines, property_names, surf_id, friction_dict, surf_n
             for property_name, property_data in property_names.items():
                 # Extract the property_id from the sub-dictionary and convert it to an integer
                 property_id = int(property_data['prop_id'])
-                # Append the integer 'property_id' to the list (excluding springs and dummy property for masses)
+                part_id = property_data.get('part_id', property_id)  # Use part_id for surface definition
+                # Append the integer 'part_id' to the list (excluding springs and dummy property for masses)
                 if (not property_data['nint'] == '777' and not property_data['nint'] == '555' and not property_data['nint'] == '666'
-                and property_id not in prop_id_list):
-                    prop_id_list.append(property_id)
+                and part_id not in prop_id_list):
+                    prop_id_list.append(part_id)
 
             surf_id += 1
             props_per_line = []
@@ -4497,9 +4724,10 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
                     continue
                 #check if dload name is a single part?
                 if dload_name in property_names:
-                    prop_ids = []
+                    part_ids = []
                     property_id = property_names[dload_name]['prop_id'] #this is for ref in title and to get node group (same as part number)
-                    prop_ids.append(property_id)
+                    part_id = property_names[dload_name].get('part_id', property_id)  # Use part_id for the gravity group
+                    part_ids.append(part_id)
 
                 elif dload_name in nsets:
                     already_set = True
@@ -4515,7 +4743,7 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
                             dload_set_exists = True
                             inside_elset_section = True
                             elset_values = []
-                            prop_ids = []
+                            part_ids = []
                             continue
 
                         if inside_elset_section and line.startswith('*'):
@@ -4529,14 +4757,15 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
 
                     for values in elset_values:
                         property_id = property_names[values]['prop_id']
-                        prop_ids.append(property_id)
+                        part_id = property_names[values].get('part_id', property_id)  # Use part_id for the gravity group
+                        part_ids.append(part_id)
 
             if not dload_name or dload_set_exists is False:
                 if skipgrav:
                     continue
-                prop_ids = []
+                part_ids = []
                 property_id = 'all'
-                prop_ids.append(property_id)
+                part_ids.append(property_id)
 
             if dload_type.lower() == "grav":
                 dload_mag = float(fields[2].strip()) # Convert dload_mag to a float
@@ -4602,24 +4831,26 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
         dgrav_block += "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
         dgrav_block += f"/GRAV/{skewandgravid}\nGravity {dload_name}\n"
         dgrav_block += "#funct_IDT       DIR   skew_ID   Isensor  Grnod_id                      Ascale_X            Fscale_Y\n"
-        dgrav_block += f"{funct_id:>10}         X{skewandgravid:>10}         0{ref_nset_counter:>10}                             0{dload_mag:>20.15g}\n"
+        dgrav_block += f"{funct_id:>10}         X{skewandgravid:>10}         0{ref_nset_counter:>10}                             0{dload_mag:>20.15g}"
 
         if not already_set and property_id != 'all':
-            dgrav_block += "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
+            dgrav_block += "\n#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
             dgrav_block += f"/GRNOD/PART/{nset_counter}\n"
             dgrav_block += f"{dload_name} secondary nodes\n"
-            dgrav_block += "#  PARTIDS\n"
+            dgrav_block += "# PART_IDS\n"
+            # Sort part IDs numerically for better readability
+            sorted_part_ids = sorted(part_ids, key=lambda x: int(x) if str(x).isdigit() else float('inf'))
             part_id_rows = []
-            for i in range(0, len(prop_ids), 10):
-                row_values = prop_ids[i:i+10]
-                formatted_row = ''.join(f"{value:>10}" for value in row_values) + '\n'
+            for i in range(0, len(sorted_part_ids), 10):
+                row_values = sorted_part_ids[i:i+10]
+                formatted_row = ''.join(f"{value:>10}" for value in row_values)
                 part_id_rows.append(formatted_row)
 
             # Join all part_id_rows with a newline between each row
             dgrav_block += '\n'.join(part_id_rows)
 
         if not amplitude_name:
-            dgrav_block += "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
+            dgrav_block += "\n#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
             dgrav_block += "# Constant Function for use with Gravity Card, (magnitude is defined on /GRAV card)\n"
             dgrav_block += "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
             dgrav_block += f"/FUNCT/{funct_id}\n"
@@ -4635,7 +4866,7 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
 
 ####################################################################################################
 # Function to create /RBODY from Rigid parts or Nset                                               #
-# if in future we convert more coupkin, kincoup, logic will need to change)                        #
+# coupkin, kincoup, conversion handled elsewhwere (in convert_coupling def)                        #
 ####################################################################################################
 def convert_rigids(
         input_lines, property_names, material_names, nsets, nset_counter,
@@ -5357,6 +5588,56 @@ def convert_mpc_ties(input_lines, prop_id, max_elem_id):
 
 
 ####################################################################################################
+# Function to build ELSET to element type mapping                                                 #
+####################################################################################################
+def build_elset_element_type_mapping(input_lines):
+    """Build a mapping from ELSET names to the element types they contain"""
+    elset_element_types = {}
+    current_element_type = None
+    current_elset = None
+
+    for line in input_lines:
+        line = line.strip()
+        if not line or line.startswith('**'):
+            continue
+
+        # Check for element type definition
+        if line.upper().startswith('*ELEMENT'):
+            element_type_pattern = r'\bTYPE\s*=\s*([^,]+)'
+            element_type_match = re.search(element_type_pattern, line, re.IGNORECASE)
+            if element_type_match:
+                current_element_type = element_type_match.group(1).strip()
+
+            # Check for ELSET in the same line
+            elset_pattern = r'\bELSET\s*=\s*("([\w\-+/ ]+)"|[\w\-+/ ]+)'
+            elset_match = re.search(elset_pattern, line, re.IGNORECASE)
+            if elset_match:
+                if elset_match.group(2):  # Quoted name
+                    current_elset = elset_match.group(2)
+                else:  # Unquoted name
+                    current_elset = elset_match.group(1)
+
+                # Add this element type to the ELSET mapping
+                if current_elset and current_element_type:
+                    if current_elset not in elset_element_types:
+                        elset_element_types[current_elset] = set()
+                    elset_element_types[current_elset].add(current_element_type.upper())
+
+            continue
+
+        # Reset when we encounter another keyword
+        if line.startswith('*') and not line.upper().startswith('*ELEMENT'):
+            current_element_type = None
+            current_elset = None
+
+    # Convert sets to lists for easier handling
+    for elset, types in elset_element_types.items():
+        elset_element_types[elset] = list(types)
+
+    return elset_element_types
+
+
+####################################################################################################
 # Function to convert elements data (special element by element approach for AT) No longer used in #
 # this version, here for reference                                                                 #
 #                                                                                                  #
@@ -5441,70 +5722,76 @@ def main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
     transform_lines, transform_data = convert_transforms(input_lines)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Transforms Done:       {elapsed_time:8.3f} seconds")
+        print(f"Transforms Done:         {elapsed_time:8.3f} seconds")
 
     node_data, input_lines = read_nodes(input_lines)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Nodes Read:            {elapsed_time:8.3f} seconds")
+        print(f"Nodes Read:              {elapsed_time:8.3f} seconds")
 
     node_lines = convert_nodes(node_data)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Nodes Done:            {elapsed_time:8.3f} seconds")
+        print(f"Nodes Done:              {elapsed_time:8.3f} seconds")
 
     input_lines = convert_distcoup(input_lines)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Dist Coups Prep Done:  {elapsed_time:8.3f} seconds")
+        print(f"Dist Coups Prep Done:    {elapsed_time:8.3f} seconds")
 
     nsets, nset_counter, input_lines = convert_nsets(input_lines, nset_references)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Nsets Read:            {elapsed_time:8.3f} seconds")
+        print(f"Nsets Read:              {elapsed_time:8.3f} seconds")
 
     nset_blocks = create_nblocks(nsets)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Nsets Done:            {elapsed_time:8.3f} seconds")
+        print(f"Nsets Done:              {elapsed_time:8.3f} seconds")
 
     material_names, extra_material_names, fct_id, nset_counter = convert_materials(input_lines, nset_counter)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Materials Done:        {elapsed_time:8.3f} seconds")
+        print(f"Materials Done:          {elapsed_time:8.3f} seconds")
 
-    property_names, prop_id = convert_props(input_lines, material_names)
+    # Build ELSET to element type mapping
+    elset_element_types = build_elset_element_type_mapping(input_lines)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Props/Parts Done:      {elapsed_time:8.3f} seconds")
+        print(f"Elset Type Mapping Done: {elapsed_time:8.3f} seconds")
+
+    property_names, prop_id = convert_props(input_lines, material_names, non_numeric_references, elset_element_types)
+    if run_timer:
+        elapsed_time = time.time() - start_time
+        print(f"Props/Parts Done:        {elapsed_time:8.3f} seconds")
 
     elset_dicts = prepare_elsets(input_lines, elsets_for_expansion_dict, relsets_for_expansion_dict)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Elset Prep Done:       {elapsed_time:8.3f} seconds")
+        print(f"Elset Prep Done:         {elapsed_time:8.3f} seconds")
 
     #new dictionary based version for element writing
     (elset_dicts, element_lines, element_dicts, sh3n_list, shell_list, brick_list, property_names,
-        max_elem_id, input_lines, nsets, nset_counter, ppmselect
+        max_elem_id, input_lines, nsets, nset_counter
         ) = parse_element_data(input_lines, elset_dicts, property_names, non_numeric_references,
         nsets, nset_counter
         )
 
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Elements Done:         {elapsed_time:8.3f} seconds")
+        print(f"Elements Done:           {elapsed_time:8.3f} seconds")
 
     elset_blocks, nset_counter, nsets, elset_dicts = write_element_groups(nset_counter, nsets,
         sh3n_list, shell_list, brick_list, elset_dicts
         )
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Elsets Done:           {elapsed_time:8.3f} seconds")
+        print(f"Elsets Done:             {elapsed_time:8.3f} seconds")
 
     segment_dictionary = convert_segments(element_dicts, input_lines)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Segments Done:         {elapsed_time:8.3f} seconds")
+        print(f"Segments Done:           {elapsed_time:8.3f} seconds")
 
     (surface_lines, surf_id, surf_name_to_id, nset_counter, nsets, elset_dicts,
      input_lines) = parse_surface_data(input_lines, elset_dicts, nset_counter,
@@ -5513,88 +5800,88 @@ def main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
 
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Surf Sets Done:        {elapsed_time:8.3f} seconds")
+        print(f"Surf Sets Done:          {elapsed_time:8.3f} seconds")
 
     friction_dict = parse_surface_interaction_data(input_lines)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Friction Done:         {elapsed_time:8.3f} seconds")
+        print(f"Friction Done:           {elapsed_time:8.3f} seconds")
 
     contacts, surf_id, inter_id = convert_contacts(input_lines, property_names, surf_id,
         friction_dict, surf_name_to_id
         )
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Contacts Done:         {elapsed_time:8.3f} seconds")
+        print(f"Contacts Done:           {elapsed_time:8.3f} seconds")
 
     tied_contacts, inter_id = convert_ties(input_lines, surf_name_to_id, nsets, inter_id)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Tied Contacts Done:    {elapsed_time:8.3f} seconds")
+        print(f"Tied Contacts Done:      {elapsed_time:8.3f} seconds")
 
     functs_dict, fct_id = read_amplitudes(input_lines, fct_id)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Functions Done:        {elapsed_time:8.3f} seconds")
+        print(f"Functions Done:          {elapsed_time:8.3f} seconds")
 
     boundary_blocks, nset_counter, fct_id = convert_boundary(input_lines, nset_counter,
         nsets, functs_dict, fct_id
         )
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Boundaries Done:       {elapsed_time:8.3f} seconds")
+        print(f"Boundaries Done:         {elapsed_time:8.3f} seconds")
 
     function_blocks = write_functions(functs_dict)
 
     initial_blocks, nset_counter = convert_initial(input_lines, nset_counter, nsets)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Ini Conditions Done:   {elapsed_time:8.3f} seconds")
+        print(f"Ini Conditions Done:     {elapsed_time:8.3f} seconds")
 
     dload_blocks, nset_counter, fct_id = convert_dloads(input_lines, nset_counter, nsets,
         property_names, functs_dict, fct_id
         )
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Gravity Done:          {elapsed_time:8.3f} seconds")
+        print(f"Gravity Done:            {elapsed_time:8.3f} seconds")
 
     mpc_ties, mpc_rigids, prop_id, max_elem_id = convert_mpc_ties(input_lines, prop_id,
         max_elem_id
         )
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"MPC-Springs Done:      {elapsed_time:8.3f} seconds")
+        print(f"MPC-Springs Done:        {elapsed_time:8.3f} seconds")
 
     conn_beams = convert_connbeams(property_names)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Spring Beams Done:     {elapsed_time:8.3f} seconds")
+        print(f"Spring Beams Done:       {elapsed_time:8.3f} seconds")
 
     rigid_bodies, nset_counter, max_elem_id, property_names, material_names = convert_rigids(input_lines,
         property_names, material_names, nsets, nset_counter, relsets_for_expansion_dict, mpc_rigids, max_elem_id
         )
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Part Rbodies Done:     {elapsed_time:8.3f} seconds")
+        print(f"Part Rbodies Done:       {elapsed_time:8.3f} seconds")
 
     couplings, max_elem_id = convert_coupling(input_lines, nsets, max_elem_id)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Coupling Rbodies Done: {elapsed_time:8.3f} seconds")
+        print(f"Coupling Rbodies Done:   {elapsed_time:8.3f} seconds")
 
     discoups, max_elem_id = convert_discoup(input_lines, nsets, max_elem_id)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"DisCoups Done:         {elapsed_time:8.3f} seconds")
+        print(f"DisCoups Done:           {elapsed_time:8.3f} seconds")
 
     engine_file = parse_control_data(input_lines, simple_file_name)
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Engine File Done:      {elapsed_time:8.3f} seconds")
+        print(f"Engine File Done:        {elapsed_time:8.3f} seconds")
 
     return (
             transform_lines, transform_data, node_lines, nsets, nset_blocks, material_names,
-            extra_material_names, property_names, ppmselect, element_lines, elset_blocks,
+            extra_material_names, property_names, element_lines, elset_blocks,
             surface_lines, contacts, tied_contacts, boundary_blocks, function_blocks,
             initial_blocks, dload_blocks, rigid_bodies, couplings, discoups, mpc_ties,
             conn_beams, engine_file
@@ -5605,7 +5892,7 @@ def main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
 # Define Text Blocks for headers of each Radioss deck section                                      #
 ####################################################################################################
 def write_output(transform_lines, transform_data, node_lines, nset_blocks, material_names,
- extra_material_names, property_names, ppmselect, non_numeric_references, nsets, element_lines,
+ extra_material_names, property_names, non_numeric_references, nsets, element_lines,
  elset_blocks, surface_lines, contacts, tied_contacts, boundary_blocks, function_blocks,
  initial_blocks, dload_blocks, rigid_bodies, couplings, discoups, mpc_ties, conn_beams,
  engine_file, simple_file_name, output_file_name, output_file_path, engine_file_name,
@@ -5905,7 +6192,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"Materials Written:     {elapsed_time:8.3f} seconds")
+            print(f"Materials Written:       {elapsed_time:8.3f} seconds")
 
         #MASS
         for material_name, properties in material_names.items():
@@ -5918,7 +6205,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"ADMAS Written:         {elapsed_time:8.3f} seconds")
+            print(f"ADMAS Written:           {elapsed_time:8.3f} seconds")
 
 
         # Write parts and properties
@@ -5930,7 +6217,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"Parts/Props Written:   {elapsed_time:8.3f} seconds")
+            print(f"Parts/Props Written:     {elapsed_time:8.3f} seconds")
 
         for transform_id, lines in node_lines.items():
             if transform_id in transform_data:
@@ -5948,7 +6235,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"Nodes Written:         {elapsed_time:8.3f} seconds")
+            print(f"Nodes Written:           {elapsed_time:8.3f} seconds")
 
         output_file.write(elements_header)  # Write the element section header
         for element_line in element_lines:
@@ -5956,7 +6243,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"Elements Written:      {elapsed_time:8.3f} seconds")
+            print(f"Elements Written:        {elapsed_time:8.3f} seconds")
 
         output_file.write(group_and_th_header)  # Write the group and th section header
         for nset_block in nset_blocks:
@@ -5970,7 +6257,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"Sets Written:          {elapsed_time:8.3f} seconds")
+            print(f"Sets Written:            {elapsed_time:8.3f} seconds")
 
 
         output_file.write(boundary_header)  # Write the boundary condition section header
@@ -5987,7 +6274,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"BCS/Loads Written:     {elapsed_time:8.3f} seconds")
+            print(f"BCS/Loads Written:       {elapsed_time:8.3f} seconds")
 
 
         output_file.write(functions_header) # Write the functions section header
@@ -5996,7 +6283,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"Functions Written:     {elapsed_time:8.3f} seconds")
+            print(f"Functions Written:       {elapsed_time:8.3f} seconds")
 
 
         output_file.write(rigidp_header)  # Write the rigid entity section header for parts
@@ -6005,7 +6292,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"PART RBODYs Written:   {elapsed_time:8.3f} seconds")
+            print(f"PART RBODYs Written:     {elapsed_time:8.3f} seconds")
 
         output_file.write(rigidc_header)  # Write the rigid entity section header for couplings
         for coupling in couplings:
@@ -6013,7 +6300,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"COUP RBODYs Written:   {elapsed_time:8.3f} seconds")
+            print(f"COUP RBODYs Written:     {elapsed_time:8.3f} seconds")
 
         output_file.write(rbe3_header)  # Write the RBE3 section header for couplings
         for discoup in discoups:
@@ -6021,7 +6308,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"RBE3s Written:         {elapsed_time:8.3f} seconds")
+            print(f"RBE3s Written:           {elapsed_time:8.3f} seconds")
 
         output_file.write(mpc_header)  # Write the mpc section header for ties
         for mpc_tie in mpc_ties:
@@ -6029,14 +6316,14 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"SpringTies Written:    {elapsed_time:8.3f} seconds")
+            print(f"SpringTies Written:      {elapsed_time:8.3f} seconds")
 
         for conn_beam in conn_beams:
             output_file.write(conn_beam + '\n')
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"SpringBeams Written:   {elapsed_time:8.3f} seconds")
+            print(f"SpringBeams Written:     {elapsed_time:8.3f} seconds")
 
         output_file.write(tied_header)  # Write the tied contact section header for ties
         for tied_contact in tied_contacts:
@@ -6044,7 +6331,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"Tied Contacts Written: {elapsed_time:8.3f} seconds")
+            print(f"Tied Contacts Written:   {elapsed_time:8.3f} seconds")
 
         output_file.write(contact_header)  # Write the contact section header for contacts
         for contact in contacts:
@@ -6052,7 +6339,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"Contacts Written:      {elapsed_time:8.3f} seconds")
+            print(f"Contacts Written:        {elapsed_time:8.3f} seconds")
 
         output_file.write(surface_header)  # Write the surface section header for surfaces
         for surface_line in surface_lines:
@@ -6060,7 +6347,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"Surf Sets Written:     {elapsed_time:8.3f} seconds")
+            print(f"Surf Sets Written:       {elapsed_time:8.3f} seconds")
 
         output_file.write(transforms_header)  # Write the transform section header for transforms
         for transform_line in transform_lines:
@@ -6068,7 +6355,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
         if run_timer:
             elapsed_time = time.time() - start_time
-            print(f"Transforms Written:    {elapsed_time:8.3f} seconds")
+            print(f"Transforms Written:      {elapsed_time:8.3f} seconds")
 
         output_file.write(footer)  # Write the /END card footer
 
@@ -6082,7 +6369,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
 
     if run_timer:
         elapsed_time = time.time() - start_time
-        print(f"Engine Written:        {elapsed_time:8.3f} seconds")
+        print(f"Engine Written:          {elapsed_time:8.3f} seconds")
 
     if or_gui:
         end_time = time.time()
@@ -6107,19 +6394,10 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
         print("")
         print(f"Total Processing time: {elapsed_time:8.3f} seconds")
 
-    if ppmselect:
-        print("INFO: Some properties not recognised or assigned, part/prop assignment incomplete")
-        print("      If using PrePoMax 'Internal Select':")
-        print("      please correct PART IDs for elements in rad file or return to PPM")
-        print("      and assign properties by Part instead of 'Selection'")
-
     if not or_gui:
         input("Press Enter to exit...")
 
     output_done = True
-
-    if ppmselect:
-        output_done = False
 
     return output_done
 
@@ -6159,7 +6437,7 @@ def input_read(input_file_path):
 
         if run_timer:
             start_time = time.time()
-            print("Starting Timer:           0.000 seconds")
+            print("Starting Timer:             0.000 seconds")
 
         if or_gui:
             start_time = time.time()
@@ -7090,7 +7368,7 @@ def start(input_file_path):
 # Call the main_conversion function to get the necessary data from the conversion blocks           #
 ####################################################################################################
         (transform_lines, transform_data, node_lines, nsets, nset_blocks, material_names,
-         extra_material_names, property_names, ppmselect, element_lines, elset_blocks,
+         extra_material_names, property_names, element_lines, elset_blocks,
          surface_lines, contacts, tied_contacts, boundary_blocks, function_blocks, initial_blocks,
          dload_blocks, rigid_bodies, couplings, discoups, mpc_ties, conn_beams, engine_file
          ) = main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
@@ -7101,7 +7379,7 @@ def start(input_file_path):
 # Call the output function to write data to Radioss from the conversion blocks                     #
 ####################################################################################################
         output_done = write_output(transform_lines, transform_data, node_lines, nset_blocks,
-                                   material_names, extra_material_names, property_names, ppmselect,
+                                   material_names, extra_material_names, property_names,
                                    non_numeric_references, nsets, element_lines, elset_blocks,
                                    surface_lines, contacts, tied_contacts, boundary_blocks,
                                    function_blocks, initial_blocks, dload_blocks, rigid_bodies,
