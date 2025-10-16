@@ -744,9 +744,22 @@ def convert_materials(input_lines, nset_counter):
         elif current_material_name and line.lower().startswith('*density'):
             i += 1
             density_line = input_lines[i].strip()
-            density_value = float(density_line.split(',')[0])
-            material_names[current_material_name]['rho'] = density_value
-            rho_magnitude = max(rho_magnitude, density_value)
+            
+            # Check if we have valid density data
+            if density_line and density_line.split(',')[0].strip():
+                try:
+                    density_value = float(density_line.split(',')[0])
+                    material_names[current_material_name]['rho'] = density_value
+                    rho_magnitude = max(rho_magnitude, density_value)
+                except ValueError:
+                    print(f"WARNING: Invalid density value for material {current_material_name}")
+                    print(f"         Line content: '{density_line}'")
+                    print("         Skipping this density definition...")
+            else:
+                print(f"WARNING: Empty density data for material {current_material_name}")
+                print(f"         Line content: '{density_line}'")
+                print("         Expected format: density_value")
+                print("         Skipping this density definition...")
 
         # elastic
         elif (
@@ -758,10 +771,23 @@ def convert_materials(input_lines, nset_counter):
             i += 1
             elastic_line = input_lines[i].strip()
             elastic_values = elastic_line.split(',')[0:2]
-            emodulus, poissrat = map(float, elastic_values)
-            material_names[current_material_name]['emodulus'] = emodulus
-            e_magnitude = max(e_magnitude, emodulus)
-            material_names[current_material_name]['poissrat'] = poissrat
+            
+            # Check if we have valid values before converting
+            if len(elastic_values) >= 2 and elastic_values[0].strip() and elastic_values[1].strip():
+                try:
+                    emodulus, poissrat = map(float, elastic_values)
+                    material_names[current_material_name]['emodulus'] = emodulus
+                    e_magnitude = max(e_magnitude, emodulus)
+                    material_names[current_material_name]['poissrat'] = poissrat
+                except ValueError:
+                    print(f"WARNING: Invalid elastic values for material {current_material_name}")
+                    print(f"         Line content: '{elastic_line}'")
+                    print("         Skipping this elastic definition...")
+            else:
+                print(f"WARNING: Incomplete elastic data for material {current_material_name}")
+                print(f"         Line content: '{elastic_line}'")
+                print("         Expected format: E_modulus, Poisson_ratio")
+                print("         Skipping this elastic definition...")
 
         # elastic with engineering constants:
         # NB: Today we look at 1st direction elastic constants only, and convert to /MAT/LAW1
@@ -783,11 +809,24 @@ def convert_materials(input_lines, nset_counter):
             i += 1
             elastic_line = input_lines[i].strip()
             elastic_values = elastic_line.split(',')
-            emodulus = float(elastic_values[0].strip())
-            poissrat = float(elastic_values[3].strip())
-            material_names[current_material_name]['emodulus'] = emodulus
-            e_magnitude = max(e_magnitude, emodulus)
-            material_names[current_material_name]['poissrat'] = poissrat
+            
+            # Check if we have enough values and they're not empty
+            if len(elastic_values) >= 4 and elastic_values[0].strip() and elastic_values[3].strip():
+                try:
+                    emodulus = float(elastic_values[0].strip())
+                    poissrat = float(elastic_values[3].strip())
+                    material_names[current_material_name]['emodulus'] = emodulus
+                    e_magnitude = max(e_magnitude, emodulus)
+                    material_names[current_material_name]['poissrat'] = poissrat
+                except ValueError:
+                    print(f"WARNING: Invalid engineering constants values for material {current_material_name}")
+                    print(f"         Line content: '{elastic_line}'")
+                    print("         Skipping this elastic definition...")
+            else:
+                print(f"WARNING: Incomplete engineering constants data for material {current_material_name}")
+                print(f"         Line content: '{elastic_line}'")
+                print("         Expected format: E1, E2, E3, nu12, nu13, nu23, G12, G13, G23")
+                print("         Skipping this elastic definition...")
 
         # connect/cohesive
         elif (
@@ -1001,8 +1040,28 @@ def convert_materials(input_lines, nset_counter):
             while i < len(input_lines) and not input_lines[i].startswith('*'):
                 # Read and convert the plastic data (changing to positive data)
                 data_line = input_lines[i].strip()
-                x, y = map(float, data_line.split(',')[0:2])
-                plastic_data.append((abs(y), abs(x)))
+                
+                # Skip empty lines
+                if not data_line:
+                    i += 1
+                    continue
+                    
+                # Check if we have valid data before converting
+                plastic_values = data_line.split(',')
+                if len(plastic_values) >= 2 and plastic_values[0].strip() and plastic_values[1].strip():
+                    try:
+                        x, y = map(float, plastic_values[0:2])
+                        plastic_data.append((abs(y), abs(x)))
+                    except ValueError:
+                        print(f"WARNING: Invalid plastic data for material {current_material_name}")
+                        print(f"         Line content: '{data_line}'")
+                        print("         Skipping this data point...")
+                else:
+                    print(f"WARNING: Incomplete plastic data for material {current_material_name}")
+                    print(f"         Line content: '{data_line}'")
+                    print("         Expected format: stress, strain")
+                    print("         Skipping this data point...")
+                    
                 i += 1
 
             fct_id += 1  # Increment the function ID
