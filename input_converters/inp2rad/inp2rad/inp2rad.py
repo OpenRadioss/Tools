@@ -1899,6 +1899,8 @@ def convert_props(input_lines, material_names, non_numeric_references=None, else
         #define pattern matches for various element types (+ rigid elements)
         shell_line_pattern = r'^\s*\*SHELL\s+SECTION\s*,\s*ELSET\s*=\s*[^,]+\s*,?.*$'
         shell_line_match = re.search(shell_line_pattern, line, re.IGNORECASE)
+        shell_general_pattern = r'^\s*\*SHELL\s+GENERAL\s+SECTION\s*,\s*ELSET\s*=\s*[^,]+\s*,?.*$'
+        shell_general_match = re.search(shell_general_pattern, line, re.IGNORECASE)
         membrane_line_pattern = r'^\s*\*membrane\s+SECTION\s*,\s*ELSET\s*=\s*[^,]+\s*,?.*$'
         membrane_line_match = re.search(membrane_line_pattern, line, re.IGNORECASE)
         solid_line_pattern = r'^\s*\*solid\s+SECTION\s*,\s*ELSET\s*=\s*[^,]+\s*,?.*$'
@@ -1916,7 +1918,7 @@ def convert_props(input_lines, material_names, non_numeric_references=None, else
         spring_line_pattern = r'^\s*\*SPRING\s*,\s*ELSET\s*=\s*[^,]+\s*,?.*$'
         spring_line_match = re.search(spring_line_pattern, line, re.IGNORECASE)
 
-        if shell_line_match:
+        if shell_line_match or shell_general_match:
             section_type = 'shell'
             # regular expression to find 'material =' or 'material='
             mat_pattern = r'material\s*=\s*([^,]+)'
@@ -6767,8 +6769,8 @@ def create_part_elsets(input_lines):
     while i < len(input_lines):
         line = input_lines[i].strip()
 
-        # Check for section card lines (*Solid Section, *Shell Section, *Membrane Section)
-        if re.match(r'\*(solid|shell|cohesive|membrane|connector)\s+section', line, re.IGNORECASE):
+        # Check for section card lines (*Solid Section, *Shell Section, *Shell General Section, *Membrane Section)
+        if re.match(r'\*(solid|shell(\s+general)?|cohesive|membrane|connector)\s+section', line, re.IGNORECASE):
             # Extract the elset name
             elset_match = re.search(r'elset\s*=\s*([&\w\-]+)', line, re.IGNORECASE)
             if elset_match:
