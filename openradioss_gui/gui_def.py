@@ -44,8 +44,8 @@ class window:
             self.root.geometry('700x105')
             self.root.minsize(700, 105)
         elif arch == 'Linux':
-            self.root.geometry('800x105')
-            self.root.minsize(800, 105)
+            self.root.geometry('840x105')
+            self.root.minsize(840, 105)
         self.root.resizable(True, True)
 
         # Icons
