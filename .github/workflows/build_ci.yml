@@ -390,7 +390,7 @@ jobs:
       - name: Running builds
         shell: cmd
         run: >
-          call "C:\Program Files (x86)\Intel\oneAPI\setvars.bat" intel64 vs2019 && C:\cygwin64\bin\bash --login -c "
+          call "C:\Program Files (x86)\Intel\oneAPI\setvars.bat" && C:\cygwin64\bin\bash --login -c "
           cd %cd:\=/%;
           mkdir exec;
           cmd=\"./build.bat\";
