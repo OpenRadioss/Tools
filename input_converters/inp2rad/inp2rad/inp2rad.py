@@ -1436,9 +1436,7 @@ def check_if_se(properties):
         'se_tbt', 'se_tet', 'se_trbt', 'se_tret', 'se_tbc', 'se_reftemp', 'se_slope_load',
         'se_slope_unload'
         ]
-    return all(
-        prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
-        )
+    return all(prop in properties for prop in desired_mps)
 
 # checks variables for hyperfoam uniaxial material and returns them to the material write section
 def check_if_hypfua(properties):
@@ -3809,7 +3807,7 @@ def convert_contacts(input_lines, property_names, surf_id, friction_dict, surf_n
                 contactpair = False
 
         # Check for the line indicating contact inclusions
-        elif ppmcontact or (contact_name and re.search(r'^\*CONTACT\s+INCLUSIONS\s*,\s*ALL\s+EXTERIOR', line, re.IGNORECASE)):
+        elif ppmcontact or (contact_name and re.search(r'^\*CONTACT\s+INCLUSIONS', line, re.IGNORECASE)):
             for property_name, property_data in property_names.items():
                 # Extract the property_id from the sub-dictionary and convert it to an integer
                 property_id = int(property_data['prop_id'])
@@ -3906,7 +3904,17 @@ def convert_contacts(input_lines, property_names, surf_id, friction_dict, surf_n
             i += 1 # move to the next line if no match
 
     if contact_name and contact_properties_exist is False:
-
+        contacts.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+        contacts.append(f"#General Self Contact: ID {inter_id}")
+        contacts.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+        contacts.append(f"/INTER/TYPE24/{inter_id}\n{contact_name}")
+        contacts.append("# Surf_ID1  Surf_ID2      Istf                       Irem_i2                Idel")
+        contacts.append("         0         0         4                             0                   0")
+        contacts.append("# grnd_IDS                         Iedge          Edge_angle           Gap_max_s           Gap_max_m")
+        contacts.append("         0                             0                   0                   0                   0")
+        contacts.append("#              Stmin               Stmax     Igap0     Ipen0            Ipen_max")
+        contacts.append("                   0                   0         0         0                   0")
+        contacts.append("#              Stfac                Fric                                  Tstart               Tstop")
         contacts.append("                   0                 0.0                                       0                   0")
         contacts.append("#      IBC                        Inacti               ViscS                             ")
         contacts.append("       000                             5                   0")
