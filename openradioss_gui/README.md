@@ -6,6 +6,10 @@ It is a simple Python/tk based tool to execute OpenRadioss, queue jobs and conve
 
 The D3plot converter can be found at: [Vortex-CAE GitHub repository](https://github.com/Vortex-CAE/Vortex-Radioss)
 
+* [Installation](#installation)
+* [Execution using GUI Mode](#execution-using-gui-mode)
+* [Execution using Batch Mode](#execution-using-batch-mode)
+
 ## Installation
 
 * Python3 must be installed on the system.
@@ -30,7 +34,7 @@ The D3plot converter can be found at: [Vortex-CAE GitHub repository](https://git
 
 * Copy the contents of openradioss_gui folder in an OpenRadioss Release Download.
 
-## Execution
+## Execution using GUI Mode
 
 * Launch the **OpenRadioss_gui.vbs** on Windows
 * Launch the **OpenRadioss_gui.bash** on Linux
@@ -106,3 +110,67 @@ it is possible to submit further jobs from the submission gui after the first an
 The Job Queue shows jobs queued along with the options chosen, with the buttons in the window it is possible to cancel the next or last job from the queue, or to manually start the next or last job from the queue (this happens in addition to the queue being processed, jobs will open another run window and run at same time as any running job, queue will continue to automatically run any remaining jobs only when 1st one finishes)
 
 ![image](./icon/queue_window.png)
+
+## Execution using Batch Mode
+
+OpenRadioss GUI can be used in batch mode for scripting
+
+Launch
+
+* **[Path to OpenRadioss]/openradioss_gui/OpenRadioss_gui.bash -h** on Linux
+* **[Path to OpenRadioss]\openradioss_gui\OpenRadioss_gui.bat -h** on Windows
+
+To obtain the command line help:
+
+      usage: OpenRadioss_gui.py [-h] [-gui] [-i INPUT] [-nt n] [-np p] [-sp] [-starter] 
+                                [-th_to_csv] [-anim_to_vtk] [-anim_to_d3plot]  
+                                [-anim_to_vtkhdf] [-mpi_path MPI_PATH] [-d]
+
+      OpenRadioss GUI
+
+      options:
+        -h, --help                         show this help message and exit
+        -gui, --gui                        Enable GUI mode
+        -i, --input INPUT                  The input file to process in form: filename<.k|.key>, filename_<runnumber 4 digits>.rad or filename.inp
+        -nt, --nt n                        Number of threads
+        -np, --np p                        Number of MPI process
+        -sp, --sp                          Enable Extended Single precision mode (default is double precision)
+        -starter, --starter_only           Enable Starter Only mode
+        -th_to_csv, --th_to_csv            Enable TH to CSV conversion
+        -anim_to_vtk, --anim_to_vtk        Enable Animation to VTK conversion
+        -anim_to_d3plot, --anim_to_d3plot  Enable Animation to D3plot conversion (need VortexRadioss installed)
+        -anim_to_vtkhdf, --anim_to_vtkhdf  Enable Animation to VTKHDF conversion (need VTKHDF installed)
+        -mpi_path, --mpi_path MPI_PATH     Path to MPI installation
+        -d, --debug           Enable debug mode
+
+### Typical launch method in SMP
+
+1. Enter the execution directory (where the input deck is)
+2. [Path to OpenRadioss]/openradioss_gui/OpenRadioss_gui.bash -i [Input_Deck] -nt [t]
+
+### Typical launch method in MPI
+
+Check your MPI settings in the Shell:
+
+* $PATH & $LD_LIBRARY_PATH for Linux
+* %PATH% &  %I_MPI_ROOT% for Windows
+
+#### If MPI settings are already set in shell
+
+1. Enter the execution directory (where the input deck is)
+2. [Path to OpenRadioss]/openradioss_gui/OpenRadioss_gui.bash -i [Input_Deck] -np [p]
+
+#### If MPI settings are not set in the shell
+
+1. Enter the execution directory (where the input deck is)
+2. [Path to OpenRadioss]/openradioss_gui/OpenRadioss_gui.bash -i [Input_Deck] -np [p] -mpi_path [path to MPI installation]
+
+**Example**:
+
+* On Windows:
+
+      OpenRadioss_gui.bat -i CRA2V44_0000.rad -np 4 -mpi_path "c:\Program Files (x86)\Intel\oneAPI\mpi\2021.16"
+
+* On Linux
+
+      OpenRadioss_gui.bash -i CRA2V44_0000.rad -np 4  -mpi_path=/opt/openmpi

@@ -20,6 +20,9 @@
 # IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 # Path to the Python script
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+python_script_dir=$script_dir
+
 script_path="OpenRadioss_gui.py"
 if [ ! -d  $HOME/.OpenRadioss_GUI ]
 then 
@@ -34,4 +37,4 @@ fi
 echo $HOME/.OpenRadioss_GUI/__pycache__
 export PYTHONPYCACHEPREFIX=$HOME/.OpenRadioss_GUI/__pycache__
 
-python3 "$script_path"
+python3 $script_dir/OpenRadioss_gui.py $@

@@ -17,6 +17,8 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 # IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 import os
+import sys
+import argparse
 import json
 import platform
 import tkinter as tk
@@ -42,13 +44,15 @@ try:
 except ImportError:
     vtkhdfenabled = False
 import gui_def
+from runopenradioss import RunOpenRadioss
 
 
 class openradioss_gui:
 
-      def __init__(self,debug):
+      def __init__(self,debug,script_dir):
         # Global Variables
         self.debug=debug
+        self.script_dir=script_dir
         self.mpi_path = ''
         self.current_platform = platform.system()
 
@@ -56,7 +60,7 @@ class openradioss_gui:
 
         self.job_holder = JobHolder(self.debug)
         # Check if the user has selected a valid MPI path
-        self.Window     = gui_def.window(vd3penabled, vtkhdfenabled,self.mpi_path,self.single_status,self.starter_status,self.vtk_status,self.csv_status,self.vtkhdf_status,self.d3plot_status)
+        self.Window     = gui_def.window(vd3penabled, vtkhdfenabled,self.mpi_path,self.single_status,self.starter_status,self.vtk_status,self.csv_status,self.vtkhdf_status,self.d3plot_status,script_dir)
      
         self.job_file_entry=self.Window.file('Job file (.rad, .key, or .k, or .inp)', self.select_file, self.Window.icon_folder)
      
@@ -172,7 +176,7 @@ class openradioss_gui:
                pass
 
       def check_install(self):
-           is_installed = "../hm_cfg_files"
+           is_installed = self.script_dir +os.sep +".."+os.sep+"hm_cfg_files"
            if not os.path.exists(is_installed):
                messagebox.showinfo('INCORRECT INSTALL LOCATION', 'The guiscripts folder needs to be saved inside\n your OpenRadioss Folder\n (Same Folder Level as exec and hm_cfg_files)')
 
@@ -282,4 +286,56 @@ class openradioss_gui:
 if __name__ == "__main__":
 #----------------------------- GUI Elements #--------------------------------
 # File Menu
-  gui= openradioss_gui(0)
+  num_args = len(sys.argv) - 1
+  parser = argparse.ArgumentParser(description='OpenRadioss GUI')
+  parser.add_argument('-gui', '--gui',action='store_true', default=False, help='Enable GUI mode')
+  parser.add_argument('-i', '--input', type=str, help='The input file to process in form:  filename<.k|.key>, filename_<runnumber 4 digits>.rad or filename.inp')
+  parser.add_argument('-nt', '--nt', type=int, metavar='n', help='Number of threads')
+  parser.add_argument('-np', '--np', type=int, metavar='p', help='Number of MPI process')
+  parser.add_argument('-sp', '--sp', action='store_true', default=False, help='Enable Extended Single precision mode (default is double precision)')
+  parser.add_argument('-starter', '--starter_only', action='store_true', default=False, help='Enable Starter Only mode')
+  parser.add_argument('-th_to_csv', '--th_to_csv', action='store_true', default=False, help='Enable TH to CSV conversion')
+  parser.add_argument('-anim_to_vtk', '--anim_to_vtk', action='store_true', default=False, help='Enable Animation to VTK conversion')
+  parser.add_argument('-anim_to_d3plot', '--anim_to_d3plot', action='store_true', default=False, help='Enable Animation to D3plot conversion (need VortexRadioss installed)')
+  parser.add_argument('-anim_to_vtkhdf', '--anim_to_vtkhdf', action='store_true', default=False, help='Enable Animation to VTKHDF conversion (need VTKHDF installed)')
+  parser.add_argument('-mpi_path', '--mpi_path', type=str, help='Path to MPI installation')
+  parser.add_argument('-d', '--debug',action='store_true', default=False, help='Enable debug mode')
+  args = parser.parse_args()
+
+  script_dir = os.path.abspath(__file__)
+  script_dir = os.path.dirname(script_dir)+os.sep
+  if num_args > 0:
+      if args.gui:
+          debug=1 if args.debug else 0
+          gui= openradioss_gui(debug,script_dir)
+          exit(0)
+      if not args.input:
+          print(" ")
+          print("Error: Input file is required in non-GUI mode.")
+          print(" ")
+
+          parser.print_help()
+          exit(1)
+
+      if not args.nt: args.nt=1
+      if not args.np: args.np=1
+    
+      command = []
+      command.append(args.input)
+      command.append(str(args.nt))
+      command.append(str(args.np))
+      command.append("sp" if args.sp else "dp")  # precision
+      command.append("yes" if args.anim_to_vtk else "no")  # anim_to_vtk
+      command.append("yes" if args.th_to_csv else "no")  # th_to_csv
+      command.append("yes" if args.starter_only else "no")  # starter_only
+      command.append("yes" if args.anim_to_d3plot else "no")  # anim_to_d3plot
+      command.append("yes" if args.anim_to_vtkhdf else "no")  # anim_to_vtkhdf
+      command.append(args.mpi_path if args.mpi_path else "")    # mpi_path
+
+      Run_OR= RunOpenRadioss(command, debug=1 if args.debug else 0)
+      Run_OR.batch_run()
+
+  else: 
+      script_dir = os.path.abspath(__file__)
+      script_dir = os.path.dirname(script_dir)+os.sep
+      gui= openradioss_gui(0,script_dir)
