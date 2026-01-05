@@ -16,7 +16,7 @@
 # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 # IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
+import os
 import tkinter as tk
 from tkinter import messagebox, simpledialog
 import platform
@@ -32,7 +32,7 @@ elif arch=='Linux':
     button_width=8
 
 class window:
-    def __init__(self, vd3penabled, vtkhdfenabled,mpi_path,sp_status,starter_status,vtk_status,csv_status,vtkhdf_status,d3plot_status):
+    def __init__(self, vd3penabled, vtkhdfenabled,mpi_path,sp_status,starter_status,vtk_status,csv_status,vtkhdf_status,d3plot_status,script_dir):
 
         self.root = tk.Tk()
         self.root.title('OpenRadioss')
@@ -50,12 +50,12 @@ class window:
 
         # Icons
         if arch == 'Windows':
-             self.root.iconbitmap('./icon/ross.ico')
-             self.icon_folder = tk.PhotoImage(file='./icon/or_folder.png')
+             self.root.iconbitmap(script_dir+'icon'+os.sep+'ross.ico')
+             self.icon_folder = tk.PhotoImage(file=script_dir+'icon'+os.sep+'or_folder.png')
         elif arch == 'Linux':
-             icon_image = tk.PhotoImage(file='./icon/ross.png')
+             icon_image = tk.PhotoImage(file=script_dir+'icon'+os.sep+'ross.png')
              self.root.iconphoto(True, icon_image)
-             self.icon_folder = tk.PhotoImage(file='./icon/or_folder.png')
+             self.icon_folder = tk.PhotoImage(file=script_dir+'icon'+os.sep+'or_folder.png')
 
         # Dropdown Variables
         self.variables = {

@@ -27,8 +27,8 @@ import tkinter as tk
 from tkinter import scrolledtext
 from tkinter import messagebox
 from runopenradioss import RunOpenRadioss
-
 from button_with_highlight import ButtonWithHighlight
+
 try:
     from vortex_radioss.animtod3plot.Anim_to_D3plot import readAndConvert
     vd3penabled = True
@@ -37,13 +37,9 @@ except ImportError:
     vd3penabled = False
 try:
     from animtovtkhdf import AnimToVTKHDF
+    vtkhdfenabled = True     
 except ImportError:
     vtkhdfenabled = False        
-try:
-    import inp2rad
-    inp2rad_enabled=True
-except ImportError:
-    inp2rad_enabled=False
 
 current_platform = platform.system()
 
@@ -60,11 +56,12 @@ class RedirectText:
     def flush(self):
         pass  # Required for compatibility with sys.stdout
 
-
 class JobWindow():
 
     def __init__(self, command,debug):
         #Debug flag activated in OpenRadioss_gui.py
+        script_dir = os.path.abspath(__file__)
+        self.script_dir = os.path.dirname(script_dir)+os.sep
         self.debug=debug
         self.command = command
         self.job_dir = os.path.dirname(command[0])
@@ -74,21 +71,9 @@ class JobWindow():
 
         # Create an instance of RunOpenRadioss
         self.runOpenRadioss = RunOpenRadioss(self.command,self.debug)
+        self.job_name,self.decktype = self.runOpenRadioss.get_decktype()
         self.jobname,self.run_id,self.exec_dir=self.runOpenRadioss.get_jobname_runid_rundirectory()
         # Gather the jobname, run_id, job directory from the command
-
-        if jnm1.endswith('.rad'):
-            self.job_name = os.path.basename(jnm1)[0:-9]
-            self.decktype = 'rad'
-        elif jnm1.endswith('.k'):
-            self.job_name = os.path.basename(jnm1)[0:-2]
-            self.decktype = 'k'
-        elif jnm1.endswith('.key'):
-            self.job_name = os.path.basename(jnm1)[0:-4]
-            self.decktype = 'k'
-        elif jnm1.endswith('.inp'):
-            self.job_name = os.path.basename(jnm1)[0:-4]
-            self.decktype = 'inp'
 
         self.is_finished = False
 
@@ -98,9 +83,9 @@ class JobWindow():
         # Initially disable 'X' button while job is running
         self.window.protocol('WM_DELETE_WINDOW', (lambda: 'pass'))
         if platform.system() == 'Windows':
-            self.window.iconbitmap('./icon/ross.ico')
+            self.window.iconbitmap(self.script_dir+'icon'+os.sep+'ross.ico')
         elif platform.system() == 'Linux':
-            icon_image = tk.PhotoImage(file='./icon/ross.png')
+            icon_image = tk.PhotoImage(file=self.script_dir+'icon'+os.sep+'ross.png')
             self.window.iconphoto(True, icon_image)
         
         # Configure grid layout for the window
@@ -265,47 +250,36 @@ class JobWindow():
         self.print("")
 
         if self.decktype == 'inp':
-            if inp2rad_enabled:
-                # Temporarily disable buttons while inp2rad is running
-                self.stop_button['state'] = 'disable'
-                self.kill_button['state'] = 'disable'
-                self.anim_button['state'] = 'disable'
-                self.h3d_button['state'] = 'disable'
-                if vd3penabled:
+        # Decktype is inp : Run inp2rad conversion
+        # -----------------------------------------------
+
+            # Temporarily disable buttons while inp2rad is running
+            self.stop_button['state'] = 'disable'
+            self.kill_button['state'] = 'disable'
+            self.anim_button['state'] = 'disable'
+            self.h3d_button['state'] = 'disable'
+            if vd3penabled:
                     self.d3p_button['state'] = 'disable'
 
-                self.print(" --------------------------------------------------------")
-                self.print(" Input file is an .inp file, Converting to Radioss format")
-                self.print(" --------------------------------------------------------")
-                self.print("")
+            inp2rad_successful = False  # Flag to track success of conversion
 
-                inp2rad_successful = False  # Flag to track success of conversion
-
-                # Redirect inp2rad stdout and stderr to GUI text widget
-                redirect_text = RedirectText(self.log_text)
-                with contextlib.redirect_stdout(redirect_text), contextlib.redirect_stderr(redirect_text):
+            # Redirect inp2rad stdout and stderr to GUI text widget
+            redirect_text = RedirectText(self.log_text)
+            with contextlib.redirect_stdout(redirect_text), contextlib.redirect_stderr(redirect_text):
                     # Attempt to execute the conversion
-                    success = inp2rad.execute_gui(self.command[0], True)
+                    success = self.runOpenRadioss.inp2rad_conversion()
 
                 # Check if the process completed successfully
-                if success:  # Assuming `success` is a boolean or status code
+            if success:  # Assuming `success` is a boolean or status code
                     self.command[0] = self.command[0][:-4] + '.rad'
-                    self.print(" ------------------------------------------------------")
-                    self.print(" Conversion to Radioss format complete")
-                    self.print(" ------------------------------------------------------")
                     inp2rad_successful = True
-                else:
-                    self.print(" ------------------------------------------------------")
-                    self.print(" Conversion to Radioss format failed")
-                    self.print(" Please try debugging in standalone mode")
-                    self.print(" by running inp2rad from command line")
-                    self.print(" ------------------------------------------------------")
+            else:
                     self.close_button['state'] = 'normal'
                     self.window.protocol('WM_DELETE_WINDOW', self.on_close)
                     self.is_finished = True
 
-                # Only re-enable buttons if the operation was successful
-                if inp2rad_successful:
+            # Only re-enable buttons if the operation was successful
+            if inp2rad_successful:
                     self.stop_button['state'] = 'active'
                     self.kill_button['state'] = 'active'
                     self.anim_button['state'] = 'active'
@@ -313,18 +287,13 @@ class JobWindow():
                     if vd3penabled:
                         self.d3p_button['state'] = 'active'
 
-                # Stop further execution if the inp2rad operation was unsuccessful
-                if not inp2rad_successful:
-                    self.print(" ---------------------------------------------------------")
-                    self.print(" Stopping execution due to unsuccessful inp2rad conversion")
-                    self.print(" ---------------------------------------------------------")
-                    return  # Exit this function early and prevent further execution
-
+            # Stop further execution if the inp2rad operation was unsuccessful
             else:
-                self.print(" ----------------------------------------------------------------------")
-                self.print(" Input file is an .inp file, Conversion to Radioss format not possible ")
-                self.print(" Check presence of inp2rad.py in the same directory              ")
-                self.print(" ----------------------------------------------------------------------")
+                self.print(" ---------------------------------------------------------")
+                self.print(" Stopping execution due to unsuccessful inp2rad conversion")
+                self.print(" ---------------------------------------------------------")
+                return  # Exit this function early and prevent further execution
+
 
         # Starter Deck - execute Starter
         # -------------------------------
@@ -364,127 +333,43 @@ class JobWindow():
                 self.job_process(engine_command_line,custom_env,self.exec_dir)
                 self.run_number = self.run_number + 1
 
-            th_to_csh=self.command[5]
-            if th_to_csh=='yes':
-                # Execute TH to CSV
-                # --------------------
-                th_list=self.runOpenRadioss.get_th_list()
-                if self.debug==1:print("TH List: ",th_list)
-                if len(th_list)>0:
-                    self.print("")
-                    self.print("")
-                    self.print(" ------------------------------------------------------")
-                    self.print(" TH-csv option selected, Converting TH Files to csv")
-                    self.print(" ------------------------------------------------------")
-                    self.print("")
+            # Execute TH to CSV
+            # --------------------
+            # Redirect stdout and stderr to GUI text widget
+            redirect_text = RedirectText(self.log_text)
+            with contextlib.redirect_stdout(redirect_text), contextlib.redirect_stderr(redirect_text):
+                # Attempt to execute the conversion
+                self.runOpenRadioss.convert_th_to_csv()
 
-                    for th_file in th_list:
-                        self.print(" Time History File Being Converted is "+th_file)
-                        self.runOpenRadioss.convert_th_to_csv(th_file)
-                    self.print("")
-                    self.print(" ------------------------------------")
-                    self.print(" TH file conversion to csv complete")
-                    self.print(" ------------------------------------")
-                else:
-                    self.print("")
-                    self.print("")
-                    self.print(" -------------------------------------------------------------")
-                    self.print(" NB: TH-csv option selected, but no TH files found to convert")
-                    self.print(" -------------------------------------------------------------")
+            # Execute Anim to VTK
+            # --------------------
+            redirect_text = RedirectText(self.log_text)
+            with contextlib.redirect_stdout(redirect_text), contextlib.redirect_stderr(redirect_text):
+                # Attempt to execute the conversion
+                self.runOpenRadioss.convert_anim_to_vtk()
 
-            anim_to_vtk=self.command[4]
-            if anim_to_vtk=='yes':
-                # Execute Anim to VTK
-                # --------------------
-                animation_file_list = self.runOpenRadioss.get_animation_list()
-                if self.debug==1:print("Animation_file_list:",animation_file_list)
-                if len(animation_file_list)>0:
-                    self.print("")
-                    self.print("")
-                    self.print(" ------------------------------------------------------")
-                    self.print(" Anim-vtk option selected, Converting Anim Files to vtk")
-                    self.print(" ------------------------------------------------------")
-                    self.print("")
+            # Execute Anim to D3Plot
+            # ----------------------
+            # Redirect stdout and stderr to GUI text widget
+            redirect_text = RedirectText(self.log_text)
+            with contextlib.redirect_stdout(redirect_text), contextlib.redirect_stderr(redirect_text):
+                # Attempt to execute the conversion
+                self.runOpenRadioss.d3plot_conversion()
 
-                    for anim_file in animation_file_list:
-                        self.print(" Anim File Being Converted is "+anim_file)
-                        self.runOpenRadioss.convert_anim_to_vtk(anim_file)
-
-                    self.print("")
-                    self.print(" ------------------------------------")
-                    self.print(" Anim file conversion to vtk complete")
-                    self.print(" ------------------------------------")
-                else:
-                    self.print("")
-                    self.print("")
-                    self.print(" ----------------------------------------------------------------")
-                    self.print(" NB: Anim-vtk option selected, but no Anim files found to convert")
-                    self.print(" ----------------------------------------------------------------")
-
-            anim_to_d3plot=self.command[7]
-            if anim_to_d3plot=='yes':
-                # Execute Anim to D3Plot
-                # ----------------------
-                animation_file_list = self.runOpenRadioss.get_animation_list()
-                if len(animation_file_list)>0:
-                    self.print("")
-                    self.print("")
-                    self.print(" -------------------------------------------------------------")
-                    self.print(" Anim-d3plot option selected, Converting Anim Files to d3plot")
-                    self.print(" -------------------------------------------------------------")
-                    self.print("")
-                    file_stem = os.path.join(self.exec_dir, self.jobname)
-                    try:
-                        readAndConvert(file_stem,silent=True)
-                    except Exception as e:
-                        messagebox.showinfo('Error', 'Error in d3plot conversion: ' + str(e))
-
-
-                    self.print("")
-                    self.print(" ----------------------------------------")
-                    self.print(" Anim file conversion to d3plot complete")
-                    self.print(" ----------------------------------------")
-                else:
-                    self.print("")
-                    self.print("")
-                    self.print(" --------------------------------------------------------------------")
-                    self.print(" NB: Anim-d3plot option selected, but no Anim files found to convert")
-                    self.print(" --------------------------------------------------------------------")
-
-            anim_to_vtkhdf=self.command[8]
-            if anim_to_vtkhdf=='yes':
-                # Execute Anim to VTKHDF
-                # --------------------
-                animation_file_list = self.runOpenRadioss.get_animation_list()
-                if self.debug==1:print("Animation_file_list:",animation_file_list)
-                if len(animation_file_list)>0:
-                    self.print("")
-                    self.print("")
-                    self.print(" ------------------------------------------------------------")
-                    self.print(" Anim-vtkhdf option selected, Converting Anim Files to vtkhdf")
-                    self.print(" ------------------------------------------------------------")
-                    self.print("")
-                    converter = AnimToVTKHDF(verbose=False, static=True)
-                    animation_files_for_vtkhdf = [os.path.join(self.exec_dir, file) for file in animation_file_list]
-                    output_file_for_vtkhdf = os.path.join(self.exec_dir, self.jobname+".vtkhdf")
-                    try:
-                        converter.convert(inputf=animation_files_for_vtkhdf, outputf=output_file_for_vtkhdf)
-                    except Exception as e:
-                        messagebox.showinfo('Error', 'Error in vtkhdf conversion: ' + str(e))
-
-                    self.print("")
-                    self.print(" ---------------------------------------")
-                    self.print(" Anim file conversion to vtkhdf complete")
-                    self.print(" ---------------------------------------")
-                else:
-                    self.print("")
-                    self.print("")
-                    self.print(" -------------------------------------------------------------------")
-                    self.print(" NB: Anim-vtkhdf option selected, but no Anim files found to convert")
-                    self.print(" -------------------------------------------------------------------")
+            # Execute Anim to VTKHDF
+            # --------------------
+            redirect_text = RedirectText(self.log_text)
+            with contextlib.redirect_stdout(redirect_text), contextlib.redirect_stderr(redirect_text):
+                # Attempt to execute the conversion
+                self.runOpenRadioss.convert_anim_to_vtkhdf()
 
         # Job Finished
         # ------------
+        self.print(" ")
+        self.print(" ")
+        self.print(" --------------------")
+        self.print(" Job Finished")
+        self.print(" --------------------")    
         self.is_finished = True
         self.log_text['state'] = 'disable'
         self.stop_button['state'] = 'disable'
@@ -499,3 +384,4 @@ class JobWindow():
         stopping_st_file = self.job_dir + '/stopping_st_' + self.job_name
         if os.path.exists(stopping_st_file):
             os.remove(stopping_st_file)
+
