@@ -23,7 +23,9 @@
 // gcc -o th_to_csv.linux64.exe th_to_csv.c
 
 // To launch conversion :
-// th_to_csv.linux64.exe  T01File 
+// th_to_csv.linux64.exe T01File => will write T01File.csv
+// to specify the output file:
+// th_to_csv.linux64.exe T01File OutputFile => will write OutputFile.csv
 
 
 #include <stdio.h>
@@ -74,15 +76,26 @@ int main( int argc, char *argv[] )
     int nbPartVar=0;
     int nbSubsVar=0;
 
-    if (argc == 2)
+   if (argc < 2)
     {
-        printf("\n T01 TO CSV CONVERTER\n\n");
-        printf("FILE    = %s\n", argv[1]);
-        printf("OUTPUT FILE    = %s.csv",argv[1]);
-        printf("\n");
+        printf(" ** ERROR: MISSING INPUT ARGUMENT: TH-FILE\n");
+        return 1;
     }
 
-    sprintf(csvFilename,"%s.csv",argv[1]);
+    printf("\n T01 TO CSV CONVERTER\n\n");
+    printf("FILE    = %s\n", argv[1]);
+
+    if (argc == 2)
+    {
+        sprintf(csvFilename,"%s.csv",argv[1]);
+    }
+    else
+    {
+        sprintf(csvFilename,"%s.csv",argv[2]);
+    }
+
+    printf("OUTPUT FILE    = %s\n",csvFilename);
+
     sprintf(t01Filename,"%s",argv[1]);
     sprintf(titleFilename,"%s_TITLES",argv[1]);
 /*-----------------------------
@@ -842,6 +855,9 @@ C           2ND RECORD : FAC_MASS,FAC_LENGTH,FAC_TIME */
                     case 31:
                     strcat(ThPartNames[cptThPartNames],"VZ");
                     break;
+                    case 32:
+                    strcat(ThPartNames[cptThPartNames],"PW");
+                    break;
                     default :
                     strcat(ThPartNames[cptThPartNames],"empty");
                     break;
@@ -1014,6 +1030,9 @@ C           2ND RECORD : FAC_MASS,FAC_LENGTH,FAC_TIME */
                         break;
                         case 31:
                         strcat(ThSubsNames[cptThSubsNames],"VZ");
+                        break;
+                        case 32:
+                        strcat(ThSubsNames[cptThSubsNames],"PW");
                         break;
                         default :
                         strcat(ThSubsNames[cptThSubsNames],"empty");
@@ -1215,11 +1234,6 @@ void csvFileWrite(char* csvFilename,char* titleFilename,int *nbglobVar,int *nbPa
     {
         for(i=23;i<=*nbglobVar;i++)
         fprintf(csvFile,"\"NO NAME\",");
-    }
-    
-    if (*nbglobVar >= 16)
-    {
-        fprintf(csvFile,"\"PLASTIC WORK\",");
     }
 
     if (!titlesFile)
