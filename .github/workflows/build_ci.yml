@@ -268,7 +268,7 @@ jobs:
           if [ "${{ matrix.os }}" = "linux64" ]
           then
             echo "Running BUILD for linux GF"
-            source /home/adminqa/.bashrc
+            source /root/.bashrc
           else
             echo "Running BUILD for arm"
             export MODULEPATH=$MODULEPATH:/opt/arm/modulefiles
