@@ -5,20 +5,19 @@ if not exist ..\..\..\exec (
   mkdir ..\..\..\exec
 )
 
-cl -DWIN32 /Fe..\..\..\exec\anim_to_vtk_win64.exe ..\src\anim_to_vtk.cpp Ws2_32.lib
+cd ..
+cargo build --release
 
 set error_var=%errorlevel%
 if %error_var%==0 (
+  copy target\release\anim_to_vtk.exe ..\..\..\exec\anim_to_vtk_win64.exe
   echo.
   echo Build succeeded
   echo.
-  endlocal
-  del *.obj
   exit /b %error_var%
 ) else (
   echo.
   echo Build failed
   echo.
-  endlocal
   exit /b %error_var%
 )
