@@ -135,7 +135,7 @@ fn read_bytes<R: Read>(reader: &mut R, count: usize) -> Vec<u8> {
 /// embedded in the animation file.
 fn read_text<R: Read>(reader: &mut R, count: usize) -> String {
     let buf = read_bytes(reader, count);
-    let s = std::str::from_utf8(&buf).unwrap_or("");
+    let s = String::from_utf8_lossy(&buf);
     s.trim_end_matches('\0').to_string()
 }
 
@@ -175,7 +175,7 @@ fn compute_max_threads(file_sizes: &[u64]) -> usize {
     let mem_limit = match (mem_available, max_file) {
         (Some(mem), size) if size > 0 => {
             let usable = (mem as f64 * 0.8) as u64;
-            let threads = (usable / size) as usize;
+            let threads = (usable / size.saturating_mul(2)) as usize;
             if threads == 0 { 1 } else { threads }
         }
         _ => 1,
@@ -259,8 +259,7 @@ fn write_i32_fast(buf: &mut [u8], val: i32) -> usize {
         write_u32_fast(buf, val as u32)
     } else {
         buf[0] = b'-';
-        let v = (-(val as i64)) as u32;
-        1 + write_u32_fast(&mut buf[1..], v)
+        1 + write_u32_fast(&mut buf[1..], val.unsigned_abs())
     }
 }
 
