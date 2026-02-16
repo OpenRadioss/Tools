@@ -1,0 +1,86 @@
+# vtk DataFile Version 3.0
+vtk output
+ASCII
+DATASET UNSTRUCTURED_GRID
+FIELD FieldData 2
+TIME 1 1 double
+0
+CYCLE 1 1 int
+0
+POINTS 4 float
+1 0 1
+116 0 1
+116 0 16
+1 0 16
+
+CELLS 3 15
+4 0 1 2 3
+4 0 1 2 3
+4 0 1 2 3
+
+CELL_TYPES 3
+9
+9
+9
+
+POINT_DATA 4
+SCALARS NODE_ID int 1
+LOOKUP_TABLE default
+10
+20
+30
+40
+
+VECTORS Velocity float
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+
+CELL_DATA 3
+SCALARS ELEMENT_ID int 1
+LOOKUP_TABLE default
+100
+101
+102
+
+SCALARS PART_ID int 1
+LOOKUP_TABLE default
+1
+2
+3
+
+SCALARS EROSION_STATUS int 1
+LOOKUP_TABLE default
+1
+1
+1
+
+SCALARS 2DELEM_Specific_Energy float 1
+LOOKUP_TABLE default
+0
+0
+0
+
+TENSORS 2DELEM_Stress_(membrane) float
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+
+TENSORS 2DELEM_Strain_(membrane) float
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+
