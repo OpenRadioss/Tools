@@ -403,6 +403,25 @@ fn strip_trailing_zeros(mut val: u64, digits: u32) -> (u64, u32) {
     (val, d)
 }
 
+/// Round an `f64` to the nearest integer using round-half-to-even
+/// (banker's rounding), matching C `printf` behavior.
+///
+/// When the fractional part is exactly 0.5, the value is rounded to the
+/// nearest even integer.  For example, `2.5 → 2`, `3.5 → 4`.
+#[inline(always)]
+fn round_half_to_even(v: f64) -> u64 {
+    let floor = v as u64;
+    let frac = v - floor as f64;
+    if frac > 0.5 {
+        floor + 1
+    } else if frac < 0.5 {
+        floor
+    } else {
+        // Exactly 0.5: round to even
+        if floor % 2 == 0 { floor } else { floor + 1 }
+    }
+}
+
 /// Format an `f64` value as `%.6g` (6 significant digits, shortest
 /// representation), writing directly into `buf`.
 ///
@@ -417,7 +436,7 @@ fn format_g6(buf: &mut [u8], val: f64) -> usize {
     }
     let mut pos = 0usize;
     let mut v = val;
-    if val.is_sign_negative() && val != 0.0 {
+    if val.is_sign_negative() {
         if val.is_infinite() {
             buf[..4].copy_from_slice(b"-inf");
             return 4;
@@ -443,7 +462,7 @@ fn format_g6(buf: &mut [u8], val: f64) -> usize {
     if exp10 >= -4 && exp10 < PRECISION {
         let frac_digits = (PRECISION - 1 - exp10).max(0) as u32;
         let scale = pow10_f64(frac_digits as i32);
-        let rounded = (v * scale + 0.5) as u64;
+        let rounded = round_half_to_even(v * scale);
 
         // Check if rounding carried into the next order of magnitude,
         // which would push us into exponential notation territory.
@@ -502,7 +521,7 @@ fn format_g6_exp(buf: &mut [u8], mut pos: usize, v: f64, exp10: i32) -> usize {
     let frac_digits = (PRECISION - 1) as u32;
     let scale = pow10_f64(frac_digits as i32);
     let sig = v / pow10_f64(exp10);
-    let mut rounded = (sig * scale + 0.5) as u64;
+    let mut rounded = round_half_to_even(sig * scale);
     let mut e = exp10;
 
     if rounded >= POW10_U64[(frac_digits + 1) as usize] {
@@ -2295,5 +2314,391 @@ fn main() {
         process::exit(1);
     } else if successful_files > 1 {
         eprintln!("\nConversion complete: {} files converted successfully", successful_files);
+    }
+}
+
+// =====================================================================
+// Unit tests
+// =====================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ----- Helper: format_g6 to String --------------------------------
+
+    fn g6(val: f64) -> String {
+        let mut buf = [0u8; 32];
+        let len = format_g6(&mut buf, val);
+        std::str::from_utf8(&buf[..len]).unwrap().to_string()
+    }
+
+    // ----- write_u32_fast ---------------------------------------------
+
+    #[test]
+    fn test_write_u32_fast_zero() {
+        let mut buf = [0u8; 10];
+        let len = write_u32_fast(&mut buf, 0);
+        assert_eq!(&buf[..len], b"0");
+    }
+
+    #[test]
+    fn test_write_u32_fast_single_digit() {
+        let mut buf = [0u8; 10];
+        let len = write_u32_fast(&mut buf, 7);
+        assert_eq!(&buf[..len], b"7");
+    }
+
+    #[test]
+    fn test_write_u32_fast_two_digits() {
+        let mut buf = [0u8; 10];
+        let len = write_u32_fast(&mut buf, 42);
+        assert_eq!(&buf[..len], b"42");
+    }
+
+    #[test]
+    fn test_write_u32_fast_boundary_99() {
+        let mut buf = [0u8; 10];
+        let len = write_u32_fast(&mut buf, 99);
+        assert_eq!(&buf[..len], b"99");
+    }
+
+    #[test]
+    fn test_write_u32_fast_boundary_100() {
+        let mut buf = [0u8; 10];
+        let len = write_u32_fast(&mut buf, 100);
+        assert_eq!(&buf[..len], b"100");
+    }
+
+    #[test]
+    fn test_write_u32_fast_large() {
+        let mut buf = [0u8; 10];
+        let len = write_u32_fast(&mut buf, 1234567890);
+        assert_eq!(&buf[..len], b"1234567890");
+    }
+
+    #[test]
+    fn test_write_u32_fast_max() {
+        let mut buf = [0u8; 10];
+        let len = write_u32_fast(&mut buf, u32::MAX);
+        assert_eq!(&buf[..len], b"4294967295");
+    }
+
+    // ----- write_i32_fast ---------------------------------------------
+
+    #[test]
+    fn test_write_i32_fast_positive() {
+        let mut buf = [0u8; 11];
+        let len = write_i32_fast(&mut buf, 42);
+        assert_eq!(&buf[..len], b"42");
+    }
+
+    #[test]
+    fn test_write_i32_fast_zero() {
+        let mut buf = [0u8; 11];
+        let len = write_i32_fast(&mut buf, 0);
+        assert_eq!(&buf[..len], b"0");
+    }
+
+    #[test]
+    fn test_write_i32_fast_negative() {
+        let mut buf = [0u8; 11];
+        let len = write_i32_fast(&mut buf, -123);
+        assert_eq!(&buf[..len], b"-123");
+    }
+
+    #[test]
+    fn test_write_i32_fast_min() {
+        let mut buf = [0u8; 11];
+        let len = write_i32_fast(&mut buf, i32::MIN);
+        assert_eq!(&buf[..len], b"-2147483648");
+    }
+
+    // ----- write_u64_fast ---------------------------------------------
+
+    #[test]
+    fn test_write_u64_fast_zero() {
+        let mut buf = [0u8; 20];
+        let len = write_u64_fast(&mut buf, 0);
+        assert_eq!(&buf[..len], b"0");
+    }
+
+    #[test]
+    fn test_write_u64_fast_small() {
+        let mut buf = [0u8; 20];
+        let len = write_u64_fast(&mut buf, 999);
+        assert_eq!(&buf[..len], b"999");
+    }
+
+    #[test]
+    fn test_write_u64_fast_above_u32() {
+        let mut buf = [0u8; 20];
+        let len = write_u64_fast(&mut buf, 5_000_000_000);
+        assert_eq!(&buf[..len], b"5000000000");
+    }
+
+    #[test]
+    fn test_write_u64_fast_max() {
+        let mut buf = [0u8; 20];
+        let len = write_u64_fast(&mut buf, u64::MAX);
+        assert_eq!(&buf[..len], b"18446744073709551615");
+    }
+
+    // ----- fast_log10_floor -------------------------------------------
+
+    #[test]
+    fn test_log10_floor_powers_of_10() {
+        for e in 0..15 {
+            let v = 10.0_f64.powi(e);
+            assert_eq!(fast_log10_floor(v), e, "10^{e}");
+        }
+    }
+
+    #[test]
+    fn test_log10_floor_just_below() {
+        // 9.999... is just below 10 → floor(log10) = 0
+        assert_eq!(fast_log10_floor(9.999), 0);
+        assert_eq!(fast_log10_floor(99.99), 1);
+        assert_eq!(fast_log10_floor(0.999), -1);
+    }
+
+    #[test]
+    fn test_log10_floor_just_above() {
+        assert_eq!(fast_log10_floor(10.001), 1);
+        assert_eq!(fast_log10_floor(1.001), 0);
+        assert_eq!(fast_log10_floor(0.1001), -1);
+    }
+
+    #[test]
+    fn test_log10_floor_small_values() {
+        assert_eq!(fast_log10_floor(0.001), -3);
+        assert_eq!(fast_log10_floor(0.0001), -4);
+        assert_eq!(fast_log10_floor(1e-10), -10);
+    }
+
+    // ----- strip_trailing_zeros ---------------------------------------
+
+    #[test]
+    fn test_strip_trailing_zeros_no_zeros() {
+        assert_eq!(strip_trailing_zeros(123, 3), (123, 3));
+    }
+
+    #[test]
+    fn test_strip_trailing_zeros_some() {
+        assert_eq!(strip_trailing_zeros(12300, 5), (123, 3));
+    }
+
+    #[test]
+    fn test_strip_trailing_zeros_all() {
+        assert_eq!(strip_trailing_zeros(10000, 5), (1, 1));
+    }
+
+    #[test]
+    fn test_strip_trailing_zeros_single_zero() {
+        assert_eq!(strip_trailing_zeros(120, 3), (12, 2));
+    }
+
+    #[test]
+    fn test_strip_trailing_zeros_zero_value() {
+        // All zeros → strips everything
+        assert_eq!(strip_trailing_zeros(0, 3), (0, 0));
+    }
+
+    // ----- round_half_to_even ----------------------------------------
+
+    #[test]
+    fn test_round_half_to_even_basic() {
+        assert_eq!(round_half_to_even(2.3), 2);
+        assert_eq!(round_half_to_even(2.7), 3);
+    }
+
+    #[test]
+    fn test_round_half_to_even_half_down() {
+        // 2.5 → round to even → 2
+        assert_eq!(round_half_to_even(2.5), 2);
+        // 4.5 → round to even → 4
+        assert_eq!(round_half_to_even(4.5), 4);
+    }
+
+    #[test]
+    fn test_round_half_to_even_half_up() {
+        // 3.5 → round to even → 4
+        assert_eq!(round_half_to_even(3.5), 4);
+        // 5.5 → round to even → 6
+        assert_eq!(round_half_to_even(5.5), 6);
+    }
+
+    #[test]
+    fn test_round_half_to_even_zero() {
+        assert_eq!(round_half_to_even(0.5), 0);
+        assert_eq!(round_half_to_even(1.5), 2);
+    }
+
+    // ----- format_g6 -------------------------------------------------
+
+    #[test]
+    fn test_g6_zero() {
+        assert_eq!(g6(0.0), "0");
+    }
+
+    #[test]
+    fn test_g6_negative_zero() {
+        assert_eq!(g6(-0.0), "-0");
+    }
+
+    #[test]
+    fn test_g6_nan() {
+        assert_eq!(g6(f64::NAN), "nan");
+    }
+
+    #[test]
+    fn test_g6_inf() {
+        assert_eq!(g6(f64::INFINITY), "inf");
+        assert_eq!(g6(f64::NEG_INFINITY), "-inf");
+    }
+
+    #[test]
+    fn test_g6_integers() {
+        assert_eq!(g6(1.0), "1");
+        assert_eq!(g6(5.0), "5");
+        assert_eq!(g6(-3.0), "-3");
+        assert_eq!(g6(100.0), "100");
+        assert_eq!(g6(123456.0), "123456");
+    }
+
+    #[test]
+    fn test_g6_small_fixed() {
+        assert_eq!(g6(0.001234), "0.001234");
+        assert_eq!(g6(0.0001), "0.0001");
+    }
+
+    #[test]
+    fn test_g6_exponential() {
+        assert_eq!(g6(1e6), "1e+06");
+        assert_eq!(g6(1.23e10), "1.23e+10");
+        assert_eq!(g6(1e-5), "1e-05");
+        assert_eq!(g6(1.5e-5), "1.5e-05");
+    }
+
+    #[test]
+    fn test_g6_trailing_zeros_stripped() {
+        assert_eq!(g6(1.50), "1.5");
+        assert_eq!(g6(1.10), "1.1");
+        assert_eq!(g6(100.0), "100");
+    }
+
+    #[test]
+    fn test_g6_six_significant_digits() {
+        assert_eq!(g6(3.14159), "3.14159");
+        assert_eq!(g6(123456.0), "123456");
+        assert_eq!(g6(1234567.0), "1.23457e+06");
+    }
+
+    #[test]
+    fn test_g6_negative() {
+        assert_eq!(g6(-1.5), "-1.5");
+        assert_eq!(g6(-0.001234), "-0.001234");
+        assert_eq!(g6(-1.23e10), "-1.23e+10");
+    }
+
+    #[test]
+    fn test_g6_boundary_fixed_vs_exp() {
+        // exp10 = -4 → fixed:  0.0001234
+        assert_eq!(g6(0.0001234), "0.0001234");
+        // exp10 = -5 → exponential
+        assert_eq!(g6(0.00001234), "1.234e-05");
+        // exp10 = 5  → fixed:  999999
+        assert_eq!(g6(999999.0), "999999");
+        // exp10 = 6  → exponential
+        assert_eq!(g6(1000000.0), "1e+06");
+    }
+
+    // ----- unique_count_4 --------------------------------------------
+
+    #[test]
+    fn test_unique_count_4_all_different() {
+        assert_eq!(unique_count_4(&[1, 2, 3, 4]), 4);
+    }
+
+    #[test]
+    fn test_unique_count_4_triangle() {
+        // Degenerate quad: node repeated → triangle
+        assert_eq!(unique_count_4(&[1, 2, 3, 3]), 3);
+        assert_eq!(unique_count_4(&[1, 2, 3, 1]), 3);
+    }
+
+    #[test]
+    fn test_unique_count_4_all_same() {
+        assert_eq!(unique_count_4(&[5, 5, 5, 5]), 1);
+    }
+
+    #[test]
+    fn test_unique_count_4_two_pairs() {
+        assert_eq!(unique_count_4(&[1, 2, 1, 2]), 2);
+    }
+
+    // ----- unique_sorted_4_of_8 --------------------------------------
+
+    #[test]
+    fn test_unique_sorted_4_of_8_hex() {
+        // True hexahedron: 8 distinct nodes → None
+        assert_eq!(unique_sorted_4_of_8(&[1, 2, 3, 4, 5, 6, 7, 8]), None);
+    }
+
+    #[test]
+    fn test_unique_sorted_4_of_8_tet() {
+        // Degenerate tet: only 4 distinct nodes
+        assert_eq!(
+            unique_sorted_4_of_8(&[1, 2, 3, 3, 4, 4, 1, 2]),
+            Some([1, 2, 3, 4])
+        );
+    }
+
+    #[test]
+    fn test_unique_sorted_4_of_8_five_unique() {
+        // 5 distinct nodes → None (not a tet)
+        assert_eq!(unique_sorted_4_of_8(&[1, 2, 3, 4, 5, 1, 2, 3]), None);
+    }
+
+    // ----- atoi_prefix -----------------------------------------------
+
+    #[test]
+    fn test_atoi_prefix_simple() {
+        assert_eq!(atoi_prefix("42"), 42);
+    }
+
+    #[test]
+    fn test_atoi_prefix_with_trailing() {
+        assert_eq!(atoi_prefix("123abc"), 123);
+    }
+
+    #[test]
+    fn test_atoi_prefix_negative() {
+        assert_eq!(atoi_prefix("-7"), -7);
+    }
+
+    #[test]
+    fn test_atoi_prefix_leading_whitespace() {
+        assert_eq!(atoi_prefix("  99"), 99);
+    }
+
+    #[test]
+    fn test_atoi_prefix_plus_sign() {
+        assert_eq!(atoi_prefix("+5"), 5);
+    }
+
+    #[test]
+    fn test_atoi_prefix_no_digits() {
+        assert_eq!(atoi_prefix("abc"), 0);
+        assert_eq!(atoi_prefix(""), 0);
+    }
+
+    // ----- replace_underscore ----------------------------------------
+
+    #[test]
+    fn test_replace_underscore() {
+        assert_eq!(replace_underscore("hello world"), "hello_world");
+        assert_eq!(replace_underscore("no_spaces"), "no_spaces");
+        assert_eq!(replace_underscore("a b c"), "a_b_c");
     }
 }

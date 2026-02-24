@@ -1,0 +1,209 @@
+# vtk DataFile Version 3.0
+vtk output
+ASCII
+DATASET UNSTRUCTURED_GRID
+FIELD FieldData 2
+TIME 1 1 double
+0
+CYCLE 1 1 int
+0
+POINTS 27 float
+0 0 0
+100 0 0
+100 100 0
+0 100 0
+0 0 100
+100 0 100
+100 100 100
+0 100 100
+0 0 100.001
+0 0 0
+100 0 0
+100 100 0
+0 100 0
+0 0 100
+100 0 100
+100 100 100
+0 100 100
+0 0 100.001
+0 0 0
+100 0 0
+100 100 0
+0 100 0
+0 0 100
+100 0 100
+100 100 100
+0 100 100
+0 0 100.001
+
+CELLS 3 27
+8 0 1 2 3 4 5 6 7
+8 9 10 11 12 13 14 15 16
+8 19 23 24 20 18 22 25 21
+
+CELL_TYPES 3
+12
+12
+12
+
+POINT_DATA 27
+SCALARS NODE_ID int 1
+LOOKUP_TABLE default
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+
+VECTORS Velocity float
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+
+VECTORS Acceleration float
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 -0.0238061
+0 0 -0.0238061
+0 0 -0.0238061
+0 0 -0.0238061
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 -0.0238061
+0 0 -0.0238061
+0 0 -0.0238061
+0 0 -0.0238061
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 -0.0238061
+0 0 -0.0238061
+0 0 -0.0238061
+0 0 -0.0238061
+0 0 0
+
+VECTORS Internal_Forces float
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+
+CELL_DATA 3
+SCALARS ELEMENT_ID int 1
+LOOKUP_TABLE default
+1
+2
+3
+
+SCALARS PART_ID int 1
+LOOKUP_TABLE default
+1
+2
+3
+
+SCALARS EROSION_STATUS int 1
+LOOKUP_TABLE default
+1
+1
+1
+
+SCALARS 3DELEM_Pressure float 1
+LOOKUP_TABLE default
+0
+0
+0
+
+SCALARS 3DELEM_Stress_X_ float 1
+LOOKUP_TABLE default
+0
+0
+0
+
+SCALARS 3DELEM_Stress_Y_ float 1
+LOOKUP_TABLE default
+0
+0
+0
+
+SCALARS 3DELEM_Stress_Z_ float 1
+LOOKUP_TABLE default
+0
+0
+0
+

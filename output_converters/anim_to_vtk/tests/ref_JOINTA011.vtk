@@ -1,0 +1,415 @@
+# vtk DataFile Version 3.0
+vtk output
+ASCII
+DATASET UNSTRUCTURED_GRID
+FIELD FieldData 2
+TIME 1 1 double
+20.001
+CYCLE 1 1 int
+0
+POINTS 21 float
+0 0 0
+0 0 0
+0 0 0.199155
+-75 0 0
+0 0 0.199155
+-100 -10 -10
+-100 10 -10
+-100 10 10
+-100 -10 10
+-50 -10 -10
+-50 10 -10
+-50 10 10
+-50 -10 10
+50.99 0.132297 -9.80085
+47.0168 19.7337 -9.80085
+47.0168 19.7337 10.1992
+50.99 0.132297 10.1992
+99.9935 10.0653 -9.80085
+96.0203 29.6667 -9.80085
+96.0203 29.6667 10.1992
+99.9935 10.0653 10.1992
+
+CELLS 21 75
+2 1 2
+2 3 1
+2 3 5
+2 3 6
+2 3 7
+2 3 8
+2 3 9
+2 3 10
+2 3 11
+2 3 12
+2 4 2
+2 4 13
+2 4 14
+2 4 15
+2 4 16
+2 4 17
+2 4 18
+2 4 19
+2 4 20
+8 5  6  7  8  9  10  11  12
+8 13  14  15  16  17  18  19  20
+
+CELL_TYPES 21
+3
+3
+3
+3
+3
+3
+3
+3
+3
+3
+3
+3
+3
+3
+3
+3
+3
+3
+3
+12
+12
+
+POINT_DATA 21
+SCALARS NODE_ID int 1
+LOOKUP_TABLE default
+0
+1
+2
+5
+6
+11
+12
+13
+14
+21
+22
+23
+24
+51
+52
+53
+54
+61
+62
+63
+64
+
+VECTORS Displacement float
+0 0 0
+0 0 0
+0 0 0.199155
+0 0 0
+0 0 0.199155
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0.990023 10.1323 0.199155
+-2.98317 9.73367 0.199155
+-2.98317 9.73367 0.199155
+0.990023 10.1323 0.199155
+-0.00654947 20.0653 0.199155
+-3.97974 19.6667 0.199155
+-3.97974 19.6667 0.199155
+-0.00654947 20.0653 0.199155
+
+CELL_DATA 21
+SCALARS ELEMENT_ID int 1
+LOOKUP_TABLE default
+30
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+10
+20
+
+SCALARS PART_ID int 1
+LOOKUP_TABLE default
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+2
+2
+2
+2
+2
+2
+2
+2
+2
+2
+2
+
+SCALARS EROSION_STATUS int 1
+LOOKUP_TABLE default
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+0
+0
+
+SCALARS 1DELEM_Force_&_Moment_F1 float 1
+LOOKUP_TABLE default
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+SCALARS 1DELEM_Force_&_Moment_F2 float 1
+LOOKUP_TABLE default
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+SCALARS 1DELEM_Force_&_Moment_F3 float 1
+LOOKUP_TABLE default
+99059.4
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+SCALARS 1DELEM_Force_&_Moment_M1 float 1
+LOOKUP_TABLE default
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+SCALARS 1DELEM_Force_&_Moment_M2 float 1
+LOOKUP_TABLE default
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+SCALARS 1DELEM_Force_&_Moment_M3 float 1
+LOOKUP_TABLE default
+0.19999
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+SCALARS 1DELEM_Force_&_Moment_M4 float 1
+LOOKUP_TABLE default
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+SCALARS 1DELEM_Force_&_Moment_M5 float 1
+LOOKUP_TABLE default
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+SCALARS 1DELEM_Force_&_Moment_M6 float 1
+LOOKUP_TABLE default
+-0.19999
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
