@@ -1,6 +1,6 @@
 # anim_to_vtk
 
-anim_to_vtk is an external tool to convert OpenRadioss animation files to legacy VTK format (ASCII or binary).
+anim_to_vtk is an external tool to convert OpenRadioss animation files to legacy VTK format (ASCII or binary) or Universal File Format (.unv) for FEMAP / Simcenter.
 
 ## How to build
 
@@ -57,6 +57,12 @@ To match the legacy C++ ASCII float formatting, use `--legacy` (ASCII only):
 
         ./anim_to_vtk_linux64_gf [Deck Rootname]A001 --legacy
 
+To generate Universal File Format (.unv) output for FEMAP / Simcenter, use the `--unv` flag:
+
+        ./anim_to_vtk_linux64_gf [Deck Rootname]A001 --unv
+
+This creates `[Deck Rootname]A001.unv`
+
 #### Convert multiple files
 
 You can convert multiple files in a single command:
@@ -66,6 +72,10 @@ You can convert multiple files in a single command:
 Or with binary format:
 
         ./anim_to_vtk_linux64_gf [Deck Rootname]A001 [Deck Rootname]A002 [Deck Rootname]A003 --binary
+
+Or UNV format:
+
+        ./anim_to_vtk_linux64_gf [Deck Rootname]A001 [Deck Rootname]A002 [Deck Rootname]A003 --unv
 
 The `--binary` and `--legacy` flags can be placed anywhere in the command line arguments.
 
@@ -78,6 +88,10 @@ Using shell wildcards to convert all animation files at once:
 Or with binary format:
 
         ./anim_to_vtk_linux64_gf [Deck Rootname]A* --binary
+
+Or convert all to UNV:
+
+        ./anim_to_vtk_linux64_gf [Deck Rootname]A* --unv
 
 ### Legacy Batch Conversion Script (Optional)
 
@@ -97,9 +111,10 @@ In Paraview, the vtk files are bundled and can be loaded in one step.
 
 ### Output Format Options
 
-- **ASCII format** (default): Human-readable text format, larger file size
-- **Binary format** (`--binary` or `-b` flag): Compact binary format with approximately 70-80% smaller file size and faster loading times in visualization software
+- **ASCII format** (default): Human-readable VTK text format, larger file size
+- **Binary format** (`--binary` or `-b` flag): Compact binary VTK format with approximately 70-80% smaller file size and faster loading times in visualization software
 - **Legacy formatting** (`--legacy` or `-l` flag): C++-compatible ASCII float formatting to match historical VTK output
+- **Universal File Format** (`--unv` or `-u` flag): ASCII UNV output for FEMAP, Simcenter, and other FEA pre/post-processors. Uses UNV datasets 2411 (nodes), 2412 (elements), and 2414 (results). Supported element types: Rod (11), Thin Shell Tri (91), Thin Shell Quad (94), Solid Tetra (111), Solid Brick (115), Lumped Mass (161 for SPH). All nodal/elemental scalar, vector, and tensor results are exported.
 
 ## Performance
 
