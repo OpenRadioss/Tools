@@ -155,7 +155,7 @@ def read_nodes(input_lines):
         return node_data, remaining_lines
 
 ####################################################################################################
-#debug to check the filtered input                                                                 #
+# debug to check the filtered input                                                                #
 ####################################################################################################
     output_filter = os.path.splitext(input_file_name)[0] + "_test_filter_postnodes.inp"  # FOR DEBUG
     output_filter_path = os.path.join(os.path.dirname(input_file_path), output_filter)   # FOR DEBUG
@@ -237,6 +237,7 @@ def convert_distcoup(input_lines):
                 print(f"found a coupling on line {line}")
             refnode_match = refnode_pattern.search(line)
             surface_match = surface_pattern.search(line)
+            j = 0
             if refnode_match and surface_match:
                 current_refnode = refnode_match.group(1)
                 current_surface = surface_match.group(1)
@@ -594,6 +595,7 @@ def convert_nsets(input_lines, nset_references):
     print("postnsets written")
     return nsets, nset_counter, output_lines
 
+
 ####################################################################################################
 # Function create /GRNOD/NODE and /TH/NODE from nset data                                          #
 ####################################################################################################
@@ -626,6 +628,7 @@ def create_nblocks(nsets):
         nset_blocks.append((grnod_block, thnod_block))
 
     return nset_blocks
+
 
 ####################################################################################################
 # Function to convert material data                                                                #
@@ -752,14 +755,14 @@ def convert_materials(input_lines, nset_counter):
                     material_names[current_material_name]['rho'] = density_value
                     rho_magnitude = max(rho_magnitude, density_value)
                 except ValueError:
-                    print(f"WARNING: Invalid density value for material {current_material_name}")
-                    print(f"         Line content: '{density_line}'")
-                    print("         Skipping this density definition...")
+                    print(f"### WARNING ###: Invalid density value for material {current_material_name}")
+                    print(f"                 Line content: '{density_line}'")
+                    print("                 Skipping this density definition...")
             else:
-                print(f"WARNING: Empty density data for material {current_material_name}")
-                print(f"         Line content: '{density_line}'")
-                print("         Expected format: density_value")
-                print("         Skipping this density definition...")
+                print(f"### WARNING ###: Empty density data for material {current_material_name}")
+                print(f"                 Line content: '{density_line}'")
+                print("                 Expected format: density_value")
+                print("                 Skipping this density definition...")
 
         # elastic
         elif (
@@ -780,14 +783,14 @@ def convert_materials(input_lines, nset_counter):
                     e_magnitude = max(e_magnitude, emodulus)
                     material_names[current_material_name]['poissrat'] = poissrat
                 except ValueError:
-                    print(f"WARNING: Invalid elastic values for material {current_material_name}")
-                    print(f"         Line content: '{elastic_line}'")
-                    print("         Skipping this elastic definition...")
+                    print(f"### WARNING ###: Invalid elastic values for material {current_material_name}")
+                    print(f"                 Line content: '{elastic_line}'")
+                    print("                 Skipping this elastic definition...")
             else:
-                print(f"WARNING: Incomplete elastic data for material {current_material_name}")
-                print(f"         Line content: '{elastic_line}'")
-                print("         Expected format: E_modulus, Poisson_ratio")
-                print("         Skipping this elastic definition...")
+                print(f"### WARNING ###: Incomplete elastic data for material {current_material_name}")
+                print(f"                 Line content: '{elastic_line}'")
+                print("                 Expected format: E_modulus, Poisson_ratio")
+                print("                 Skipping this elastic definition...")
 
         # elastic with engineering constants:
         # NB: Today we look at 1st direction elastic constants only, and convert to /MAT/LAW1
@@ -800,10 +803,10 @@ def convert_materials(input_lines, nset_counter):
                 and 'engineering constants' in line.strip().lower()
              ):
             print("**************************************************************************")
-            print("WARNING: Engineering Constants (Orthotropy) Defined In Material:")
-            print(f"         {current_material_name}")
-            print("         Currently Only The First Direction Values are Used")
-            print("         And Orthotropy is not considered")
+            print("### WARNING ###: Engineering Constants (Orthotropy) Defined In Material:")
+            print(f"                 {current_material_name}")
+            print("                 Currently Only The First Direction Values are Used")
+            print("                 And Orthotropy is not considered")
             print("**************************************************************************")
 
             i += 1
@@ -819,14 +822,14 @@ def convert_materials(input_lines, nset_counter):
                     e_magnitude = max(e_magnitude, emodulus)
                     material_names[current_material_name]['poissrat'] = poissrat
                 except ValueError:
-                    print(f"WARNING: Invalid engineering constants values for material {current_material_name}")
-                    print(f"         Line content: '{elastic_line}'")
-                    print("         Skipping this elastic definition...")
+                    print(f"### WARNING ###: Invalid engineering constants values for material {current_material_name}")
+                    print(f"                 Line content: '{elastic_line}'")
+                    print("                 Skipping this elastic definition...")
             else:
-                print(f"WARNING: Incomplete engineering constants data for material {current_material_name}")
-                print(f"         Line content: '{elastic_line}'")
-                print("         Expected format: E1, E2, E3, nu12, nu13, nu23, G12, G13, G23")
-                print("         Skipping this elastic definition...")
+                print(f"### WARNING ###: Incomplete engineering constants data for material {current_material_name}")
+                print(f"                 Line content: '{elastic_line}'")
+                print("                 Expected format: E1, E2, E3, nu12, nu13, nu23, G12, G13, G23")
+                print("                 Skipping this elastic definition...")
 
         # connect/cohesive
         elif (
@@ -843,20 +846,20 @@ def convert_materials(input_lines, nset_counter):
             e_magnitude = max(e_magnitude, emodulus)
 
             if gmodulus1 != gmodulus2:
-                print("**************************************************************************")
-                print("WARNING: Cohesive Material With Different G1, G2 Values In Material:")
-                print(f"         {current_material_name}")
-                print("         Only The First G Value  Is Used")
-                print("**************************************************************************")
+                print("****************************************************************************")
+                print("### WARNING ###: Cohesive Material With Different G1, G2 Values In Material:")
+                print(f"                 {current_material_name}")
+                print("                 Only The First G Value  Is Used")
+                print("****************************************************************************")
 
             material_names[current_material_name]['gmodulus'] = gmodulus1
             if temperature:
-                print("*****************************************************************")
-                print("WARNING: Cohesive Temperature Dependent Data Present In Material:")
-                print(f"         {current_material_name}")
-                print("         Temperature Dependent Data Will Not Be Translated")
-                print("         Only The First Temperature Data Set Is Used")
-                print("*****************************************************************")
+                print("*************************************************************************")
+                print("### WARNING ###: Cohesive Temperature Dependent Data Present In Material:")
+                print(f"                 {current_material_name}")
+                print("                 Temperature Dependent Data Will Not Be Translated")
+                print("                 Only The First Temperature Data Set Is Used")
+                print("*************************************************************************")
 
         # hyperfoam
         elif current_material_name and line.lower().startswith('*hyperfoam'):
@@ -1053,14 +1056,14 @@ def convert_materials(input_lines, nset_counter):
                         x, y = map(float, plastic_values[0:2])
                         plastic_data.append((abs(y), abs(x)))
                     except ValueError:
-                        print(f"WARNING: Invalid plastic data for material {current_material_name}")
-                        print(f"         Line content: '{data_line}'")
-                        print("         Skipping this data point...")
+                        print(f"### WARNING ###: Invalid plastic data for material {current_material_name}")
+                        print(f"                 Line content: '{data_line}'")
+                        print("                 Skipping this data point...")
                 else:
-                    print(f"WARNING: Incomplete plastic data for material {current_material_name}")
-                    print(f"         Line content: '{data_line}'")
-                    print("         Expected format: stress, strain")
-                    print("         Skipping this data point...")
+                    print(f"### WARNING ###: Incomplete plastic data for material {current_material_name}")
+                    print(f"                 Line content: '{data_line}'")
+                    print("                 Expected format: stress, strain")
+                    print("                 Skipping this data point...")
                     
                 i += 1
 
@@ -1354,10 +1357,10 @@ def convert_materials(input_lines, nset_counter):
     return material_names, extra_material_names, fct_id, nset_counter # return material names to main convert def
 
 
-###############################################################################################
-# Functions to check what type of materials to write based on stored dictionary data:         #
-#  called by file write section and used to call relevant material write def (next section)   #
-###############################################################################################
+####################################################################################################
+# Functions to check what type of materials to write based on stored dictionary data:              #
+#  called by file write section and used to call relevant material write def (next section)        #
+####################################################################################################
 # checks for variables for elastic material and returns them to the material write section
 def check_if_mass(properties):
     desired_mps = ['material_id', 'masselement', 'mass']
@@ -1474,9 +1477,10 @@ def check_if_damping(properties):
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
 
-###############################################################################################
-# Functions to write new materials,  called in write section                                  #
-###############################################################################################
+
+####################################################################################################
+# Functions to write new materials,  called in write section                                       #
+####################################################################################################
 # MAT LAW1
 # writes elastic material
 def write_elastic_material(
@@ -1871,7 +1875,7 @@ def write_admas(material_name, nsets, mass, output_file):
 #   The ELSET existing for an element at element creation becomes its 'PART' (same as PROP)        #
 #                                                                                                  #
 #   Except in cases where the section references an ELSET that then references the ELSET defined   #
-#   at element creation  in which case the ELSET, ELSET is PROP, and 'Element ELSET' is PART       #
+#   at element creation, in which case the ELSET, ELSET is PROP, and 'Element ELSET' is PART       #
 #                                                                                                  #
 #   Other unreferenced ELSETS are retained in the model                                            #
 #                                                                                                  #
@@ -2329,11 +2333,12 @@ def write_props(property_names, output_file):
             output_file.write("        24        -1         1         0                                       0\n")
             output_file.write("#                 hm                  hf                  hr                  dm                  dn\n")
             output_file.write("                   0                   0                   0                   0                .015\n")
-            output_file.write("#        N                         Thick              Ashear              Ithick     Iplas\n")
-            output_file.write(f"{prop_type:>10}          {shthk:>20.15g}                .833                   1         1\n")
+            if radversion == 2023:
+                output_file.write("#        N                         Thick              Ashear              Ithick     Iplas\n")
+                output_file.write(f"{prop_type:>10}          {shthk:>20.15g}                .833                   1         1\n")
             if radversion == 2025:
-                output_file.write("#                                                                                     Ipos\n")
-                output_file.write("                                                                                         0\n")
+                output_file.write("#        N                         Thick              Ashear              Ithick     Iplas      Ipos\n")
+                output_file.write(f"{prop_type:>10}          {shthk:>20.15g}                .833                   1         1         0\n")
         elif prop_type == '1': #1 is code for Membrane Shells
             shthk = float(property_data['shthk'])  # Get the 'shthk' value from property_data
             output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
@@ -2343,11 +2348,12 @@ def write_props(property_names, output_file):
             output_file.write("        24        -1         1         0                                       0\n")
             output_file.write("#                 hm                  hf                  hr                  dm                  dn\n")
             output_file.write("                   0                   0                   0                   0                .015\n")
-            output_file.write("#        N                         Thick              Ashear              Ithick     Iplas\n")
-            output_file.write(f"{prop_type:>10}          {shthk:>20.15g}                .833                   0         0\n")
+            if radversion == 2023:
+                output_file.write("#        N                         Thick              Ashear              Ithick     Iplas\n")
+                output_file.write(f"{prop_type:>10}          {shthk:>20.15g}                .833                   0         0\n")
             if radversion == 2025:
-                output_file.write("#                                                                                     Ipos\n")
-                output_file.write("                                                                                         0\n")
+                output_file.write("#        N                         Thick              Ashear              Ithick     Iplas      Ipos\n")
+                output_file.write(f"{prop_type:>10}          {shthk:>20.15g}                .833                   0         0         0\n")
         elif prop_type == '888': #888 is code for Cohesives
             output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
             output_file.write(f"/PROP/TYPE43/{property_id}\n")
@@ -2390,6 +2396,7 @@ def write_props(property_names, output_file):
             if radversion == 2025:
                 output_file.write("#                     Icontrol\n")
                 output_file.write("                             1\n")
+
 
 ####################################################################################################
 # Function to convert CONN3D2 of type BEAM and SpringA to Type13 Springs                           #
@@ -2754,9 +2761,8 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
             property_names, max_elem_id, input_lines, nsets, nset_counter
             )
 
-
 ####################################################################################################
-#debug to check the filtered input                                                                 #
+# debug to check the filtered input                                                                #
 ####################################################################################################
     output_filter = os.path.splitext(input_file_name)[0] + "_test_filter_postelements.inp"#FOR DEBUG
     output_filter_path = os.path.join(os.path.dirname(input_file_path), output_filter)#FOR DEBUG
@@ -2773,7 +2779,7 @@ def parse_element_data(input_lines, elset_dicts, property_names, non_numeric_ref
 
 
 ####################################################################################################
-#SubFunction to process the element block passed by 'parse_element_data'                           #
+# SubFunction to process the element block passed by 'parse_element_data'                          #
 ####################################################################################################
 def process_element_block(current_element_block, current_element_type, max_elem_id):
     element_list = []  # List to store dictionaries for element IDs and nodes
@@ -3203,7 +3209,8 @@ def write_element_groups(nset_counter, nsets, sh3n_list, shell_list, brick_list,
     for elset, elset_data in elset_mapping_set.items():
         element_type = elset.split("_")[-1]  # Extract the element type (e.g., sh3n, shell, brick)
         elset_basename = elset.rsplit("_", 1)[0]  # Extract the elset basename (e.g., sh3n, shell, brick)
-
+        if debug_mode:
+            print(f"Processing ELSET: {elset} with element type: {element_type} and basename: {elset_basename}")  # For debug
         # Initialize lines for each element type
         elset_lines = []
         nelset_lines = []
@@ -3344,124 +3351,116 @@ def write_element_groups(nset_counter, nsets, sh3n_list, shell_list, brick_list,
         grnset_lines.append("#  GRNODID")
         grnset_lines.append("".join(formatted_grnodids))
         nsets[grelset] = {'id': nset_counter} # Store the name/ID relationship
-
+        if debug_mode:
+            print(f"Created GRNOD for {grelset} with NSET ID: {nset_counter}") # For debug
     grnset_output = "\n".join(grnset_lines)
     elset_blocks.append(grnset_output)
 
     return elset_blocks, nset_counter, nsets, elset_dicts
 
 
-####################################################################################################################
-# Function to convert segment data dictionary for later use by 'parse_surface_data', only runs if segments present #
-####################################################################################################################
-def convert_segments(element_dicts, input_lines):
+#####################################################################################
+# Function to convert segment data dictionary for later use by 'parse_surface_data' #
+#####################################################################################
+def convert_segments(element_dicts):
     segment_dictionary = {}
     segments_converted_already = False # Initialize a flag to track if we did this already
 
-    for line in input_lines:
-        # Regular expression to find '*SURFACE' of type 'Element'
-        stype_pattern = r'^\*SURFACE\s*,\s*(?:NAME\s*=\s*[^\s,]+|TYPE\s*=\s*[^\s,]+)\s*(?!.*TYPE\s*=\s*NODE)'
-        matchelement = re.search(stype_pattern, line, re.IGNORECASE)
-
-        if matchelement and not segments_converted_already:
-            segments_converted_already = True # Set the flag to True to indicate we have converted segments already
-
-            for element_type, element_list in element_dicts.items():
-
-                for element_dict in element_list:
-                    for element in element_dict["elements"]:
-                        element_id = element.get('element_id', '')
-                        nodes = element.get('nodes', [])
-
-############### NB, all node indexing listed is from 0 (if there are 4 nodes in an element, they are nodes 0,1,2,3)
-
-                        if (element_type.lower() == 'c3d6'
-                            or element_type.lower() == 'coh3d6'
-                            or element_type.lower() == 'sc6r'
-                            ):
-                            s1_nodes = [nodes[0], nodes[2], nodes[1]]  # Order as 0, 2, 1
-                            s2_nodes = [nodes[5], nodes[3], nodes[4]]  # Order as 5, 3, 4
-                            s3_nodes = [nodes[0], nodes[1], nodes[4], nodes[3]]  # Order as 0, 1, 4, 3
-                            s4_nodes = [nodes[1], nodes[2], nodes[5], nodes[4]]  # Order as 1, 2, 5, 4
-                            s5_nodes = [nodes[2], nodes[0], nodes[3], nodes[5]]  # Order as 2, 0, 3, 5
-                            segment_dictionary[element_id] = {
-                                's1': s1_nodes,
-                                's2': s2_nodes, 
-                                's3': s3_nodes, 
-                                's4': s4_nodes, 
-                                's5': s5_nodes, 
-                            }
-                        elif (element_type.lower() == 'c3d8'
-                            or element_type.lower() == 'c3d8i'
-                            or element_type.lower() == 'coh3d8'
-                            or element_type.lower() == 'c3d8r'
-                            or element_type.lower() == 'sc8r'
-                            ):
-                            s1_nodes = [nodes[0], nodes[3], nodes[2], nodes[1]]  # Order as 0, 3, 2, 1
-                            s2_nodes = [nodes[7], nodes[4], nodes[5], nodes[6]]  # Order as 7, 4, 5, 6
-                            s3_nodes = [nodes[0], nodes[1], nodes[5], nodes[4]]  # Order as 0, 1, 5, 4
-                            s4_nodes = [nodes[1], nodes[2], nodes[6], nodes[5]]  # Order as 1, 2, 6, 5
-                            s5_nodes = [nodes[2], nodes[3], nodes[7], nodes[6]]  # Order as 2, 3, 7, 6
-                            s6_nodes = [nodes[3], nodes[0], nodes[4], nodes[7]]  # Order as 3, 0, 4, 7
-                            segment_dictionary[element_id] = {
-                                's1': s1_nodes,
-                                's2': s2_nodes,
-                                's3': s3_nodes, 
-                                's4': s4_nodes,
-                                's5': s5_nodes, 
-                                's6': s6_nodes, 
-                            }
-                        elif element_type.lower() == 'c3d4':
-                            s1_nodes = [nodes[0], nodes[2], nodes[1]]  # Order as 0, 2, 1
-                            s2_nodes = [nodes[0], nodes[1], nodes[3]]  # Order as 0, 1, 3
-                            s3_nodes = [nodes[1], nodes[2], nodes[3]]  # Order as 1, 2, 3
-                            s4_nodes = [nodes[2], nodes[0], nodes[3]]  # Order as 2, 0, 3
-                            segment_dictionary[element_id] = {
-                                's1': s1_nodes,
-                                's2': s2_nodes,
-                                's3': s3_nodes, 
-                                's4': s4_nodes, 
-                            }
-                        elif (element_type.lower() == 'c3d10'
-                            or element_type.lower() == 'c3d10m'):
-                            s1_nodes = [nodes[0], nodes[2], nodes[1]]  # Order as 0, 2, 1
-                            s2_nodes = [nodes[0], nodes[1], nodes[3]]  # Order as 0, 1, 3
-                            s3_nodes = [nodes[1], nodes[2], nodes[3]]  # Order as 1, 2, 3
-                            s4_nodes = [nodes[2], nodes[0], nodes[3]]  # Order as 2, 0, 3
-                            segment_dictionary[element_id] = {
-                                's1': s1_nodes,
-                                's2': s2_nodes,
-                                's3': s3_nodes, 
-                                's4': s4_nodes, 
-                            }
-                        elif (element_type.lower() == 's4'
-                            or element_type.lower() == 's4r'
-                            or element_type.lower() == 'r3d4'
-                            or element_type.lower() == 'm3d4r'):
-                            spos_nodes = [nodes[0], nodes[1], nodes[2], nodes[3]]  # Order as 0, 1, 2, 3
-                            sneg_nodes = [nodes[3], nodes[2], nodes[1], nodes[0]]  # Order as 3, 2, 1, 0
-                            segment_dictionary[element_id] = {
-                                'spos': spos_nodes,
-                                'sneg': sneg_nodes,
-                            }
-                        elif (element_type.lower() == 's3'
-                            or element_type.lower() == 's3r'
-                            or element_type.lower() == 'r3d3'
-                            or element_type.lower() == 'm3d3'
-                            ):
-                            spos_nodes = [nodes[0], nodes[1], nodes[2]]  # Order as 0, 1, 2
-                            sneg_nodes = [nodes[2], nodes[1], nodes[0]]  # Order as 2, 1, 0
-                            segment_dictionary[element_id] = {
-                                'spos': spos_nodes,
-                                'sneg': sneg_nodes,
-                            }
-
-            return segment_dictionary
+    if not segments_converted_already:
+         segments_converted_already = True # Set the flag to True to indicate we have converted segments already
+         for element_type, element_list in element_dicts.items():
+             for element_dict in element_list:
+                 for element in element_dict["elements"]:
+                     element_id = element.get('element_id', '')
+                     nodes = element.get('nodes', [])
+ ########### NB, all node indexing listed is from 0 (if there are 4 nodes in an element, they are nodes 0,1,2,3)
+                     if (element_type.lower() == 'c3d6'
+                         or element_type.lower() == 'coh3d6'
+                         or element_type.lower() == 'sc6r'
+                         ):
+                         s1_nodes = [nodes[0], nodes[2], nodes[1]]  # Order as 0, 2, 1
+                         s2_nodes = [nodes[5], nodes[3], nodes[4]]  # Order as 5, 3, 4
+                         s3_nodes = [nodes[0], nodes[1], nodes[4], nodes[3]]  # Order as 0, 1, 4, 3
+                         s4_nodes = [nodes[1], nodes[2], nodes[5], nodes[4]]  # Order as 1, 2, 5, 4
+                         s5_nodes = [nodes[2], nodes[0], nodes[3], nodes[5]]  # Order as 2, 0, 3, 5
+                         segment_dictionary[element_id] = {
+                             's1': s1_nodes,
+                             's2': s2_nodes, 
+                             's3': s3_nodes, 
+                             's4': s4_nodes, 
+                             's5': s5_nodes, 
+                         }
+                     elif (element_type.lower() == 'c3d8'
+                         or element_type.lower() == 'c3d8i'
+                         or element_type.lower() == 'coh3d8'
+                         or element_type.lower() == 'c3d8r'
+                         or element_type.lower() == 'sc8r'
+                         ):
+                         s1_nodes = [nodes[0], nodes[3], nodes[2], nodes[1]]  # Order as 0, 3, 2, 1
+                         s2_nodes = [nodes[7], nodes[4], nodes[5], nodes[6]]  # Order as 7, 4, 5, 6
+                         s3_nodes = [nodes[0], nodes[1], nodes[5], nodes[4]]  # Order as 0, 1, 5, 4
+                         s4_nodes = [nodes[1], nodes[2], nodes[6], nodes[5]]  # Order as 1, 2, 6, 5
+                         s5_nodes = [nodes[2], nodes[3], nodes[7], nodes[6]]  # Order as 2, 3, 7, 6
+                         s6_nodes = [nodes[3], nodes[0], nodes[4], nodes[7]]  # Order as 3, 0, 4, 7
+                         segment_dictionary[element_id] = {
+                             's1': s1_nodes,
+                             's2': s2_nodes,
+                             's3': s3_nodes, 
+                             's4': s4_nodes,
+                             's5': s5_nodes, 
+                             's6': s6_nodes, 
+                         }
+                     elif element_type.lower() == 'c3d4':
+                         s1_nodes = [nodes[0], nodes[2], nodes[1]]  # Order as 0, 2, 1
+                         s2_nodes = [nodes[0], nodes[1], nodes[3]]  # Order as 0, 1, 3
+                         s3_nodes = [nodes[1], nodes[2], nodes[3]]  # Order as 1, 2, 3
+                         s4_nodes = [nodes[2], nodes[0], nodes[3]]  # Order as 2, 0, 3
+                         segment_dictionary[element_id] = {
+                             's1': s1_nodes,
+                             's2': s2_nodes,
+                             's3': s3_nodes, 
+                             's4': s4_nodes, 
+                         }
+                     elif (element_type.lower() == 'c3d10'
+                         or element_type.lower() == 'c3d10m'):
+                         s1_nodes = [nodes[0], nodes[2], nodes[1]]  # Order as 0, 2, 1
+                         s2_nodes = [nodes[0], nodes[1], nodes[3]]  # Order as 0, 1, 3
+                         s3_nodes = [nodes[1], nodes[2], nodes[3]]  # Order as 1, 2, 3
+                         s4_nodes = [nodes[2], nodes[0], nodes[3]]  # Order as 2, 0, 3
+                         segment_dictionary[element_id] = {
+                             's1': s1_nodes,
+                             's2': s2_nodes,
+                             's3': s3_nodes, 
+                             's4': s4_nodes, 
+                         }
+                     elif (element_type.lower() == 's4'
+                         or element_type.lower() == 's4r'
+                         or element_type.lower() == 'r3d4'
+                         or element_type.lower() == 'm3d4r'):
+                         spos_nodes = [nodes[0], nodes[1], nodes[2], nodes[3]]  # Order as 0, 1, 2, 3
+                         sneg_nodes = [nodes[3], nodes[2], nodes[1], nodes[0]]  # Order as 3, 2, 1, 0
+                         segment_dictionary[element_id] = {
+                             'spos': spos_nodes,
+                             'sneg': sneg_nodes,
+                         }
+                     elif (element_type.lower() == 's3'
+                         or element_type.lower() == 's3r'
+                         or element_type.lower() == 'r3d3'
+                         or element_type.lower() == 'm3d3'
+                         ):
+                         spos_nodes = [nodes[0], nodes[1], nodes[2]]  # Order as 0, 1, 2
+                         sneg_nodes = [nodes[2], nodes[1], nodes[0]]  # Order as 2, 1, 0
+                         segment_dictionary[element_id] = {
+                             'spos': spos_nodes,
+                             'sneg': sneg_nodes,
+                         }
+         #print(f"segment dictionary is {segment_dictionary}") # FOR DEBUG
+         return segment_dictionary
 
 
-#########################################################################################################################
-# New Faster Function to parse segment surfaces, based on segment_dictionary                                            #
-#########################################################################################################################
+####################################################################################################
+# New Faster Function to parse segment surfaces, based on segment_dictionary                       #
+####################################################################################################
 def parse_surface_data(input_lines, elset_dicts, nset_counter, nsets,
     segment_dictionary, property_names
     ):
@@ -3472,7 +3471,6 @@ def parse_surface_data(input_lines, elset_dicts, nset_counter, nsets,
     current_node_surface_name = None
     surf_already_processed = False
     allsurf = False
-    part_id_list = []  # Initialize an empty list for part IDs
     prop_lines = []
 
     remaining_lines = []
@@ -3698,9 +3696,9 @@ def parse_surface_data(input_lines, elset_dicts, nset_counter, nsets,
     return surface_lines, surf_id, surf_name_to_id, nset_counter, nsets, elset_dicts, input_lines
 
 
-#########################################################################################################################
-# Function to parse surface_interaction data for friction                                                               #
-#########################################################################################################################
+####################################################################################################
+# Function to parse surface_interaction data for friction                                          #
+####################################################################################################
 def parse_surface_interaction_data(input_lines):
     friction_dict = {}  # Initialize friction dictionary
     friction_name = None
@@ -3740,9 +3738,9 @@ def parse_surface_interaction_data(input_lines):
     return friction_dict
 
 
-#################################################################################################################################
-# Function to convert *CONTACT data to Type24: deals with all exterior option, and contact pairs                                #
-#################################################################################################################################
+####################################################################################################
+# Function to convert *CONTACT data to Type24: deals with all exterior option, and contact pairs   #
+####################################################################################################
 def convert_contacts(input_lines, property_names, surf_id, friction_dict, surf_name_to_id):
     contacts = []
     friction_ref = []
@@ -4703,7 +4701,7 @@ def convert_initial(input_lines, nset_counter, nsets):
                     iniv_block = (
                     "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
                     f"/INIVEL/TRA/{ref_nset_counter}\n{iniv_name}\n"
-                    "#                 Vx                  Vy                  Vz   Gnod_id   Skew_id\n"
+                    "#                 Vx                  Vy                  Vz  Grnod_id   Skew_id\n"
                     f"{iniv_mag_x:>20.15g}{iniv_mag_y:>20.15g}{iniv_mag_z:>20.15g}{ref_nset_counter:>10}\n"
                     "#   Tstart   sens_ID\n"
                     "       0.0         0"
@@ -4712,7 +4710,7 @@ def convert_initial(input_lines, nset_counter, nsets):
                     iniv_block = (
                     "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
                     f"/INIVEL/TRA/{ref_nset_counter}\n{iniv_name}\n"
-                    "#                 Vx                  Vy                  Vz   Gnod_id   Skew_id\n"
+                    "#                 Vx                  Vy                  Vz  Grnod_id   Skew_id\n"
                     f"{iniv_mag_x:>20.15g}{iniv_mag_y:>20.15g}{iniv_mag_z:>20.15g}{ref_nset_counter:>10}"
                     )
                 initial_blocks.append(iniv_block)
@@ -4738,7 +4736,7 @@ def convert_initial(input_lines, nset_counter, nsets):
             "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
             f"/INIVEL/TRA/{ref_nset_counter}\n"
             "Shared INIVEL for group of nodes\n"
-            "#                 Vx                  Vy                  Vz   Gnod_id   Skew_id\n"
+            "#                 Vx                  Vy                  Vz  Grnod_id   Skew_id\n"
             f"{iniv_mag_x:>20.15g}{iniv_mag_y:>20.15g}{iniv_mag_z:>20.15g}{ref_nset_counter:>10}\n"
             "#   Tstart   sens_ID\n"
             "       0.0         0"
@@ -4748,7 +4746,7 @@ def convert_initial(input_lines, nset_counter, nsets):
             "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
             f"/INIVEL/TRA/{ref_nset_counter}\n"
             "Shared INIVEL for group of nodes\n"
-            "#                 Vx                  Vy                  Vz   Gnod_id   Skew_id\n"
+            "#                 Vx                  Vy                  Vz  Grnod_id   Skew_id\n"
             f"{iniv_mag_x:>20.15g}{iniv_mag_y:>20.15g}{iniv_mag_z:>20.15g}{ref_nset_counter:>10}"
             )
 
@@ -4765,13 +4763,11 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
     dload_data = {}
 
     amplitude_name = None
-    already_set = False
     section = None
-    skipgrav = False
-    dload_set_exists = False
 
     for line in input_lines:
         line = line.strip()
+
         if line.lower().startswith("*dload"):
             section = "*dload"
             amplitude_pattern = r'amplitude\s*=\s*([^ ]+)'
@@ -4779,62 +4775,48 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
             if amplitude_match:
                 amplitude_name = amplitude_match.group(1).strip()  # Get the value after '=' and strip any spaces
             continue
+
         if line.startswith("*"):
             section = None
+
         elif section == "*dload":
             fields = line.split(',')
             dload_name = fields[0].strip()
             dload_type = fields[1].strip()
 
             if dload_name:
-                elset_values = []
+                if debug_mode:
+                    print(f"Processing DLOAD with name: {dload_name} and type: {dload_type}")
+    
+                if dload_type.lower() != "grav":
+                    print(f"### WARNING ###: DLOAD: '{dload_name}' has type {dload_type.upper()}")
+                    print("                 inp2rad currently only processes 'GRAV' DLOADs, so this entry will be skipped")
+
                 if dload_name.isdigit():
-                    skipgrav = True
-                    continue
-                #check if dload name is a single part?
-                if dload_name in property_names:
+                    if debug_mode:
+                        print(f"DLOAD name {dload_name} is a digit, treating as single element reference for DLOAD")
+                    nset_counter += 1
+                    ref_nset_counter = nset_counter
+
+                if dload_name in nsets:
+                    if debug_mode:
+                        print(f"DLOAD name {dload_name} found in nsets, treating as single part DLOAD")
+                    ref_nset_counter = nsets[dload_name]['id']
+
+                elif dload_name in property_names:
+                    if debug_mode:
+                        print(f"DLOAD name {dload_name} found in property names, treating as single part DLOAD")
                     part_ids = []
                     property_id = property_names[dload_name]['prop_id'] #this is for ref in title and to get node group (same as part number)
                     part_id = property_names[dload_name].get('part_id', property_id)  # Use part_id for the gravity group
                     part_ids.append(part_id)
+                    if debug_mode:
+                        print(f"Part ID for DLOAD {dload_name}: {part_id}")
+                    nset_counter += 1
+                    ref_nset_counter = nset_counter
 
-                elif dload_name in nsets:
-                    already_set = True
-                    ref_nset_counter = nsets[dload_name]['id']
-
-                else:
-                    inside_elset_section = False
-                    for line in input_lines:
-                        elset_line_pattern = r'^\s*\*ELSET\s*,?\s*ELSET\s*=\s*{}\b'.format(re.escape(dload_name))
-
-                        elset_line_match = re.search(elset_line_pattern, line, re.IGNORECASE)
-                        if elset_line_match:
-                            dload_set_exists = True
-                            inside_elset_section = True
-                            elset_values = []
-                            part_ids = []
-                            continue
-
-                        if inside_elset_section and line.startswith('*'):
-                            inside_elset_section = False
-                            continue
-
-                        if inside_elset_section and line.strip():  # Skip empty lines
-                            values = line.split(',')
-                            elset_values.extend([value.strip() for value in values if value.strip()])
-                            continue
-
-                    for values in elset_values:
-                        property_id = property_names[values]['prop_id']
-                        part_id = property_names[values].get('part_id', property_id)  # Use part_id for the gravity group
-                        part_ids.append(part_id)
-
-            if not dload_name or dload_set_exists is False:
-                if skipgrav:
-                    continue
-                part_ids = []
-                property_id = 'all'
-                part_ids.append(property_id)
+            if not dload_name:
+                ref_nset_counter = 0
 
             if dload_type.lower() == "grav":
                 dload_mag = float(fields[2].strip()) # Convert dload_mag to a float
@@ -4861,25 +4843,20 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
                 dload_dir = cross_product # set Y' as cross product of original vector and arbitrary Y or Z
 
                 if dload_name not in dload_data:
-                    dload_data[dload_name] = {"TYPE": dload_type, "MAG": dload_mag, "DIR": dload_dir, "DIR2": dload_dirb}
+                    dload_data[dload_name] = {"TYPE": dload_type, "MAG": dload_mag, "DIR": dload_dir, "DIR2": dload_dirb, "NSC": ref_nset_counter}
 
     dload_blocks = []
 
-    if skipgrav:
-        return dload_blocks, nset_counter, fct_id
-
     for dload_name, data in dload_data.items():
+        if debug_mode:
+            print(f"Processing DLOAD {dload_name} for block creation") 
         dload_type = data["TYPE"]
         dload_mag = data["MAG"]
         dload_dir = data["DIR"]
         dload_dirb = data["DIR2"]
+        ref_nset_counter = data["NSC"]
+        nset_counter += 1
 
-        if not already_set:
-            if dload_name:
-                nset_counter += 1
-            ref_nset_counter = nset_counter if dload_name else 0
-            if dload_set_exists is False:
-                ref_nset_counter = 0
         skewandgravid = nset_counter
         dgrav_block = "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
         dgrav_block += f"/SKEW/FIX/{skewandgravid}\nSkew for Gravity {dload_name}\n"
@@ -4901,22 +4878,16 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
         dgrav_block += f"/GRAV/{skewandgravid}\nGravity {dload_name}\n"
         dgrav_block += "#funct_IDT       DIR   skew_ID   Isensor  Grnod_id                      Ascale_X            Fscale_Y\n"
         dgrav_block += f"{funct_id:>10}         X{skewandgravid:>10}         0{ref_nset_counter:>10}                             0{dload_mag:>20.15g}"
-
-        if not already_set and property_id != 'all':
+   
+        if dload_name.isdigit():
+            element_id = int(dload_name)
             dgrav_block += "\n#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
-            dgrav_block += f"/GRNOD/PART/{nset_counter}\n"
-            dgrav_block += f"{dload_name} secondary nodes\n"
-            dgrav_block += "# PART_IDS\n"
-            # Sort part IDs numerically for better readability
-            sorted_part_ids = sorted(part_ids, key=lambda x: int(x) if str(x).isdigit() else float('inf'))
-            part_id_rows = []
-            for i in range(0, len(sorted_part_ids), 10):
-                row_values = sorted_part_ids[i:i+10]
-                formatted_row = ''.join(f"{value:>10}" for value in row_values)
-                part_id_rows.append(formatted_row)
-
-            # Join all part_id_rows with a newline between each row
-            dgrav_block += '\n'.join(part_id_rows)
+            dgrav_block += f"/SET/GENERAL/{ref_nset_counter}\n"
+            dgrav_block += f"DLOAD set for element {element_id}\n"
+            dgrav_block += "#      KEY        ID\n"
+            dgrav_block += f"     SHELL{element_id:>10}\n"
+            dgrav_block += f"      SH3N{element_id:>10}\n"
+            dgrav_block += f"     SOLID{element_id:>10}"
 
         if not amplitude_name:
             dgrav_block += "\n#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
@@ -4931,6 +4902,160 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
         dload_blocks.append(dgrav_block)
 
     return dload_blocks, nset_counter, fct_id
+
+
+####################################################################################################
+# Function to convert *DSLOAD pressure loads to Radioss /PLOAD/ cards                              #
+####################################################################################################
+def convert_pload(input_lines, nset_counter, surf_id, surf_name_to_id, elset_dicts,
+                  segment_dictionary, functs_dict, fct_id):
+    """Convert pressure-type *DSLOAD entries to Radioss /PLOAD/ blocks."""
+
+    pload_blocks = []
+    surf_segs = []
+    pload_counter = 0
+    existing_surf_id = 0
+    new_surf_id = 0
+    section = None
+    amplitude_name = None
+
+    # Pressure load types in *DSLOAD that map to /PLOAD/
+    pressure_load_types = {'P', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6'}
+
+    # Map solid/shell face IDs to segment_dictionary keys
+    face_side_map = {
+        'P1': 's1', 'P2': 's2', 'P3': 's3',
+        'P4': 's4', 'P5': 's5', 'P6': 's6',
+        'P': 'spos'    # faces (shell: spos, solid: s1-s6)
+    }
+    
+    #print(f"segment dictionary is {segment_dictionary}") # FOR DEBUG
+    
+    for line in input_lines:
+        line_stripped = line.strip()
+
+        if line_stripped.lower().startswith("*dload") or line_stripped.lower().startswith("*dsload"):
+            section = "*dload_pressure"
+            amplitude_name = None
+            amp_match = re.search(r'amplitude\s*=\s*([^\s,]+)', line_stripped, re.IGNORECASE)
+            if amp_match:
+                amplitude_name = amp_match.group(1).strip()
+            continue
+
+        if line_stripped.startswith("*"):
+            section = None
+            continue
+
+        # --- *DLOAD pressure processing ---
+        elif section == "*dload_pressure" and line_stripped:
+            fields = [f.strip() for f in line_stripped.split(',')]
+            if len(fields) < 3:
+                continue
+
+            elset_name = fields[0]
+            load_type = fields[1].upper()
+
+            if load_type not in pressure_load_types:
+                continue  # GRAV and others are handled by convert_dloads
+
+            try:
+                pressure = float(fields[2])
+            except ValueError:
+                continue
+                
+            try:
+                existing_surf_id = surf_name_to_id.get(elset_name, 0)
+                # input (f"surf name is: {elset_name} with id: {existing_surf_id}") # FOR DEBUG              
+            except (ValueError, TypeError):
+                continue
+
+            surface_side = face_side_map.get(load_type)  # None means all faces
+
+            elements = elset_dicts.get(elset_name, [])
+
+            #print(f"found these: '{elements}'") # FOR DEBUG
+            if not elements and not existing_surf_id:
+                print(f"### WARNING ###: Element set '{elset_name}' in *DSLOAD pressure not found. Skipping.")
+                continue
+
+            if elements and not existing_surf_id:
+                print(f"Building seg surf for pressure from Element set '{elset_name}'")
+                # Build surface segments for the specified face(s)
+                surf_segs = []
+                all_sides = ['s1', 's2', 's3', 's4', 's5', 's6', 'spos', 'sneg']
+                for elem in elements:
+                    try:
+                        elem_int = int(elem)
+                    except (ValueError, TypeError):
+                        continue
+                    try: 
+                        if elem_int not in segment_dictionary:
+                            continue
+                    except (ValueError, TypeError):
+                        continue     
+                    sides_to_try = [surface_side] if surface_side else all_sides
+                    for side in sides_to_try:
+                        nodes = segment_dictionary[elem_int].get(side, [])
+                        if nodes:
+                            segment_nodes = ''.join([f"{node:>10}" for node in nodes])
+                            surf_segs.append(f"          {segment_nodes}")
+                            # input (f"surf segs are : {surf_segs}") # FOR DEBUG
+
+            if not surf_segs and not existing_surf_id:
+                print(f"### WARNING ###: No surface segments for *DSLOAD pressure on '{elset_name}'. Skipping.")
+                continue
+
+            if not existing_surf_id:
+               surf_id += 1
+               new_surf_id = surf_id
+               surf_name_key = elset_name  # Use elset_name as key for surf_name_to_id mapping
+               surf_name_to_id[surf_name_key] = new_surf_id
+
+            if amplitude_name and amplitude_name in functs_dict:
+                funct_id_val = functs_dict[amplitude_name].get('id')
+                need_constant_fct = False
+            else:
+                fct_id += 1
+                funct_id_val = fct_id
+                need_constant_fct = True
+
+            nset_counter += 1
+            pload_counter = nset_counter
+
+            if new_surf_id:
+                pload_block  = "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
+                pload_block += f"# SURF SEGS for DSLOAD pressure surface {elset_name} type {load_type}\n"
+                pload_block += "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
+                pload_block += f"/SURF/SEG/{new_surf_id}\n{elset_name} type {load_type}\n"
+                pload_block += "\n".join(surf_segs)
+                pload_block += "\n#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
+                pload_block += f"# PLOAD for {elset_name}\n"
+                pload_block += "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
+                pload_block += f"/PLOAD/{pload_counter}\n"
+                pload_block += f"Pressure Load {elset_name} {load_type}\n"
+                pload_block += "#  surf_ID funct_IDp   sens_ID                idel                      Ascale_x            Fscale_y\n"
+                pload_block += f"{new_surf_id:>10}{funct_id_val:>10}         0                   0                             1{pressure:>20.10g}"
+                new_surf_id = 0  # reset new surf status for next use
+            else:
+                pload_block  = "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
+                pload_block += f"# PLOAD for {elset_name}\n"
+                pload_block += "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
+                pload_block += f"/PLOAD/{pload_counter}\n"
+                pload_block += f"Pressure Load {elset_name} {load_type}\n"
+                pload_block += "#  surf_ID funct_IDp   sens_ID                idel                      Ascale_x            Fscale_y\n"
+                pload_block += f"{existing_surf_id:>10}{funct_id_val:>10}         0                   0                             1{pressure:>20.10g}"
+
+            if need_constant_fct:
+                pload_block += f"\n#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
+                pload_block += f"/FUNCT/{funct_id_val}\n"
+                pload_block += f"Pressure Constant {elset_name}\n"
+                pload_block += "#                  X                   Y\n"
+                pload_block += "                   0                   1\n"
+                pload_block += "                 1.0                   1"
+
+            pload_blocks.append(pload_block)
+
+    return pload_blocks, nset_counter, surf_id, fct_id
 
 
 ####################################################################################################
@@ -5140,10 +5265,10 @@ def convert_rigids(
     return rigid_bodies, nset_counter, max_elem_id, property_names, material_names
 
 
-######################################################################################################
-# Function to create /RBODY from *COUPLING KINEMATIC assumes all 6 DOF coupled                       #
-# *COUPLING, DISTRIBUTING are dealt with in RBE3 section                                             #
-######################################################################################################
+####################################################################################################
+# Function to create /RBODY from *COUPLING KINEMATIC assumes all 6 DOF coupled                     #
+# *COUPLING, DISTRIBUTING are dealt with in RBE3 section                                           #
+####################################################################################################
 def convert_coupling(input_lines, nsets, max_elem_id):
     coupling_holder = []
     coupling_name = None
@@ -5266,9 +5391,9 @@ def convert_coupling(input_lines, nsets, max_elem_id):
     return coupling_holder, max_elem_id
 
 
-######################################################################################################
-# Function to create /RBE3 from *COUPLING assigns weights on main nodes                              #
-######################################################################################################
+####################################################################################################
+# Function to create /RBE3 from *COUPLING assigns weights on main nodes                            #
+####################################################################################################
 def convert_discoup(input_lines, nsets, max_elem_id):
     discoup_data = []
     discoup_holder = []
@@ -5657,7 +5782,7 @@ def convert_mpc_ties(input_lines, prop_id, max_elem_id):
 
 
 ####################################################################################################
-# Function to build ELSET to element type mapping                                                 #
+# Function to build ELSET to element type mapping                                                  #
 ####################################################################################################
 def build_elset_element_type_mapping(input_lines):
     """Build a mapping from ELSET names to the element types they contain"""
@@ -5857,7 +5982,7 @@ def main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
         elapsed_time = time.time() - start_time
         print(f"Elsets Done:             {elapsed_time:8.3f} seconds")
 
-    segment_dictionary = convert_segments(element_dicts, input_lines)
+    segment_dictionary = convert_segments(element_dicts)
     if run_timer:
         elapsed_time = time.time() - start_time
         print(f"Segments Done:           {elapsed_time:8.3f} seconds")
@@ -5914,6 +6039,13 @@ def main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
         elapsed_time = time.time() - start_time
         print(f"Gravity Done:            {elapsed_time:8.3f} seconds")
 
+    pload_blocks, nset_counter, surf_id, fct_id = convert_pload(input_lines, nset_counter,
+        surf_id, surf_name_to_id, elset_dicts, segment_dictionary, functs_dict, fct_id
+        )
+    if run_timer:
+        elapsed_time = time.time() - start_time
+        print(f"Pressure Loads Done:     {elapsed_time:8.3f} seconds")
+
     mpc_ties, mpc_rigids, prop_id, max_elem_id = convert_mpc_ties(input_lines, prop_id,
         max_elem_id
         )
@@ -5952,8 +6084,8 @@ def main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
             transform_lines, transform_data, node_lines, nsets, nset_blocks, material_names,
             extra_material_names, property_names, element_lines, elset_blocks,
             surface_lines, contacts, tied_contacts, boundary_blocks, function_blocks,
-            initial_blocks, dload_blocks, rigid_bodies, couplings, discoups, mpc_ties,
-            conn_beams, engine_file
+            initial_blocks, dload_blocks, pload_blocks, rigid_bodies, couplings, discoups,
+            mpc_ties, conn_beams, engine_file
            )
 
 
@@ -5963,8 +6095,8 @@ def main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
 def write_output(transform_lines, transform_data, node_lines, nset_blocks, material_names,
  extra_material_names, property_names, non_numeric_references, nsets, element_lines,
  elset_blocks, surface_lines, contacts, tied_contacts, boundary_blocks, function_blocks,
- initial_blocks, dload_blocks, rigid_bodies, couplings, discoups, mpc_ties, conn_beams,
- engine_file, simple_file_name, output_file_name, output_file_path, engine_file_name,
+ initial_blocks, dload_blocks, pload_blocks, rigid_bodies, couplings, discoups, mpc_ties,
+ conn_beams, engine_file, simple_file_name, output_file_name, output_file_path, engine_file_name,
  engine_file_path
  ):
 
@@ -6341,6 +6473,9 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
         for dload_block in dload_blocks:
             output_file.write(dload_block + '\n')
 
+        for pload_block in pload_blocks:
+            output_file.write(pload_block + '\n')
+
         if run_timer:
             elapsed_time = time.time() - start_time
             print(f"BCS/Loads Written:       {elapsed_time:8.3f} seconds")
@@ -6645,9 +6780,9 @@ def expand_elset_ranges(input_lines):
         return input_lines  # debug, remove comment to skip filtered output
 
 
-#####################################################################################################
-#debug to check the expanded input                                                                  #
-#####################################################################################################
+####################################################################################################
+# debug to check the expanded input                                                                #
+####################################################################################################
     output_filter = os.path.splitext(input_file_name)[0] + "_test_expanded.inp"  # FOR DEBUG
     output_filter_path = os.path.join(os.path.dirname(input_file_path), output_filter)  # FOR DEBUG
 
@@ -6685,9 +6820,14 @@ def create_part_elsets(input_lines):
             type_match = re.search(r'\bTYPE\s*=\s*([\w\d]+)', line, re.IGNORECASE)
             element_type = type_match.group(1) if type_match else "UNKNOWN_TYPE"
 
+            if debug_mode: 
+                print(f"this is the placeholder: {placeholder_elset_name} of type: {element_type}")
+
             # Determine the number of nodes based on the TYPE
             num_nodes = 1  # Default fallback
             if element_type == 'MASS':
+                num_nodes = 1
+            elif element_type == 'DCOUP3D':
                 num_nodes = 1
             elif element_type == 'CONN3D2':
                 num_nodes = 2
@@ -6763,6 +6903,10 @@ def create_part_elsets(input_lines):
 
             # Store the element data and TYPE for this placeholder_elset
             placeholder_sets[placeholder_elset_name] = {"data": element_data, "type": element_type}
+
+            if debug_mode:
+                print(f"this is the eldata: {placeholder_elset_name} of type: {element_type} data: {element_data}")
+
         else:
             i += 1
 
@@ -6784,7 +6928,16 @@ def create_part_elsets(input_lines):
             if elset_match:
                 elset_name = elset_match.group(1)
                 referenced_elsets.add(elset_name)
-                #print(f"cross reference match: {elset_name}")  # for debug
+                if debug_mode:
+                    print(f"section ph cross reference match: {elset_name}")  # for debug
+        elif line.lower().startswith('*distributing coupling'):
+            # Extract the elset name
+            elset_match = re.search(r'elset\s*=\s*([&\w\-]+)', line, re.IGNORECASE)
+            if elset_match:
+                elset_name = elset_match.group(1)
+                referenced_elsets.add(elset_name)
+                if debug_mode:
+                    print(f"dcoup3d ph cross reference match: {elset_name}")  # for debug
         i += 1
 
 
@@ -6887,7 +7040,7 @@ def create_part_elsets(input_lines):
         return [line.rstrip() + '\n' for line in modified_lines] # debug, remove comment to skip filtered output
 
 ####################################################################################################
-#debug to check the expanded input                                                                 #
+# debug to check the expanded input                                                                #
 ####################################################################################################
     output_filter = os.path.splitext(input_file_name)[0] + "_test_partcreation.inp"  # FOR DEBUG
     output_filter_path = os.path.join(os.path.dirname(input_file_path), output_filter)  # FOR DEBUG
@@ -7128,8 +7281,9 @@ def create_rigid_elsets(input_lines, elset_references):
     if not debug_mode:
         return [line.rstrip() + '\n' for line in modified_rigid_lines]  # debug, remove comment to skip filtered output
 
+
 ####################################################################################################
-#debug to check the rigid expanded input                                                           #
+# debug to check the rigid expanded input                                                          #
 ####################################################################################################
     output_filter = os.path.splitext(input_file_name)[0] + "_test_rigidpartcreation.inp" # FOR DEBUG
     output_filter_path = os.path.join(os.path.dirname(input_file_path), output_filter)   # FOR DEBUG
@@ -7258,7 +7412,7 @@ def ppm_rigids(input_lines):
 
 
 ####################################################################################################
-#debug to check the rigid expanded input                                                           #
+# debug to check the rigid expanded input                                                          #
 ####################################################################################################
     output_filter = os.path.splitext(input_file_name)[0] + "_test_rotnode_substitutions.inp" # FOR DEBUG
     output_filter_path = os.path.join(os.path.dirname(input_file_path), output_filter)  # FOR DEBUG
@@ -7272,7 +7426,7 @@ def ppm_rigids(input_lines):
 
 
 ####################################################################################################
-# find referenced elsets (reference other elsets by name)                                          #
+# Find referenced elsets (reference other elsets by name)                                          #
 ####################################################################################################
 def find_referenced_elsets(input_lines):
     elset_references = {}
@@ -7340,7 +7494,7 @@ def find_referenced_elsets(input_lines):
 
 
 ####################################################################################################
-# find referenced nsets (reference other nsets by name)                                            #
+# Find referenced nsets (reference other nsets by name)                                            #
 ####################################################################################################
 def find_referenced_nsets(input_lines):
     nset_references = {}
@@ -7381,7 +7535,7 @@ def find_referenced_nsets(input_lines):
 
 
 ####################################################################################################
-# replace referenced elsets (reference other elsets by name)                                       #
+# Replace referenced elsets (reference other elsets by name)                                       #
 ####################################################################################################
 def replace_elsets_in_sections(input_lines, elset_references):
     elsets_for_expansion_dict = {}
@@ -7395,7 +7549,7 @@ def replace_elsets_in_sections(input_lines, elset_references):
 
 
 ####################################################################################################
-#debug to check the filtered input                                                                 #
+# debug to check the filtered input                                                                #
 ####################################################################################################
     output_filter = os.path.splitext(input_file_name)[0] + "_test_filter.inp"  # FOR DEBUG
     output_filter_path = os.path.join(os.path.dirname(input_file_path), output_filter)  # FOR DEBUG
@@ -7437,9 +7591,9 @@ def start(input_file_path):
 # Call the main_conversion function to get the necessary data from the conversion blocks           #
 ####################################################################################################
         (transform_lines, transform_data, node_lines, nsets, nset_blocks, material_names,
-         extra_material_names, property_names, element_lines, elset_blocks,
-         surface_lines, contacts, tied_contacts, boundary_blocks, function_blocks, initial_blocks,
-         dload_blocks, rigid_bodies, couplings, discoups, mpc_ties, conn_beams, engine_file
+         extra_material_names, property_names, element_lines, elset_blocks, surface_lines,
+         contacts, tied_contacts, boundary_blocks, function_blocks, initial_blocks, dload_blocks,
+         pload_blocks, rigid_bodies, couplings, discoups, mpc_ties, conn_beams, engine_file
          ) = main_conversion_sp(input_lines, simple_file_name, elsets_for_expansion_dict,
          non_numeric_references, relsets_for_expansion_dict, nset_references
          )
@@ -7451,10 +7605,10 @@ def start(input_file_path):
                                    material_names, extra_material_names, property_names,
                                    non_numeric_references, nsets, element_lines, elset_blocks,
                                    surface_lines, contacts, tied_contacts, boundary_blocks,
-                                   function_blocks, initial_blocks, dload_blocks, rigid_bodies,
-                                   couplings, discoups, mpc_ties, conn_beams, engine_file,
-                                   simple_file_name, output_file_name, output_file_path,
-                                   engine_file_name, engine_file_path
+                                   function_blocks, initial_blocks, dload_blocks, pload_blocks,
+                                   rigid_bodies, couplings, discoups, mpc_ties, conn_beams,
+                                   engine_file, simple_file_name, output_file_name,
+                                   output_file_path, engine_file_name, engine_file_path
                                    )
 
 ####################################################################################################
@@ -7537,3 +7691,4 @@ if __name__ == "__main__":
 #-  FOR SELF CONTAINED INPUT (opens a file browser if script is called without file argument)
 #---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|
     start(input_file_path)
+  
