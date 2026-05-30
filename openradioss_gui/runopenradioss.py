@@ -422,7 +422,7 @@ class RunOpenRadioss():
                 th_to_csv_exec =os.path.join("exec","th_to_csv_"+self.arch+self.bin_extension)
     
                 thtocsv_command = [ os.path.join(self.openradioss_path, th_to_csv_exec), 
-                                    os.path.join(self.running_directory, th_file)  ]
+                                    th_file  ]
                 # Redirect the output to the th-csv converter
                 subprocess.run(thtocsv_command, env=self.custom_env, cwd=self.running_directory)
 
