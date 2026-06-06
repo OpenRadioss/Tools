@@ -1468,6 +1468,8 @@ void readRadiossAnim(char *fileName)
                      << "0 "
                      << "\n";
             }
+            // Animation tensors are stored as xx, yy, zz, xy, yz, zx.
+            // Legacy VTK TENSORS requires the full 3x3 symmetric matrix.
             for (int iel = 0; iel < nbElts3D; iel++)
             {
                 cout << tensVal3DA[(iel * 6) + (ietens * 6 * nbElts3D)] << " " << tensVal3DA[(iel * 6) + 3 + (ietens * 6 * nbElts3D)] << " " << tensVal3DA[(iel * 6) + 5 + (ietens * 6 * nbElts3D)] << "\n";
@@ -1570,6 +1572,8 @@ void readRadiossAnim(char *fileName)
                          << "0 "
                          << "\n";
                 }
+                // Animation tensors are stored as xx, yy, zz, xy, yz, zx.
+                // Legacy VTK TENSORS requires the full 3x3 symmetric matrix.
                 for (int iel = 0; iel < nbEltsSPH; iel++)
                 {
                     cout << tensValSPH[(iel * 6) + (ietens * 6 * nbEltsSPH)] << " " << tensValSPH[(iel * 6) + 3 + (ietens * 6 * nbEltsSPH)] << " " << tensValSPH[(iel * 6) + 5 + (ietens * 6 * nbEltsSPH)] << "\n";
