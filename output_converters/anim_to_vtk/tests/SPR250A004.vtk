@@ -1,0 +1,90 @@
+# vtk DataFile Version 3.0
+vtk output
+ASCII
+DATASET UNSTRUCTURED_GRID
+FIELD FieldData 2
+TIME 1 1 double
+5.01035
+CYCLE 1 1 int
+0
+POINTS 4 float
+0 0 0
+7.14427 5.01035 5.01035
+0 0 10
+0 5 10
+
+CELLS 1 3
+2 0 1
+
+CELL_TYPES 1
+3
+
+POINT_DATA 4
+SCALARS NODE_ID int 1
+LOOKUP_TABLE default
+1
+2
+3
+4
+
+VECTORS Velocity float
+0 0 0
+-1.36664 1 1
+0 0 0
+0 0 0
+
+VECTORS Displacement float
+0 0 0
+-2.85573 5.01035 5.01035
+0 0 0
+0 0 0
+
+CELL_DATA 1
+SCALARS ELEMENT_ID int 1
+LOOKUP_TABLE default
+1
+
+SCALARS PART_ID int 1
+LOOKUP_TABLE default
+2
+
+SCALARS EROSION_STATUS int 1
+LOOKUP_TABLE default
+1
+
+SCALARS 1DELEM_Force_&_Moment_F1 float 1
+LOOKUP_TABLE default
+3110.18
+
+SCALARS 1DELEM_Force_&_Moment_F2 float 1
+LOOKUP_TABLE default
+2217.8
+
+SCALARS 1DELEM_Force_&_Moment_F3 float 1
+LOOKUP_TABLE default
+2217.84
+
+SCALARS 1DELEM_Force_&_Moment_M1 float 1
+LOOKUP_TABLE default
+-3.94351e-09
+
+SCALARS 1DELEM_Force_&_Moment_M2 float 1
+LOOKUP_TABLE default
+-22268.9
+
+SCALARS 1DELEM_Force_&_Moment_M3 float 1
+LOOKUP_TABLE default
+22268.4
+
+SCALARS 1DELEM_Force_&_Moment_M4 float 1
+LOOKUP_TABLE default
+3.94351e-09
+
+SCALARS 1DELEM_Force_&_Moment_M5 float 1
+LOOKUP_TABLE default
+-47.5079
+
+SCALARS 1DELEM_Force_&_Moment_M6 float 1
+LOOKUP_TABLE default
+47.5071
+

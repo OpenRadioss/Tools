@@ -1,0 +1,246 @@
+# vtk DataFile Version 3.0
+vtk output
+ASCII
+DATASET UNSTRUCTURED_GRID
+FIELD FieldData 2
+TIME 1 1 double
+0
+CYCLE 1 1 int
+0
+POINTS 18 float
+0 0 -5
+100 0 -5
+30 30 -5
+70 30 -5
+50 50 -5
+30 70 -5
+70 70 -5
+0 100 -5
+100 100 -5
+0 0 0
+100 0 0
+30 30 0
+70 30 0
+50 50 0
+30 70 0
+70 70 0
+0 100 0
+100 100 0
+
+CELLS 11 53
+2 4 13
+4 0 2 5 7
+4 0 1 3 2
+4 5 6 8 7
+4 2 3 6 5
+4 1 8 6 3
+4 11 12 15 14
+4 9 11 14 16
+4 14 15 17 16
+4 9 10 12 11
+4 10 17 15 12
+
+CELL_TYPES 11
+3
+9
+9
+9
+9
+9
+9
+9
+9
+9
+9
+
+POINT_DATA 18
+SCALARS NODE_ID int 1
+LOOKUP_TABLE default
+1
+2
+3
+4
+5
+6
+7
+8
+9
+11
+12
+13
+14
+15
+16
+17
+18
+19
+
+CELL_DATA 11
+SCALARS ELEMENT_ID int 1
+LOOKUP_TABLE default
+1
+3
+1
+4
+2
+5
+12
+13
+14
+11
+15
+
+SCALARS PART_ID int 1
+LOOKUP_TABLE default
+3
+1
+1
+1
+1
+1
+2
+2
+2
+2
+2
+
+SCALARS EROSION_STATUS int 1
+LOOKUP_TABLE default
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+
+SCALARS 1DELEM_Plastic_Strain float 1
+LOOKUP_TABLE default
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+SCALARS 1DELEM_Damage_1 float 1
+LOOKUP_TABLE default
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+SCALARS 1DELEM_Damage_2 float 1
+LOOKUP_TABLE default
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+SCALARS 1DELEM_Damage_3 float 1
+LOOKUP_TABLE default
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+SCALARS 2DELEM_Plastic_Strain float 1
+LOOKUP_TABLE default
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+SCALARS 2DELEM_Damage_1 float 1
+LOOKUP_TABLE default
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+SCALARS 2DELEM_Damage_2 float 1
+LOOKUP_TABLE default
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+SCALARS 2DELEM_Damage_3 float 1
+LOOKUP_TABLE default
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+SCALARS 2DELEM_Hourglass_Energy float 1
+LOOKUP_TABLE default
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+

@@ -1,0 +1,310 @@
+# vtk DataFile Version 3.0
+vtk output
+ASCII
+DATASET UNSTRUCTURED_GRID
+FIELD FieldData 2
+TIME 1 1 double
+2.50565
+CYCLE 1 1 int
+0
+POINTS 8 float
+0 0 0
+7.84811 0 0
+7.84811 3.96551 0
+0 3.96551 0
+80 -20 0
+88.831 -20 0
+88.831 -7.15189 0
+80 -7.15189 0
+
+CELLS 2 10
+4 0 1 2 3
+4 4 5 6 7
+
+CELL_TYPES 2
+9
+9
+
+POINT_DATA 8
+SCALARS NODE_ID int 1
+LOOKUP_TABLE default
+1
+2
+3
+4
+81
+82
+83
+84
+
+SCALARS Time_Step float 1
+LOOKUP_TABLE default
+1e+06
+1e+06
+1e+06
+1e+06
+1e+06
+1e+06
+1e+06
+1e+06
+
+SCALARS Mass_Change float 1
+LOOKUP_TABLE default
+0
+0
+0
+0
+0
+0
+0
+0
+
+VECTORS Velocity float
+0 0 0
+1.28417 0 0
+1.28417 -0.382561 0
+0 -0.382561 0
+0 0 0
+-0.442732 0 0
+-0.442732 1.28417 0
+0 1.28417 0
+
+VECTORS Contact_Forces float
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+
+VECTORS Sect.RBY,Wall_F. float
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+
+VECTORS Sect.RBY_Moments float
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+
+CELL_DATA 2
+SCALARS ELEMENT_ID int 1
+LOOKUP_TABLE default
+1
+9
+
+SCALARS PART_ID int 1
+LOOKUP_TABLE default
+1
+1
+
+SCALARS EROSION_STATUS int 1
+LOOKUP_TABLE default
+0
+0
+
+SCALARS 2DELEM_Plastic_Strain float 1
+LOOKUP_TABLE default
+0.271821
+0.237651
+
+SCALARS 2DELEM_Specific_Energy float 1
+LOOKUP_TABLE default
+32429.2
+27809.9
+
+SCALARS 2DELEM_Thickness float 1
+LOOKUP_TABLE default
+0.871598
+0.886647
+
+SCALARS 2DELEM_Von_Mises float 1
+LOOKUP_TABLE default
+0
+0
+
+SCALARS 2DELEM_Hourglass_Energy float 1
+LOOKUP_TABLE default
+0
+0
+
+TENSORS 2DELEM_Stress_(upper) float
+1.05971 0 0 
+0 -1.65531e-06 0 
+0 0 0 
+-1.44323e-06 9.43487e-16 0 
+9.43487e-16 1.03511 0 
+0 0 0 
+
+TENSORS 2DELEM_Stress_(lower) float
+1.05971 0 0 
+0 -1.65531e-06 0 
+0 0 0 
+-1.44323e-06 9.43487e-16 0 
+9.43487e-16 1.03511 0 
+0 0 0 
+
+TENSORS 2DELEM_Strain_(upper) float
+0.276867 0 0 
+0 -0.137426 0 
+0 0 0 
+-0.120303 2.49391e-17 0 
+2.49391e-17 0.24258 0 
+0 0 0 
+
+TENSORS 2DELEM_Strain_(lower) float
+0.276867 0 0 
+0 -0.137426 0 
+0 0 0 
+-0.120303 2.49391e-17 0 
+2.49391e-17 0.24258 0 
+0 0 0 
+
+TENSORS 2DELEM_Strn_rate_(upper) float
+6.33936e-38 0 0 
+0 -4.3705e-34 0 
+0 0 0 
+-2.58161e-37 6.18404e-34 0 
+6.18404e-34 2.12998e-34 0 
+0 0 0 
+
+TENSORS 2DELEM_Strn_rate_(lower) float
+6.33936e-38 0 0 
+0 4.36976e-34 0 
+0 0 0 
+-2.58161e-37 6.18404e-34 0 
+6.18404e-34 -2.11969e-34 0 
+0 0 0 
+
+TENSORS 2DELEM_Stress_(layer__1)_ float
+1.05971 0 0 
+0 -1.65531e-06 0 
+0 0 0 
+-1.44323e-06 9.43487e-16 0 
+9.43487e-16 1.03511 0 
+0 0 0 
+
+TENSORS 2DELEM_Stress_(layer__2)_ float
+1.05971 0 0 
+0 -1.65531e-06 0 
+0 0 0 
+-1.44323e-06 9.43487e-16 0 
+9.43487e-16 1.03511 0 
+0 0 0 
+
+TENSORS 2DELEM_Stress_(layer__3)_ float
+1.05971 0 0 
+0 -1.65531e-06 0 
+0 0 0 
+-1.44323e-06 9.43487e-16 0 
+9.43487e-16 1.03511 0 
+0 0 0 
+
+TENSORS 2DELEM_Stress_(layer__4)_ float
+1.05971 0 0 
+0 -1.65531e-06 0 
+0 0 0 
+-1.44323e-06 9.43487e-16 0 
+9.43487e-16 1.03511 0 
+0 0 0 
+
+TENSORS 2DELEM_Stress_(layer__5)_ float
+1.05971 0 0 
+0 -1.65531e-06 0 
+0 0 0 
+-1.44323e-06 9.43487e-16 0 
+9.43487e-16 1.03511 0 
+0 0 0 
+
+TENSORS 2DELEM_Strain_(layer__1)_ float
+0.276867 0 0 
+0 -0.137426 0 
+0 0 0 
+-0.120303 2.49391e-17 0 
+2.49391e-17 0.24258 0 
+0 0 0 
+
+TENSORS 2DELEM_Strain_(layer__2)_ float
+0.276867 0 0 
+0 -0.137426 0 
+0 0 0 
+-0.120303 2.49391e-17 0 
+2.49391e-17 0.24258 0 
+0 0 0 
+
+TENSORS 2DELEM_Strain_(layer__3)_ float
+0.276867 0 0 
+0 -0.137426 0 
+0 0 0 
+-0.120303 2.49391e-17 0 
+2.49391e-17 0.24258 0 
+0 0 0 
+
+TENSORS 2DELEM_Strain_(layer__4)_ float
+0.276867 0 0 
+0 -0.137426 0 
+0 0 0 
+-0.120303 2.49391e-17 0 
+2.49391e-17 0.24258 0 
+0 0 0 
+
+TENSORS 2DELEM_Strain_(layer__5)_ float
+0.276867 0 0 
+0 -0.137426 0 
+0 0 0 
+-0.120303 2.49391e-17 0 
+2.49391e-17 0.24258 0 
+0 0 0 
+
+TENSORS 2DELEM_Strn_rate_(layer__1)_ float
+6.33936e-38 0 0 
+0 3.49573e-34 0 
+0 0 0 
+-2.58161e-37 6.18404e-34 0 
+6.18404e-34 -1.69472e-34 0 
+0 0 0 
+
+TENSORS 2DELEM_Strn_rate_(layer__2)_ float
+6.33936e-38 0 0 
+0 1.74768e-34 0 
+0 0 0 
+-2.58161e-37 6.18404e-34 0 
+6.18404e-34 -8.44788e-35 0 
+0 0 0 
+
+TENSORS 2DELEM_Strn_rate_(layer__3)_ float
+6.33936e-38 0 0 
+0 -3.73757e-38 0 
+0 0 0 
+-2.58161e-37 6.18404e-34 0 
+6.18404e-34 5.14689e-37 0 
+0 0 0 
+
+TENSORS 2DELEM_Strn_rate_(layer__4)_ float
+6.33936e-38 0 0 
+0 -1.74843e-34 0 
+0 0 0 
+-2.58161e-37 6.18404e-34 0 
+6.18404e-34 8.55082e-35 0 
+0 0 0 
+
+TENSORS 2DELEM_Strn_rate_(layer__5)_ float
+6.33936e-38 0 0 
+0 -3.49648e-34 0 
+0 0 0 
+-2.58161e-37 6.18404e-34 0 
+6.18404e-34 1.70502e-34 0 
+0 0 0 
+
