@@ -28,19 +28,19 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - image_name: linux64-rl8.9-bld:intel2025.0.1-impi2021.2-ompi4.1.2-ts11
+          - image_name: rd-linux64-rl8.10-bld:intel2025.0.1-impi2021.2-ompi4.1.2-ts11
             precision: dp
             compiler: oneapi
             os: linux64
-          - image_name: linux64-rl8.9-bld:intel2025.0.1-impi2021.2-ompi4.1.2-ts11
+          - image_name: rd-linux64-rl8.10-bld:intel2025.0.1-impi2021.2-ompi4.1.2-ts11
             precision: sp
             compiler: oneapi
             os: linux64
-          - image_name: linuxa64-rl8.9-bld:armfl24.04-ompi4.1.2-ts11
+          - image_name: rd-linuxa64-rl8.10-bld:armfl24.04-ompi4.1.2-ts11
             precision: dp
             compiler: armflang
             os: linuxa64
-          - image_name: linuxa64-rl8.9-bld:armfl24.04-ompi4.1.2-ts11
+          - image_name: rd-linuxa64-rl8.10-bld:armfl24.04-ompi4.1.2-ts11
             precision: sp
             compiler: armflang
             os: linuxa64
@@ -239,7 +239,7 @@ jobs:
             image_name: rd-linux64-cos8-bld:ompi4.1.1-ts11
           ### LINUXA64 ###
           - os: linuxa64
-            image_name: linuxa64-rl8.9-bld:armfl24.04-ompi4.1.2-ts11
+            image_name: rd-linuxa64-rl8.10-bld:armfl24.04-ompi4.1.2-ts11
 
     container: 
       # Registry variable can't be a secret but can be a simple variable defined at organization level
