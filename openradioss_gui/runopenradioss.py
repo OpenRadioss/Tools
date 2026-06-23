@@ -186,7 +186,6 @@ class RunOpenRadioss():
 
         nt = self.nt
         OPENRADIOSS_PATH = self.openradioss_path
-        RAD_H3D_PATH =  os.path.join(OPENRADIOSS_PATH, "extlib", "h3d", "lib", "win64")
         RAD_CFG_PATH = os.path.join(OPENRADIOSS_PATH, "hm_cfg_files")
 
         # Add environment
@@ -205,6 +204,8 @@ class RunOpenRadioss():
              additional_paths_linux = [
                     os.path.join(OPENRADIOSS_PATH, "extlib", "hm_reader", "linux64"),
                     os.path.join("/", "opt", "openmpi", "bin") ]
+
+             RAD_H3D_PATH = os.path.join(OPENRADIOSS_PATH, "extlib", "h3d", "lib", "linux64")
 
              custom_env["OPENRADIOSS_PATH"] = OPENRADIOSS_PATH
              custom_env["RAD_CFG_PATH"] = RAD_CFG_PATH
@@ -245,6 +246,8 @@ class RunOpenRadioss():
              additional_paths_win = [
                    os.path.join(OPENRADIOSS_PATH, "extlib", "hm_reader", "win64"),
                    os.path.join(OPENRADIOSS_PATH, "extlib", "intelOneAPI_runtime", "win64") ]
+
+             RAD_H3D_PATH =  os.path.join(OPENRADIOSS_PATH, "extlib", "h3d", "lib", "win64")
 
              custom_env["OPENRADIOSS_PATH"] = OPENRADIOSS_PATH
              custom_env["RAD_CFG_PATH"] = RAD_CFG_PATH
