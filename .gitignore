@@ -5,3 +5,6 @@ vs_build*
 *.a
 *.pyc
 .vscode/settings.json
+target/
+Cargo.lock
+exec/
