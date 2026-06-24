@@ -269,8 +269,11 @@ class RunOpenRadioss():
    
        extensions_to_delete = [".h3d", "_[0-9][0-9][0-9][0-9].out", "_[0-9][0-9][0-9][0-9].ctl", "_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9].rst",
                                "T[0-9][0-9]", "T[0-9][0-9].csv", "A[0-9][0-9][0-9]", "A[0-9][0-9][0-9][0-9]",
-                               "A[0-9][0-9][0-9].vtk", "A[0-9][0-9][0-9][0-9].vtk", ".d3plot", ".d3plot[0-9][0-9]",
-                               ".d3plot[0-9][0-9][0-9]", ".d3plot[0-9][0-9][0-9][0-9]",'.tmp']
+                               "A[0-9][0-9][0-9].vtk", "A[0-9][0-9][0-9][0-9].vtk", '.tmp']
+
+       # only delete d3plot extensions, if vortex d3plot is in use
+       if self.anim_to_d2plot =='yes' and vd3penabled:
+          extensions_to_delete.extend ([".d3plot", ".d3plot[0-9][0-9]", ".d3plot[0-9][0-9][0-9]", ".d3plot[0-9][0-9][0-9][0-9]"])
 
        # Delete files with specified extensions
        for ext_pattern in extensions_to_delete:
