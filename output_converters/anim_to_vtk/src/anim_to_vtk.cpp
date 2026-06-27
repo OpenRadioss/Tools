@@ -1470,9 +1470,9 @@ void readRadiossAnim(char *fileName)
             }
             for (int iel = 0; iel < nbElts3D; iel++)
             {
-                cout << tensVal3DA[(iel * 6) + (ietens * 6 * nbElts3D)] << " " << tensVal3DA[(iel * 6) + 3 + (ietens * 6 * nbElts3D)] << " " << tensVal3DA[(iel * 6) + 4 + (ietens * 6 * nbElts3D)] << "\n";
-                cout << tensVal3DA[(iel * 6) + 3 + (ietens * 6 * nbElts3D)] << " " << tensVal3DA[(iel * 6) + 1 + (ietens * 6 * nbElts3D)] << " " << tensVal3DA[(iel * 6) + 5 + (ietens * 6 * nbElts3D)] << "\n";
-                cout << tensVal3DA[(iel * 6) + 4 + (ietens * 6 * nbElts3D)] << " " << tensVal3DA[(iel * 6) + 5 + (ietens * 6 * nbElts3D)] << " " << tensVal3DA[(iel * 6) + 2 + (ietens * 6 * nbElts3D)] << "\n";
+                cout << tensVal3DA[(iel * 6) + (ietens * 6 * nbElts3D)] << " " << tensVal3DA[(iel * 6) + 3 + (ietens * 6 * nbElts3D)] << " " << tensVal3DA[(iel * 6) + 5 + (ietens * 6 * nbElts3D)] << "\n";
+                cout << tensVal3DA[(iel * 6) + 3 + (ietens * 6 * nbElts3D)] << " " << tensVal3DA[(iel * 6) + 1 + (ietens * 6 * nbElts3D)] << " " << tensVal3DA[(iel * 6) + 4 + (ietens * 6 * nbElts3D)] << "\n";
+                cout << tensVal3DA[(iel * 6) + 5 + (ietens * 6 * nbElts3D)] << " " << tensVal3DA[(iel * 6) + 4 + (ietens * 6 * nbElts3D)] << " " << tensVal3DA[(iel * 6) + 2 + (ietens * 6 * nbElts3D)] << "\n";
             }
             for (int iel = 0; iel < nbEltsSPH; iel++)
             {
@@ -1572,9 +1572,9 @@ void readRadiossAnim(char *fileName)
                 }
                 for (int iel = 0; iel < nbEltsSPH; iel++)
                 {
-                    cout << tensValSPH[(iel * 6) + (ietens * 6 * nbEltsSPH)] << " " << tensValSPH[(iel * 6) + 3 + (ietens * 6 * nbEltsSPH)] << " " << tensValSPH[(iel * 6) + 4 + (ietens * 6 * nbEltsSPH)] << "\n";
-                    cout << tensValSPH[(iel * 6) + 3 + (ietens * 6 * nbEltsSPH)] << " " << tensValSPH[(iel * 6) + 1 + (ietens * 6 * nbEltsSPH)] << " " << tensValSPH[(iel * 6) + 5 + (ietens * 6 * nbEltsSPH)] << "\n";
-                    cout << tensValSPH[(iel * 6) + 4 + (ietens * 6 * nbEltsSPH)] << " " << tensValSPH[(iel * 6) + 5 + (ietens * 6 * nbEltsSPH)] << " " << tensValSPH[(iel * 6) + 2 + (ietens * 6 * nbEltsSPH)] << "\n";
+                    cout << tensValSPH[(iel * 6) + (ietens * 6 * nbEltsSPH)] << " " << tensValSPH[(iel * 6) + 3 + (ietens * 6 * nbEltsSPH)] << " " << tensValSPH[(iel * 6) + 5 + (ietens * 6 * nbEltsSPH)] << "\n";
+                    cout << tensValSPH[(iel * 6) + 3 + (ietens * 6 * nbEltsSPH)] << " " << tensValSPH[(iel * 6) + 1 + (ietens * 6 * nbEltsSPH)] << " " << tensValSPH[(iel * 6) + 4 + (ietens * 6 * nbEltsSPH)] << "\n";
+                    cout << tensValSPH[(iel * 6) + 5 + (ietens * 6 * nbEltsSPH)] << " " << tensValSPH[(iel * 6) + 4 + (ietens * 6 * nbEltsSPH)] << " " << tensValSPH[(iel * 6) + 2 + (ietens * 6 * nbEltsSPH)] << "\n";
                 }
                 cout << "\n";
             }
