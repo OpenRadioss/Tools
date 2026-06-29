@@ -686,6 +686,9 @@ def convert_materials(input_lines, nset_counter):
         mass_line_pattern = r'^\s*\*mass\s*,?\s*elset\s*=\s*[^,]+(?:\s*,\s*.+)?$'
         mass_line_match = re.search(mass_line_pattern, line, re.IGNORECASE)
 
+        damage_init_jc_pattern = r'^\s*\*damage\s+initiation\s*,\s*criterion\s*=\s*johnson\s+cook\b.*$'
+        damage_init_jc_line_match = re.search(damage_init_jc_pattern, line, re.IGNORECASE)
+
         if material_line_match:
             material_name = line.split('=')[1].strip()#.lower()
 
@@ -945,7 +948,7 @@ def convert_materials(input_lines, nset_counter):
                 # Swap x and y values
                 uniaxial_data.append(((data_values[1]), (data_values[0])))
                 i += 1
- # Check if any uniaxial data pair has an abscissa of 0, and if not, insert 0,0 pair
+            # Check if any uniaxial data pair has an abscissa of 0, and if not, insert 0,0 pair
             if uniaxial_data and not any(pair[0] == 0.0 for pair in uniaxial_data):
                 uniaxial_data.insert(0, (0.0, 0.0))
             # Sort the uniaxial data by the first value (abscissa)
@@ -974,6 +977,35 @@ def convert_materials(input_lines, nset_counter):
             extra_material_names[current_material_name]['prony_data'] = {
                  'series_data': prony_data
             } # add prony data to the material
+            i -= 1
+
+        # Johnson-Cook damage initiation
+        elif current_material_name and damage_init_jc_line_match:
+            i += 1
+            jc_damage_data = None
+            while i < len(input_lines) and not input_lines[i].startswith('*'):
+                # Read and store the Johnson-Cook damage initiation data
+                data_line = input_lines[i].strip()
+                if data_line:
+                    fields = [val.strip() for val in data_line.split(',')]
+                    if len(fields) < 8:
+                        print(f"### WARNING ###: Incomplete Johnson-Cook damage initiation data for material {current_material_name}")
+                        print(f"                 Line content: '{data_line}'")
+                        print("                 Expected at least 8 comma-separated values")
+                    elif jc_damage_data is None:
+                        # Map fields 1-5 to D1-D5, and field 8 to EPS_0.
+                        selected_values = [float(val) for val in (fields[:5] + [fields[7]])]
+                        jc_damage_data = {
+                            'D1': selected_values[0],
+                            'D2': selected_values[1],
+                            'D3': selected_values[2],
+                            'D4': selected_values[3],
+                            'D5': selected_values[4],
+                            'EPS_0': selected_values[5],
+                        }
+                i += 1
+            if jc_damage_data is not None:
+                extra_material_names[current_material_name]['jc_damage_data'] = jc_damage_data
             i -= 1
 
         # damping
@@ -1470,6 +1502,13 @@ def check_if_prony(properties):
         prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
         )
 
+# checks variables for johnson-cook damage initiation and returns them to the material write section
+def check_if_jcdi(properties):
+    desired_mps = ['material_id', 'jc_damage_data']
+    return all(
+        prop in properties for prop in desired_mps) and len(properties) == len(desired_mps
+        )
+
 # checks variables for damping and returns them to the material write section
 def check_if_damping(properties):
     desired_mps = ['material_id', 'material_nset', 'dampalpha', 'dampbeta']
@@ -1815,6 +1854,41 @@ def write_prony_series(
     for item in series_data:
         g, k, b = item
         output_file.write(f"{g:>20.15g}{b:>20.15g}{k:>20.15g}{b:>20.15g}\n")
+
+# FAILURE CARDS
+# writes johnson-cook failure based on damage initiation for material
+def write_jcdi(
+    material_id, jc_damage_data, output_file
+    ):
+    def as_real(value, field_name):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            print(f"### WARNING ###: Invalid or missing Johnson-Cook {field_name} for material ID {material_id}; using 0.0")
+            return 0.0
+
+    d1 = as_real(jc_damage_data.get('D1'), 'D1')
+    d2 = as_real(jc_damage_data.get('D2'), 'D2')
+    d3 = as_real(jc_damage_data.get('D3'), 'D3')
+    d4 = as_real(jc_damage_data.get('D4'), 'D4')
+    d5 = as_real(jc_damage_data.get('D5'), 'D5')
+    eps_0 = as_real(jc_damage_data.get('EPS_0'), 'EPS_0')
+
+    def format_real(value):
+        if value.is_integer():
+            return f"{value:>20.1f}"
+        return f"{value:>20.15g}"
+
+    output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
+    output_file.write(f"# Johnson-Cook Failure for material ID {material_id}, from DAMAGE INITIATION\n")
+    output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
+    output_file.write(f"/FAIL/JOHNSON/{material_id}\n")
+    output_file.write("#                 D1                  D2                  D3                  D4                  D5\n")
+    output_file.write(f"{format_real(d1)}{format_real(d2)}{format_real(d3)}{format_real(d4)}{format_real(d5)}\n")
+    output_file.write("#              EPS_0  Ifail_sh  Ifail_so             EPSFmin                Dadv               Ixfem\n")
+    output_file.write(f"{format_real(eps_0)}         1         1                   0                   0                   0\n")
+    output_file.write("#   FAILIP\n")
+    output_file.write("          \n")
 
 #DAMPING
 # writes damping for materials
@@ -6361,7 +6435,6 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                     output_file
                     )
 
-
         #PRONY SERIES
         for material_name, properties in extra_material_names.items():
             if check_if_prony(properties):
@@ -6371,6 +6444,15 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
                 # Write the card format for prony series
                 write_prony_series(material_id, prony_data, output_file)
 
+        #FAIL JOHNSON
+        for material_name, properties in extra_material_names.items():
+            if check_if_jcdi(properties):
+                material_id = properties['material_id']
+                jc_damage_data = properties['jc_damage_data']
+ 
+                # Write the card format for johnson failure properties
+                write_jcdi(material_id, jc_damage_data, output_file)
+        
         #DAMPING
         for material_name, properties in extra_material_names.items():
             if check_if_damping(properties):
