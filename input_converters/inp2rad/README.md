@@ -24,6 +24,18 @@ You need to have a python3 installation on Linux or Windows.
           apt-get install python3
           apt install python3-tk
 
+ 
+ ## Use With OpenRadioss Gui if self compiling
+
+ inp2rad is packaged with comiled distributed OpenRadioss releases, these steps are needed only when self compiling OpenRadioss
+
+ install openradioss_gui from tools
+
+ add inp2rad.py to the openradioss_gui folder in your installation
+
+ 
+ ## Following only needed for Installation as commandline executable
+
   install the pyinstaller package
 
   * On Linux as root
@@ -71,6 +83,8 @@ Supported keywords: (not all sub-options necessarily supported):
 
 *COUPLING, *DISTRIBUTING or *KINEMATIC
 
+*DAMAGE INITIATION, CRITERION = JOHNSON COOK
+
 *DAMPING,( with ALPHA =, BETA =, for material damping)
 
 *DENSITY
@@ -80,6 +94,8 @@ Supported keywords: (not all sub-options necessarily supported):
 *DISTRIBUTING COUPLING
 
 *DLOAD (only GRAV type)
+
+*DSLOAD, (Pressure Load Types P, P1, P2, P3, P4, P5, P6)
 
 *ELEMENT, *TYPE= 
   
@@ -140,8 +156,6 @@ Supported keywords: (not all sub-options necessarily supported):
 *INCLUDE (include files supported for input, the output .rad file will be a single merged file)
 
 *INITIAL CONDITIONS (VELOCITY only)
-
-*KINEMATIC
 
 *KINEMATIC COUPLING
 
