@@ -987,12 +987,18 @@ def convert_materials(input_lines, nset_counter):
                 # Read and store the Johnson-Cook damage initiation data
                 data_line = input_lines[i].strip()
                 if data_line:
-                    fields = [val.strip() for val in data_line.split(',')]
+                    raw_fields = data_line.split(',')
+                    fields = []
+                    for val in raw_fields:
+                        stripped_val = val.strip()
+                        if not stripped_val: # If the field is empty or just whitespace
+                            fields.append('0.0') # Treat it as 0.0
+                        else:
+                            fields.append(stripped_val)
                     if len(fields) < 8:
-                        print(f"### WARNING ###: Incomplete Johnson-Cook damage initiation data for material {current_material_name}")
-                        print(f"                 Line content: '{data_line}'")
-                        print("                 Expected at least 8 comma-separated values")
-                    elif jc_damage_data is None:
+                        # Pad the list with 0.0 until it has 8 elements
+                        fields.extend(['0.0'] * (8 - len(fields)))
+                    if jc_damage_data is None:
                         # Map fields 1-5 to D1-D5, and field 8 to EPS_0.
                         selected_values = [float(val) for val in (fields[:5] + [fields[7]])]
                         jc_damage_data = {
@@ -4837,11 +4843,13 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
     dload_data = {}
 
     amplitude_name = None
+    already_set = False
     section = None
+    skipgrav = False
+    dload_set_exists = False
 
     for line in input_lines:
         line = line.strip()
-
         if line.lower().startswith("*dload"):
             section = "*dload"
             amplitude_pattern = r'amplitude\s*=\s*([^ ]+)'
@@ -4849,48 +4857,62 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
             if amplitude_match:
                 amplitude_name = amplitude_match.group(1).strip()  # Get the value after '=' and strip any spaces
             continue
-
         if line.startswith("*"):
             section = None
-
         elif section == "*dload":
             fields = line.split(',')
             dload_name = fields[0].strip()
             dload_type = fields[1].strip()
 
             if dload_name:
-                if debug_mode:
-                    print(f"Processing DLOAD with name: {dload_name} and type: {dload_type}")
-    
-                if dload_type.lower() != "grav":
-                    print(f"### WARNING ###: DLOAD: '{dload_name}' has type {dload_type.upper()}")
-                    print("                 inp2rad currently only processes 'GRAV' DLOADs, so this entry will be skipped")
-
+                elset_values = []
                 if dload_name.isdigit():
-                    if debug_mode:
-                        print(f"DLOAD name {dload_name} is a digit, treating as single element reference for DLOAD")
-                    nset_counter += 1
-                    ref_nset_counter = nset_counter
-
-                if dload_name in nsets:
-                    if debug_mode:
-                        print(f"DLOAD name {dload_name} found in nsets, treating as single part DLOAD")
-                    ref_nset_counter = nsets[dload_name]['id']
-
-                elif dload_name in property_names:
-                    if debug_mode:
-                        print(f"DLOAD name {dload_name} found in property names, treating as single part DLOAD")
+                    skipgrav = True
+                    continue
+                #check if dload name is a single part?
+                if dload_name in property_names:
                     part_ids = []
                     property_id = property_names[dload_name]['prop_id'] #this is for ref in title and to get node group (same as part number)
                     part_id = property_names[dload_name].get('part_id', property_id)  # Use part_id for the gravity group
                     part_ids.append(part_id)
-                    if debug_mode:
-                        print(f"Part ID for DLOAD {dload_name}: {part_id}")
-                    nset_counter += 1
-                    ref_nset_counter = nset_counter
 
-            if not dload_name:
-                ref_nset_counter = 0
+                elif dload_name in nsets:
+                    already_set = True
+                    ref_nset_counter = nsets[dload_name]['id']
+
+                else:
+                    inside_elset_section = False
+                    for line in input_lines:
+                        elset_line_pattern = r'^\s*\*ELSET\s*,?\s*ELSET\s*=\s*{}\b'.format(re.escape(dload_name))
+
+                        elset_line_match = re.search(elset_line_pattern, line, re.IGNORECASE)
+                        if elset_line_match:
+                            dload_set_exists = True
+                            inside_elset_section = True
+                            elset_values = []
+                            part_ids = []
+                            continue
+
+                        if inside_elset_section and line.startswith('*'):
+                            inside_elset_section = False
+                            continue
+
+                        if inside_elset_section and line.strip():  # Skip empty lines
+                            values = line.split(',')
+                            elset_values.extend([value.strip() for value in values if value.strip()])
+                            continue
+
+                    for values in elset_values:
+                        property_id = property_names[values]['prop_id']
+                        part_id = property_names[values].get('part_id', property_id)  # Use part_id for the gravity group
+                        part_ids.append(part_id)
+
+            if not dload_name or dload_set_exists is False:
+                if skipgrav:
+                    continue
+                part_ids = []
+                property_id = 'all'
+                part_ids.append(property_id)
 
             if dload_type.lower() == "grav":
                 dload_mag = float(fields[2].strip()) # Convert dload_mag to a float
@@ -4917,20 +4939,25 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
                 dload_dir = cross_product # set Y' as cross product of original vector and arbitrary Y or Z
 
                 if dload_name not in dload_data:
-                    dload_data[dload_name] = {"TYPE": dload_type, "MAG": dload_mag, "DIR": dload_dir, "DIR2": dload_dirb, "NSC": ref_nset_counter}
+                    dload_data[dload_name] = {"TYPE": dload_type, "MAG": dload_mag, "DIR": dload_dir, "DIR2": dload_dirb}
 
     dload_blocks = []
 
+    if skipgrav:
+        return dload_blocks, nset_counter, fct_id
+
     for dload_name, data in dload_data.items():
-        if debug_mode:
-            print(f"Processing DLOAD {dload_name} for block creation") 
         dload_type = data["TYPE"]
         dload_mag = data["MAG"]
         dload_dir = data["DIR"]
         dload_dirb = data["DIR2"]
-        ref_nset_counter = data["NSC"]
-        nset_counter += 1
 
+        if not already_set:
+            if dload_name:
+                nset_counter += 1
+            ref_nset_counter = nset_counter if dload_name else 0
+            if dload_set_exists is False:
+                ref_nset_counter = 0
         skewandgravid = nset_counter
         dgrav_block = "#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
         dgrav_block += f"/SKEW/FIX/{skewandgravid}\nSkew for Gravity {dload_name}\n"
@@ -4952,16 +4979,22 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
         dgrav_block += f"/GRAV/{skewandgravid}\nGravity {dload_name}\n"
         dgrav_block += "#funct_IDT       DIR   skew_ID   Isensor  Grnod_id                      Ascale_X            Fscale_Y\n"
         dgrav_block += f"{funct_id:>10}         X{skewandgravid:>10}         0{ref_nset_counter:>10}                             0{dload_mag:>20.15g}"
-   
-        if dload_name.isdigit():
-            element_id = int(dload_name)
+
+        if not already_set and property_id != 'all':
             dgrav_block += "\n#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
-            dgrav_block += f"/SET/GENERAL/{ref_nset_counter}\n"
-            dgrav_block += f"DLOAD set for element {element_id}\n"
-            dgrav_block += "#      KEY        ID\n"
-            dgrav_block += f"     SHELL{element_id:>10}\n"
-            dgrav_block += f"      SH3N{element_id:>10}\n"
-            dgrav_block += f"     SOLID{element_id:>10}"
+            dgrav_block += f"/GRNOD/PART/{nset_counter}\n"
+            dgrav_block += f"{dload_name} secondary nodes\n"
+            dgrav_block += "# PART_IDS\n"
+            # Sort part IDs numerically for better readability
+            sorted_part_ids = sorted(part_ids, key=lambda x: int(x) if str(x).isdigit() else float('inf'))
+            part_id_rows = []
+            for i in range(0, len(sorted_part_ids), 10):
+                row_values = sorted_part_ids[i:i+10]
+                formatted_row = ''.join(f"{value:>10}" for value in row_values)
+                part_id_rows.append(formatted_row)
+
+            # Join all part_id_rows with a newline between each row
+            dgrav_block += '\n'.join(part_id_rows)
 
         if not amplitude_name:
             dgrav_block += "\n#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n"
@@ -4976,7 +5009,6 @@ def convert_dloads(input_lines, nset_counter, nsets, property_names, functs_dict
         dload_blocks.append(dgrav_block)
 
     return dload_blocks, nset_counter, fct_id
-
 
 ####################################################################################################
 # Function to convert *DSLOAD pressure loads to Radioss /PLOAD/ cards                              #
@@ -5008,8 +5040,8 @@ def convert_pload(input_lines, nset_counter, surf_id, surf_name_to_id, elset_dic
     for line in input_lines:
         line_stripped = line.strip()
 
-        if line_stripped.lower().startswith("*dload") or line_stripped.lower().startswith("*dsload"):
-            section = "*dload_pressure"
+        if line_stripped.lower().startswith("*dsload"):
+            section = "*dsload_pressure"
             amplitude_name = None
             amp_match = re.search(r'amplitude\s*=\s*([^\s,]+)', line_stripped, re.IGNORECASE)
             if amp_match:
@@ -5020,8 +5052,8 @@ def convert_pload(input_lines, nset_counter, surf_id, surf_name_to_id, elset_dic
             section = None
             continue
 
-        # --- *DLOAD pressure processing ---
-        elif section == "*dload_pressure" and line_stripped:
+        # --- *DSLOAD pressure processing ---
+        elif section == "*dsload_pressure" and line_stripped:
             fields = [f.strip() for f in line_stripped.split(',')]
             if len(fields) < 3:
                 continue
@@ -5227,13 +5259,13 @@ def convert_rigids(
                 material_names[property_name]['rho'] = rgdrho  # Update material density for the rigid property if defined
 
                 rigid_part = True
-                property_id = property_names[property_name]['prop_id'] #this is for ref in title and to get node group (same as part number)
+                part_id = property_names[property_name]['part_id'] #this is for ref in title and to get node group (part number)
                 max_elem_id += 1 # increment max element id to use as rigid body id
                 nset_counter += 1 # increment nset counter for the node group
 
             elif property_name in relsets_for_expansion_dict:
                 rigid_elset = True
-                property_id = "based on nset derived from" #this is for ref in title
+                part_id = "based on nset derived from" #this is for ref in title
                 max_elem_id += 1 # increment max element id to use as rigid body id
                 nelset_name = f"{property_name}___grnod"
                 nset_data = nsets.get(nelset_name)
@@ -5241,7 +5273,7 @@ def convert_rigids(
 
             elif property_name == "no_property_name_this_rigid_uses_an_nset":
                 rigid_nset = True
-                property_id = "based on nset" #this is for ref in title
+                part_id = "based on nset" #this is for ref in title
                 max_elem_id += 1 # increment max element id to use as rigid body id
                 nset_data = nsets.get(nset_name)
                 ref_nset_counter = nset_data['id'] if nset_data else 0
@@ -5251,7 +5283,7 @@ def convert_rigids(
             if rigid_part is True:
 
                 rigid_bodies.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                rigid_bodies.append(f"# RBODY for Part {property_id}")
+                rigid_bodies.append(f"# RBODY for Part {part_id}")
                 rigid_bodies.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 rigid_bodies.append(f"/RBODY/{max_elem_id}")
                 rigid_bodies.append(f"{property_name}")
@@ -5267,7 +5299,7 @@ def convert_rigids(
                 rigid_bodies.append(f"/GRNOD/PART/{nset_counter}")
                 rigid_bodies.append(f"{property_name} secondary nodes")
                 rigid_bodies.append("#   PARTID")
-                rigid_bodies.append(f"{property_id:>10}")
+                rigid_bodies.append(f"{part_id:>10}")
                 rigid_bodies.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 nset_counter += 1
                 rigid_bodies.append(f"/GRNOD/NODE/{nset_counter}")
@@ -5278,7 +5310,8 @@ def convert_rigids(
                 rigid_part = False
 
             elif rigid_nset is True:
-                if ref_nset_counter == 0:
+                property_id = "based on nset"  # set property_id in case pre-existing nset  
+                if ref_nset_counter == 0:      # if no existing nset, create one
                     nset_counter += 1
                     ref_nset_counter = nset_counter  # Use the new nset_counter as the reference set ID
                     property_id = "with secondary node"  # Set property_id for the nset
@@ -5313,7 +5346,7 @@ def convert_rigids(
             elif rigid_elset is True:
 
                 rigid_bodies.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                rigid_bodies.append(f"# RBODY {property_id} {property_name}")
+                rigid_bodies.append(f"# RBODY {part_id} {property_name}")
                 rigid_bodies.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 rigid_bodies.append(f"/RBODY/{max_elem_id}")
                 rigid_bodies.append(f"{property_name}")
